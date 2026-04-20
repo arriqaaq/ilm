@@ -58,10 +58,12 @@ export async function getCollections(): Promise<ApiCollection[]> {
 
 export async function searchAll(
   q: string,
-  type: 'text' | 'semantic' = 'text',
-  limit = 20
+  type: 'text' | 'semantic' | 'hybrid' = 'text',
+  limit = 20,
+  rerank = false
 ): Promise<SearchResponse> {
-  return get(`/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}`);
+  const suffix = rerank ? '&rerank=true' : '';
+  return get(`/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}${suffix}`);
 }
 
 export async function getHadiths(params: {
@@ -210,9 +212,11 @@ export async function searchUnified(
   q: string,
   type: 'hybrid' | 'semantic' = 'hybrid',
   limit = 20,
-  page = 1
+  page = 1,
+  rerank = false
 ): Promise<UnifiedSearchResponse> {
-  return get(`/unified/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}&page=${page}`);
+  const suffix = rerank ? '&rerank=true' : '';
+  return get(`/unified/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}&page=${page}${suffix}`);
 }
 
 // ── Quran Word Morphology API ──

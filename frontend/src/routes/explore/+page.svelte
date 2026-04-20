@@ -14,25 +14,33 @@
   let query = $state('');
   let searchType: 'hybrid' | 'semantic' = $state('semantic');
   let currentPage = $state(1);
+  let rerank = $state(false);
 
   let urlQuery = $derived(page.url.searchParams.get('q') || '');
   let urlType = $derived((page.url.searchParams.get('type') as 'hybrid' | 'semantic') || 'semantic');
   let urlPage = $derived(Number(page.url.searchParams.get('page')) || 1);
+  let urlRerank = $derived(page.url.searchParams.get('rerank') === 'true');
 
   $effect(() => {
     if (urlQuery) {
       query = urlQuery;
       searchType = urlType;
       currentPage = urlPage;
+      rerank = urlRerank;
       doSearch();
     }
+  });
+
+  // Clear rerank when switching away from hybrid — it only applies there
+  $effect(() => {
+    if (searchType !== 'hybrid' && rerank) rerank = false;
   });
 
   async function doSearch() {
     if (!query.trim()) return;
     loading = true;
     try {
-      result = await searchUnified(query, searchType, 20, currentPage);
+      result = await searchUnified(query, searchType, 20, currentPage, rerank);
     } catch (e) {
       console.error('Unified search failed:', e);
     } finally {
@@ -57,6 +65,7 @@
     sp.set('q', query);
     sp.set('type', searchType);
     if (currentPage > 1) sp.set('page', String(currentPage));
+    if (rerank && searchType === 'hybrid') sp.set('rerank', 'true');
     window.history.pushState({}, '', `/explore?${sp}`);
   }
 
@@ -78,6 +87,12 @@
           <button type="button" class="toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
           <button type="button" class="toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
         </div>
+        {#if searchType === 'hybrid'}
+          <label class="rerank-toggle" title="Slower but better ranking for theological queries (~200ms).">
+            <input type="checkbox" bind:checked={rerank} />
+            <span>⚡ Precision mode</span>
+          </label>
+        {/if}
         <button type="submit" class="search-btn">Search</button>
       </div>
     </form>
@@ -173,6 +188,8 @@
   .type-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .toggle-btn { padding: 8px 14px; font-size: 0.8rem; background: var(--bg-surface); color: var(--text-secondary); transition: all var(--transition); border: none; cursor: pointer; }
   .toggle-btn.active { background: var(--accent); color: white; }
+  .rerank-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; user-select: none; }
+  .rerank-toggle input { margin: 0; cursor: pointer; }
   .search-btn { padding: 8px 20px; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: background var(--transition); }
   .search-btn:hover { background: var(--accent-hover); }
 

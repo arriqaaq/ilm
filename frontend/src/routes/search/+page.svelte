@@ -10,25 +10,33 @@
   let result: SearchResponse | null = $state(null);
   let loading = $state(false);
   let query = $state('');
-  let searchType: 'text' | 'semantic' = $state('text');
+  let searchType: 'text' | 'semantic' | 'hybrid' = $state('text');
+  let rerank = $state(false);
 
   // React to URL param changes (e.g., from TopBar navigation)
   let urlQuery = $derived(page.url.searchParams.get('q') || '');
-  let urlType = $derived((page.url.searchParams.get('type') as 'text' | 'semantic') || 'text');
+  let urlType = $derived((page.url.searchParams.get('type') as 'text' | 'semantic' | 'hybrid') || 'text');
+  let urlRerank = $derived(page.url.searchParams.get('rerank') === 'true');
 
   $effect(() => {
     if (urlQuery) {
       query = urlQuery;
       searchType = urlType;
+      rerank = urlRerank;
       doSearch();
     }
+  });
+
+  // Clear rerank when switching away from hybrid — it only applies there
+  $effect(() => {
+    if (searchType !== 'hybrid' && rerank) rerank = false;
   });
 
   async function doSearch() {
     if (!query.trim()) return;
     loading = true;
     try {
-      result = await searchAll(query, searchType);
+      result = await searchAll(query, searchType, 20, rerank);
     } catch (e) {
       console.error('Search failed:', e);
     } finally {
@@ -38,7 +46,11 @@
 
   function handleSubmit(e: Event) {
     e.preventDefault();
-    window.history.pushState({}, '', `/search?q=${encodeURIComponent(query)}&type=${searchType}`);
+    const sp = new URLSearchParams();
+    sp.set('q', query);
+    sp.set('type', searchType);
+    if (rerank && searchType === 'hybrid') sp.set('rerank', 'true');
+    window.history.pushState({}, '', `/search?${sp}`);
     doSearch();
   }
 </script>
@@ -51,7 +63,14 @@
     <div class="type-toggle">
       <button type="button" class="toggle-btn" class:active={searchType === 'text'} onclick={() => searchType = 'text'}>Text</button>
       <button type="button" class="toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
+      <button type="button" class="toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
     </div>
+    {#if searchType === 'hybrid'}
+      <label class="rerank-toggle" title="Slower but better ranking for theological queries (~200ms).">
+        <input type="checkbox" bind:checked={rerank} />
+        <span>⚡ Precision mode</span>
+      </label>
+    {/if}
     <button type="submit" class="search-btn">Search</button>
   </form>
 
@@ -109,6 +128,8 @@
   .type-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .toggle-btn { padding: 8px 14px; font-size: 0.8rem; background: var(--bg-surface); color: var(--text-secondary); transition: all var(--transition); }
   .toggle-btn.active { background: var(--accent); color: var(--bg-primary); }
+  .rerank-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; user-select: none; }
+  .rerank-toggle input { margin: 0; cursor: pointer; }
   .search-btn { padding: 8px 20px; background: var(--accent); color: var(--bg-primary); border-radius: var(--radius); font-weight: 600; font-size: 0.85rem; transition: background var(--transition); }
   .search-btn:hover { background: var(--accent-hover); }
   .results-section { margin-bottom: 28px; }

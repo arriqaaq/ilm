@@ -4,7 +4,7 @@ use surrealdb::Surreal;
 use tracing;
 
 use crate::db::Db;
-use crate::embed::Embedder;
+use crate::embed::{Embedder, RerankerBackend};
 use crate::models::ApiHadithSearchResult;
 use crate::quran::models::ApiAyahSearchResult;
 
@@ -49,6 +49,7 @@ pub async fn search_unified(
     search_type: &str,
     limit: usize,
     page: usize,
+    reranker: Option<&RerankerBackend>,
 ) -> Result<UnifiedSearchResponse> {
     // Fetch enough from each source to fill this page + detect has_more.
     // We need (page * limit) items total from the merged list, plus 1 to check has_more.
@@ -66,9 +67,11 @@ pub async fn search_unified(
         "text" => crate::search::search_hadiths_text(db, query, fetch_per_source, 0)
             .await
             .unwrap_or_default(),
-        _ => crate::search::search_hadiths_hybrid(db, embedder, query, fetch_per_source, 0)
-            .await
-            .unwrap_or_default(),
+        _ => {
+            crate::search::search_hadiths_hybrid(db, embedder, query, fetch_per_source, 0, reranker)
+                .await
+                .unwrap_or_default()
+        }
     };
 
     let ayahs = match search_type {

@@ -14,13 +14,14 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use crate::book_chat::{BookTree, NavCache};
 use crate::db::Db;
-use crate::embed::{EmbedModel, Embedder};
+use crate::embed::{EmbedModel, Embedder, FastembedReranker, RerankBackendKind, RerankerBackend};
 use crate::rag::OllamaClient;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: Surreal<Db>,
     pub embedder: Arc<Embedder>,
+    pub reranker: Option<Arc<RerankerBackend>>,
     pub ollama: Option<Arc<OllamaClient>>,
     pub book_trees: Option<Arc<std::collections::HashMap<u64, BookTree>>>,
     pub nav_cache: Arc<NavCache>,
@@ -32,10 +33,33 @@ pub async fn serve(
     ollama_url: Option<String>,
     ollama_model: Option<String>,
     embed_model: EmbedModel,
+    rerank_backend: Option<RerankBackendKind>,
+    reranker_ollama_model: Option<String>,
     pageindex_dir: Option<String>,
 ) -> Result<()> {
     let embedder = Arc::new(Embedder::new(embed_model)?);
-    let ollama = Some(Arc::new(OllamaClient::new(ollama_url, ollama_model)));
+    let ollama_client = Arc::new(OllamaClient::new(ollama_url, ollama_model.clone()));
+
+    let reranker = match rerank_backend {
+        Some(RerankBackendKind::Fastembed) => {
+            tracing::info!("Loading fastembed reranker: bge-reranker-v2-m3");
+            Some(Arc::new(RerankerBackend::Fastembed(
+                FastembedReranker::new()?,
+            )))
+        }
+        Some(RerankBackendKind::Ollama) => {
+            let model = reranker_ollama_model
+                .or(ollama_model)
+                .unwrap_or_else(|| ollama_client.model.clone());
+            tracing::info!("Using Ollama reranker model: {model}");
+            Some(Arc::new(RerankerBackend::Ollama {
+                client: ollama_client.clone(),
+                model,
+            }))
+        }
+        None => None,
+    };
+    let ollama = Some(ollama_client);
 
     let book_trees = if let Some(dir) = pageindex_dir {
         let path = std::path::Path::new(&dir);
@@ -56,6 +80,7 @@ pub async fn serve(
     let state = AppState {
         db,
         embedder,
+        reranker,
         ollama,
         book_trees,
         nav_cache: Arc::new(NavCache::new()),

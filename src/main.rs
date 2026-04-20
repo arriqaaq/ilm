@@ -1,4 +1,4 @@
-use hadith::embed::EmbedModel;
+use hadith::embed::{EmbedModel, RerankBackendKind};
 use hadith::{analysis, db, embed, ingest, quran, web};
 
 use anyhow::Result;
@@ -191,6 +191,18 @@ enum Commands {
         /// Embedding model: e5-small is faster, bge-m3 is higher quality but slower
         #[arg(long, default_value = "e5-small", value_enum)]
         embed_model: EmbedModel,
+
+        /// Reranker backend (opt-in via `rerank=true` query param on hybrid search).
+        /// Omit to disable reranking entirely.
+        /// - fastembed: local cross-encoder (BAAI/bge-reranker-v2-m3). Fast, CPU-bound.
+        /// - ollama:    LLM relevance judge via Ollama. Slower; requires a running server.
+        #[arg(long, value_enum)]
+        reranker: Option<RerankBackendKind>,
+
+        /// Override Ollama model name for `--reranker ollama`. Defaults to the
+        /// server's main `--ollama-model` / `OLLAMA_MODEL`.
+        #[arg(long, env = "RERANKER_OLLAMA_MODEL")]
+        reranker_ollama_model: Option<String>,
 
         /// Path to PageIndex workspace directory (enables book chat feature)
         #[arg(long, env = "PAGEINDEX_DIR", default_value = "data/pageindex")]
@@ -500,6 +512,8 @@ async fn async_main() -> Result<()> {
             ollama_url,
             ollama_model,
             embed_model,
+            reranker,
+            reranker_ollama_model,
             pageindex_dir,
         } => {
             let db = db::connect(&db_path).await?;
@@ -520,6 +534,8 @@ async fn async_main() -> Result<()> {
                 ollama_url,
                 ollama_model,
                 embed_model,
+                reranker,
+                reranker_ollama_model,
                 pageindex_dir,
             )
             .await?;

@@ -5,7 +5,7 @@ use surrealdb::Surreal;
 use surrealdb::types::SurrealValue;
 
 use crate::db::Db;
-use crate::embed::Embedder;
+use crate::embed::{Embedder, RerankerBackend};
 use crate::models::{HADITH_SEARCH_FIELDS, HadithSearchResult, NarratorSearchResult};
 
 /// Result from search::rrf() — contains id and fused score.
@@ -118,22 +118,33 @@ pub async fn search_hadiths_hybrid(
     query: &str,
     limit: usize,
     _offset: usize,
+    reranker: Option<&RerankerBackend>,
 ) -> Result<Vec<HadithSearchResult>> {
     let query_vec = embedder.embed_single(query)?;
     // TODO(surrealdb#7199): use bind variables instead of inline literals
     let safe_q = escape_surql(query);
 
+    // When reranking, pull a larger candidate pool so the cross-encoder has
+    // enough to reshuffle.
+    let candidate_limit = if reranker.is_some() {
+        (limit * 5).max(80)
+    } else {
+        limit
+    };
+    // HNSW search-width must be >= K, else the operator silently caps results.
+    let ef = candidate_limit.max(80);
+
     // 1. Vector search  2. BM25 full-text search (en + ar)  3. Fuse with RRF
     let sql = format!(
         "LET $vs = SELECT id, vector::distance::knn() AS distance \
-             FROM hadith WHERE embedding <|{limit},80|> $query_vec; \
+             FROM hadith WHERE embedding <|{candidate_limit},{ef}|> $query_vec; \
          LET $ft_en = SELECT id, search::score(1) AS ft_score \
              FROM hadith WHERE text_en @1@ '{safe_q}' \
-             ORDER BY ft_score DESC LIMIT {limit}; \
+             ORDER BY ft_score DESC LIMIT {candidate_limit}; \
          LET $ft_ar = SELECT id, search::score(2) AS ft_score \
              FROM hadith WHERE text_ar @2@ '{safe_q}' \
-             ORDER BY ft_score DESC LIMIT {limit}; \
-         RETURN search::rrf([$vs, $ft_en, $ft_ar], {limit}, 60)"
+             ORDER BY ft_score DESC LIMIT {candidate_limit}; \
+         RETURN search::rrf([$vs, $ft_en, $ft_ar], {candidate_limit}, 60)"
     );
 
     let mut response = db.query(&sql).bind(("query_vec", query_vec)).await?;
@@ -166,12 +177,35 @@ pub async fn search_hadiths_hybrid(
             h.score = score_map.get(hid).copied();
         }
     }
+
+    if let Some(reranker) = reranker {
+        // Cross-encoder rerank: score (query, matn) jointly. Deliberately
+        // exclude `narrator_text` — the narrator chain dilutes the bi-encoder
+        // embedding and is the main reason reranking helps here.
+        let passages: Vec<String> = hadiths
+            .iter()
+            .map(|h| {
+                let en = h.text_en.as_deref().unwrap_or("");
+                let ar = h.text_ar.as_deref().unwrap_or("");
+                format!("{en}\n\n{ar}")
+            })
+            .collect();
+        let refs: Vec<&str> = passages.iter().map(String::as_str).collect();
+        let start = std::time::Instant::now();
+        let scores = reranker.rerank(query, &refs).await?;
+        tracing::debug!("rerank: {} candidates in {:?}", refs.len(), start.elapsed());
+        for (h, s) in hadiths.iter_mut().zip(scores) {
+            h.score = Some(s as f64);
+        }
+    }
+
     hadiths.sort_by(|a, b| {
         b.score
             .unwrap_or(0.0)
             .partial_cmp(&a.score.unwrap_or(0.0))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
+    hadiths.truncate(limit);
 
     Ok(hadiths)
 }

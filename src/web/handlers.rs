@@ -31,6 +31,9 @@ pub struct SearchParams {
     pub search_type: Option<String>,
     pub limit: Option<usize>,
     pub page: Option<usize>,
+    /// Opt-in cross-encoder reranking. Only honoured for `type=hybrid` AND
+    /// when the server was started with `--reranker`. Otherwise ignored.
+    pub rerank: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -113,6 +116,7 @@ pub async fn search(
     let query = params.q.unwrap_or_default();
     let search_type = params.search_type.unwrap_or_else(|| "hybrid".into());
     let limit = params.limit.unwrap_or(20);
+    let rerank = params.rerank.unwrap_or(false);
 
     if query.is_empty() {
         return Json(serde_json::json!({
@@ -133,10 +137,23 @@ pub async fn search(
             .await
             .unwrap_or_default(),
         _ => {
-            // Default: hybrid search (BM25 + vector via RRF)
-            crate::search::search_hadiths_hybrid(&state.db, &state.embedder, &query, limit, 0)
-                .await
-                .unwrap_or_default()
+            // Default: hybrid search (BM25 + vector via RRF).
+            // Rerank is only passed when both requested and configured.
+            let reranker = if rerank {
+                state.reranker.as_deref()
+            } else {
+                None
+            };
+            crate::search::search_hadiths_hybrid(
+                &state.db,
+                &state.embedder,
+                &query,
+                limit,
+                0,
+                reranker,
+            )
+            .await
+            .unwrap_or_default()
         }
     };
 
@@ -1197,6 +1214,7 @@ pub async fn unified_search(
     let search_type = params.search_type.unwrap_or_else(|| "hybrid".into());
     let limit = params.limit.unwrap_or(20);
     let page = params.page.unwrap_or(1).max(1);
+    let rerank = params.rerank.unwrap_or(false);
 
     if query.is_empty() {
         return Json(serde_json::json!({
@@ -1210,6 +1228,12 @@ pub async fn unified_search(
         }));
     }
 
+    let reranker = if rerank && search_type == "hybrid" {
+        state.reranker.as_deref()
+    } else {
+        None
+    };
+
     match crate::unified::search_unified(
         &state.db,
         &state.embedder,
@@ -1217,6 +1241,7 @@ pub async fn unified_search(
         &search_type,
         limit,
         page,
+        reranker,
     )
     .await
     {

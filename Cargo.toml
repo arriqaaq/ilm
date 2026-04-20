@@ -27,7 +27,7 @@ futures = "0.3"
 bytes = "1"
 
 # Embeddings
-fastembed = "5"
+fastembed = "5.13"
 
 # Zip extraction
 zip = "2"
