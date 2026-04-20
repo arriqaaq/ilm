@@ -743,7 +743,7 @@ pub async fn book_chat(
             tracing::info!("Nav cache hit for book {} q={}", book.book_id, &question[..question.len().min(40)]);
             cached
         } else {
-            match book_chat::navigate_two_phase(&ollama, &book, &question).await {
+            match book_chat::navigate(&ollama, &book, &question).await {
                 Ok(r) => {
                     // Only cache non-empty results
                     if !r.is_empty() {
@@ -752,7 +752,7 @@ pub async fn book_chat(
                     r
                 }
                 Err(e) => {
-                    tracing::error!("navigate_two_phase failed: {e}");
+                    tracing::error!("navigate failed: {e}");
                     yield Ok(bytes::Bytes::from(format!(
                         "data: {}\n\n",
                         serde_json::json!({"error": format!("Navigation failed: {e}")})
