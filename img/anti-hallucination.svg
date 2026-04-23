@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 280">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Input: LLM JSON -->
+  <rect x="20" y="52" width="90" height="56" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="65" y="72" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#c8a96a">LLM OUTPUT</text>
+  <text x="65" y="90" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#4a4a68">{ entries[] }</text>
+
+  <!-- Arrow: Input → Parse -->
+  <line x1="110" y1="80" x2="138" y2="80" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="110" cy="80" r="3" fill="#c8a96a"/>
+  <circle cx="138" cy="80" r="3" fill="#c8a96a"/>
+
+  <!-- Step 1: Parse + Require Fields -->
+  <rect x="148" y="42" width="110" height="76" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="203" y="58" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="700" letter-spacing="1" fill="#c8a96a">STEP 1</text>
+  <text x="203" y="74" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="10" font-weight="700" fill="#1a1a2e">Parse JSON</text>
+  <rect x="158" y="82" width="90" height="28" rx="4" fill="#faf8f5"/>
+  <text x="203" y="94" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#4a4a68">book_id</text>
+  <text x="203" y="104" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#4a4a68">page_index, quote</text>
+
+  <!-- Arrow: Parse → Allow-list -->
+  <line x1="258" y1="80" x2="282" y2="80" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="258" cy="80" r="3" fill="#c8a96a"/>
+  <circle cx="282" cy="80" r="3" fill="#c8a96a"/>
+
+  <!-- Step 2: Allow-list Check -->
+  <rect x="292" y="42" width="110" height="76" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="347" y="58" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="700" letter-spacing="1" fill="#c8a96a">STEP 2</text>
+  <text x="347" y="74" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="10" font-weight="700" fill="#1a1a2e">Allow-list</text>
+  <rect x="302" y="82" width="90" height="28" rx="4" fill="#faf8f5"/>
+  <text x="347" y="94" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#4a4a68">book_id &#x2208;</text>
+  <text x="347" y="104" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#4a4a68">allowed_book_ids</text>
+
+  <!-- Arrow: Allow-list → Page Lookup -->
+  <line x1="402" y1="80" x2="426" y2="80" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="402" cy="80" r="3" fill="#c8a96a"/>
+  <circle cx="426" cy="80" r="3" fill="#c8a96a"/>
+
+  <!-- Step 3: Page Lookup + verify_quote -->
+  <rect x="436" y="32" width="130" height="96" rx="12" fill="#ffffff" stroke="#c8a96a" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="501" y="48" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="700" letter-spacing="1" fill="#c8a96a">STEP 3</text>
+  <text x="501" y="64" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="10" font-weight="700" fill="#1a1a2e">verify_quote</text>
+  <rect x="448" y="72" width="106" height="48" rx="4" fill="#faf8f5"/>
+  <text x="501" y="84" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#4a4a68">normalize_arabic</text>
+  <text x="501" y="96" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#4a4a68">haystack.contains</text>
+  <text x="501" y="108" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#4a4a68">(&amp;quote)</text>
+
+  <!-- Output fork lines -->
+  <line x1="566" y1="65" x2="598" y2="42" stroke="#16a34a" stroke-width="2" opacity="0.5"/>
+  <circle cx="566" cy="65" r="3" fill="#16a34a"/>
+  <circle cx="598" cy="42" r="3" fill="#16a34a"/>
+  <line x1="566" y1="95" x2="598" y2="118" stroke="#991b1b" stroke-width="2" opacity="0.5"/>
+  <circle cx="566" cy="95" r="3" fill="#991b1b"/>
+  <circle cx="598" cy="118" r="3" fill="#991b1b"/>
+
+  <!-- Pass output -->
+  <rect x="602" y="22" width="80" height="40" rx="8" fill="rgba(22,163,74,0.08)" stroke="rgba(22,163,74,0.3)" stroke-width="1"/>
+  <text x="642" y="38" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#16a34a">&#10003;</text>
+  <text x="642" y="54" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#16a34a">Validated</text>
+
+  <!-- Drop output -->
+  <rect x="602" y="100" width="80" height="40" rx="8" fill="rgba(153,27,27,0.06)" stroke="rgba(153,27,27,0.2)" stroke-width="1"/>
+  <text x="642" y="116" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#991b1b">&#10007;</text>
+  <text x="642" y="132" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#991b1b">Dropped</text>
+
+  <!-- Bottom: trust boundary -->
+  <text x="350" y="168" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">TRUST BOUNDARY</text>
+
+  <!-- ValidatedEntry struct -->
+  <rect x="100" y="182" width="220" height="80" rx="8" fill="#ffffff" stroke="rgba(22,163,74,0.3)" stroke-width="1" filter="url(#shadow)"/>
+  <text x="210" y="200" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" font-weight="700" fill="#16a34a">ValidatedEntry</text>
+  <text x="210" y="216" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">book_id: u64</text>
+  <text x="210" y="228" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">page_index: u64</text>
+  <text x="210" y="240" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">arabic_quote: String</text>
+  <text x="210" y="252" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">english_note: String</text>
+
+  <!-- ValidatedExtract struct -->
+  <rect x="380" y="182" width="220" height="80" rx="8" fill="#ffffff" stroke="#c8a96a" stroke-width="1" filter="url(#shadow)"/>
+  <text x="490" y="200" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" font-weight="700" fill="#c8a96a">ValidatedExtract</text>
+  <text x="490" y="216" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">overview: Option&lt;String&gt;</text>
+  <text x="490" y="228" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">entries: Vec&lt;ValidatedEntry&gt;</text>
+  <text x="490" y="240" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">dropped: usize</text>
+
+  <!-- Arrow: ValidatedEntry → ValidatedExtract -->
+  <line x1="320" y1="222" x2="380" y2="222" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="320" cy="222" r="3" fill="#c8a96a"/>
+  <circle cx="380" cy="222" r="3" fill="#c8a96a"/>
+
+  <!-- Arrow from client label -->
+  <text x="490" y="272" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">&#8594; only this reaches the client</text>
+</svg>

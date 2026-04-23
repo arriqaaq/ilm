@@ -187,7 +187,7 @@ async fn test_semantic_search_scores_ordered() {
 async fn test_hybrid_search_returns_results() {
     let db = get_db().await;
     let embedder = get_embedder();
-    let results = search::search_hadiths_hybrid(db, embedder, "prayer", 10, 0)
+    let results = search::search_hadiths_hybrid(db, embedder, "prayer", 10, 0, None)
         .await
         .unwrap();
     assert!(
@@ -200,7 +200,7 @@ async fn test_hybrid_search_returns_results() {
 async fn test_hybrid_search_has_scores() {
     let db = get_db().await;
     let embedder = get_embedder();
-    let results = search::search_hadiths_hybrid(db, embedder, "fasting", 10, 0)
+    let results = search::search_hadiths_hybrid(db, embedder, "fasting", 10, 0, None)
         .await
         .unwrap();
     assert!(!results.is_empty());
@@ -214,7 +214,7 @@ async fn test_hybrid_search_has_scores() {
 async fn test_hybrid_search_respects_limit() {
     let db = get_db().await;
     let embedder = get_embedder();
-    let results = search::search_hadiths_hybrid(db, embedder, "prayer", 3, 0)
+    let results = search::search_hadiths_hybrid(db, embedder, "prayer", 3, 0, None)
         .await
         .unwrap();
     assert!(

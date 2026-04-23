@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 300">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Left: Ayah card -->
+  <rect x="20" y="30" width="140" height="100" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="90" y="52" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">AYAH</text>
+  <text x="90" y="72" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#1a1a2e">2:255</text>
+  <text x="90" y="92" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">Ayat al-Kursi</text>
+  <text x="90" y="120" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#4a4a68" direction="rtl">&#x0627;&#x0644;&#x0644;&#x0651;&#x064E;&#x0647;&#x064F; &#x0644;&#x064E;&#x0627; &#x0625;&#x0650;&#x0644;&#x064E;&#x0647;&#x064E;...</text>
+
+  <!-- Arrow from ayah to table -->
+  <line x1="160" y1="80" x2="200" y2="80" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="160" cy="80" r="3" fill="#c8a96a"/>
+  <circle cx="200" cy="80" r="3" fill="#c8a96a"/>
+
+  <!-- Center: tafsir_ayah_map table -->
+  <rect x="206" y="20" width="288" height="130" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="350" y="40" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#c8a96a">tafsir_ayah_map</text>
+
+  <!-- Table header -->
+  <rect x="216" y="50" width="268" height="20" fill="#faf8f5"/>
+  <text x="232" y="64" font-family="ui-monospace, monospace" font-size="8" font-weight="600" fill="#4a4a68">surah</text>
+  <text x="272" y="64" font-family="ui-monospace, monospace" font-size="8" font-weight="600" fill="#4a4a68">ayah</text>
+  <text x="312" y="64" font-family="ui-monospace, monospace" font-size="8" font-weight="600" fill="#4a4a68">book_id</text>
+  <text x="372" y="64" font-family="ui-monospace, monospace" font-size="8" font-weight="600" fill="#4a4a68">page_index</text>
+  <text x="444" y="64" font-family="ui-monospace, monospace" font-size="8" font-weight="600" fill="#4a4a68">heading</text>
+
+  <!-- Row 1: Ibn Kathir -->
+  <text x="234" y="84" font-family="ui-monospace, monospace" font-size="8" fill="#1a1a2e">2</text>
+  <text x="274" y="84" font-family="ui-monospace, monospace" font-size="8" fill="#1a1a2e">255</text>
+  <text x="318" y="84" font-family="ui-monospace, monospace" font-size="8" fill="#1a1a2e">23604</text>
+  <text x="384" y="84" font-family="ui-monospace, monospace" font-size="8" font-weight="700" fill="#c8a96a">312</text>
+  <text x="444" y="84" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">[&#x0633;&#x0648;&#x0631;&#x0629;...]</text>
+
+  <!-- Row 2: Tabari -->
+  <text x="234" y="102" font-family="ui-monospace, monospace" font-size="8" fill="#1a1a2e">2</text>
+  <text x="274" y="102" font-family="ui-monospace, monospace" font-size="8" fill="#1a1a2e">255</text>
+  <text x="318" y="102" font-family="ui-monospace, monospace" font-size="8" fill="#1a1a2e">7798</text>
+  <text x="384" y="102" font-family="ui-monospace, monospace" font-size="8" font-weight="700" fill="#c8a96a">1847</text>
+  <text x="444" y="102" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">[&#x0633;&#x0648;&#x0631;&#x0629;...]</text>
+
+  <!-- Index note -->
+  <text x="350" y="130" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">UNIQUE INDEX ON (surah, ayah, book_id)</text>
+
+  <!-- Arrows from table to books -->
+  <line x1="494" y1="80" x2="530" y2="52" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="530" cy="52" r="3" fill="#c8a96a"/>
+  <line x1="494" y1="98" x2="530" y2="118" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="530" cy="118" r="3" fill="#c8a96a"/>
+
+  <!-- Right: Book cards -->
+  <!-- Ibn Kathir -->
+  <rect x="534" y="24" width="148" height="52" rx="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="608" y="42" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#1a1a2e">Ibn Kathir</text>
+  <text x="608" y="56" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#c8a96a">page 312</text>
+  <text x="608" y="70" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">ID: 23604</text>
+
+  <!-- Tabari -->
+  <rect x="534" y="94" width="148" height="52" rx="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="608" y="112" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#1a1a2e">al-Tabari</text>
+  <text x="608" y="126" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#c8a96a">page 1847</text>
+  <text x="608" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">ID: 7798</text>
+
+  <!-- Bottom: Regex extraction -->
+  <rect x="20" y="170" width="660" height="110" rx="12" fill="#faf8f5" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="350" y="192" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">HEADING EXTRACTION</text>
+
+  <!-- Original heading -->
+  <rect x="40" y="204" width="400" height="26" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="240" y="222" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#1a1a2e" direction="rtl">[&#x0633;&#x064F;&#x0648;&#x0631;&#x0629; &#x0627;&#x0644;&#x0628;&#x0642;&#x0631;&#x0629; (&#x0662;): &#x0622;&#x064A;&#x0629; &#x0662;&#x0665;&#x0665;]</text>
+
+  <!-- Arrow -->
+  <line x1="440" y1="217" x2="470" y2="217" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="440" cy="217" r="3" fill="#c8a96a"/>
+  <circle cx="470" cy="217" r="3" fill="#c8a96a"/>
+
+  <!-- Regex pattern -->
+  <rect x="474" y="204" width="194" height="26" rx="6" fill="#1a1a2e"/>
+  <text x="571" y="221" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#e2e8f0">\[&#x0633;&#x0648;&#x0631;&#x0629; .+ \((\d+)\): &#x0622;&#x064A;&#x0629; (\d+)\]</text>
+
+  <!-- Arabic-Indic digit note -->
+  <rect x="40" y="242" width="628" height="26" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="50" y="258" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="#4a4a68">Arabic-Indic digits:</text>
+  <text x="170" y="258" font-family="ui-monospace, monospace" font-size="9" fill="#1a1a2e">&#x0660; &#x0661; &#x0662; &#x0663; &#x0664; &#x0665; &#x0666; &#x0667; &#x0668; &#x0669;</text>
+  <text x="330" y="258" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">&#8594;</text>
+  <text x="350" y="258" font-family="ui-monospace, monospace" font-size="9" fill="#1a1a2e">0 1 2 3 4 5 6 7 8 9</text>
+  <text x="500" y="258" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">(converted before regex match)</text>
+</svg>

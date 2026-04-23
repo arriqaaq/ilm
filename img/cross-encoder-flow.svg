@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 220">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Box 1: Query -->
+  <rect x="20" y="50" width="90" height="60" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="65" y="74" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#c8a96a">INPUT</text>
+  <text x="65" y="94" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#1a1a2e">Query</text>
+
+  <!-- Arrow 1 -->
+  <line x1="110" y1="80" x2="140" y2="80" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="110" cy="80" r="3" fill="#c8a96a"/>
+  <circle cx="140" cy="80" r="3" fill="#c8a96a"/>
+
+  <!-- Box 2: BM25 + Vector -->
+  <rect x="146" y="40" width="130" height="80" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="211" y="62" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#1a1a2e">BM25 + Vector</text>
+  <rect x="162" y="72" width="98" height="18" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="211" y="85" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#4a4a68">80 candidates</text>
+  <text x="211" y="108" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">5&#215; expanded pool</text>
+
+  <!-- Arrow 2 -->
+  <line x1="276" y1="80" x2="306" y2="80" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="276" cy="80" r="3" fill="#c8a96a"/>
+  <circle cx="306" cy="80" r="3" fill="#c8a96a"/>
+
+  <!-- Box 3: RRF Fusion -->
+  <rect x="312" y="50" width="100" height="60" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="362" y="74" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#1a1a2e">RRF Fusion</text>
+  <text x="362" y="96" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">Rank-based merge</text>
+
+  <!-- Arrow 3 -->
+  <line x1="412" y1="80" x2="442" y2="80" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="412" cy="80" r="3" fill="#c8a96a"/>
+  <circle cx="442" cy="80" r="3" fill="#c8a96a"/>
+
+  <!-- Box 4: Cross-Encoder (highlighted) -->
+  <rect x="448" y="30" width="130" height="100" rx="12" fill="#ffffff" stroke="#c8a96a" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="513" y="50" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#c8a96a">RERANKER</text>
+  <text x="513" y="70" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#1a1a2e">Cross-Encoder</text>
+  <rect x="460" y="78" width="106" height="16" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="513" y="90" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">bge-reranker-v2-m3</text>
+  <text x="513" y="110" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">Score (query, matn)</text>
+  <text x="513" y="124" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">pairs jointly</text>
+
+  <!-- Arrow 4 -->
+  <line x1="578" y1="80" x2="608" y2="80" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="578" cy="80" r="3" fill="#c8a96a"/>
+  <circle cx="608" cy="80" r="3" fill="#c8a96a"/>
+
+  <!-- Box 5: Top Results -->
+  <rect x="614" y="50" width="72" height="60" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="650" y="74" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#c8a96a">OUTPUT</text>
+  <text x="650" y="94" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#1a1a2e">Top 20</text>
+
+  <!-- Note below cross-encoder -->
+  <rect x="420" y="150" width="186" height="32" rx="8" fill="rgba(200,169,106,0.06)" stroke="rgba(200,169,106,0.12)" stroke-width="1"/>
+  <text x="513" y="163" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="#4a4a68">Narrator chains stripped</text>
+  <text x="513" y="176" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">Matn text only for scoring</text>
+  <!-- Arrow from note to cross-encoder -->
+  <line x1="513" y1="150" x2="513" y2="130" stroke="rgba(200,169,106,0.3)" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- Pipeline label -->
+  <text x="350" y="196" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="9" font-weight="600" letter-spacing="1.5" fill="#9ca3af">HYBRID SEARCH WITH CROSS-ENCODER RERANKING</text>
+</svg>

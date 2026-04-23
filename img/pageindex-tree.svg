@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 340">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Pipeline: JSON → Markdown → Tree -->
+  <rect x="20" y="16" width="660" height="52" rx="12" fill="#faf8f5" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="350" y="34" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">PAGEINDEX BUILD PIPELINE</text>
+
+  <!-- Stage chips -->
+  <rect x="50" y="42" width="130" height="18" rx="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="115" y="55" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#4a4a68">Turath JSON Pages</text>
+
+  <text x="196" y="55" font-family="system-ui, sans-serif" font-size="10" fill="#c8a96a">&#8594;</text>
+
+  <rect x="214" y="42" width="120" height="18" rx="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="274" y="55" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#4a4a68">Markdown (.md)</text>
+
+  <text x="350" y="55" font-family="system-ui, sans-serif" font-size="10" fill="#c8a96a">&#8594;</text>
+
+  <rect x="368" y="42" width="140" height="18" rx="4" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="438" y="55" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#c8a96a">PageIndex Tree (.json)</text>
+
+  <text x="524" y="55" font-family="system-ui, sans-serif" font-size="10" fill="#c8a96a">&#8594;</text>
+
+  <rect x="542" y="42" width="120" height="18" rx="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="602" y="55" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">book_map.json</text>
+
+  <!-- Tree structure visualization -->
+  <rect x="20" y="82" width="420" height="240" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="230" y="102" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">TREE STRUCTURE</text>
+
+  <!-- Root node -->
+  <rect x="164" y="112" width="140" height="28" rx="6" fill="rgba(200,169,106,0.08)" stroke="#c8a96a" stroke-width="1"/>
+  <text x="234" y="130" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#1a1a2e">Fath al-Bari</text>
+
+  <!-- Lines from root to volumes -->
+  <line x1="194" y1="140" x2="100" y2="158" stroke="#e5e7eb" stroke-width="1.5"/>
+  <line x1="234" y1="140" x2="234" y2="158" stroke="#e5e7eb" stroke-width="1.5"/>
+  <line x1="274" y1="140" x2="370" y2="158" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <!-- Volume 1 -->
+  <rect x="40" y="158" width="120" height="28" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="100" y="172" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="#1a1a2e">Vol. 1</text>
+  <text x="100" y="184" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#9ca3af">line_num: 1</text>
+
+  <!-- Volume 2 -->
+  <rect x="174" y="158" width="120" height="28" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="234" y="172" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="#1a1a2e">Vol. 2</text>
+  <text x="234" y="184" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#9ca3af">line_num: 4521</text>
+
+  <!-- Volume 3 (collapsed indicator) -->
+  <rect x="310" y="158" width="120" height="28" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="370" y="176" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">Vol. 3 ...</text>
+
+  <!-- Lines from Vol 1 to chapters -->
+  <line x1="80" y1="186" x2="60" y2="204" stroke="#e5e7eb" stroke-width="1.5"/>
+  <line x1="120" y1="186" x2="160" y2="204" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <!-- Chapter nodes -->
+  <rect x="30" y="204" width="100" height="36" rx="6" fill="#faf8f5" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="80" y="218" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#4a4a68">&#x0643;&#x062A;&#x0627;&#x0628; &#x0628;&#x062F;&#x0621; &#x0627;&#x0644;&#x0648;&#x062D;&#x064A;</text>
+  <text x="80" y="232" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#9ca3af">line: 15  text: "..."</text>
+
+  <rect x="140" y="204" width="100" height="36" rx="6" fill="#faf8f5" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="190" y="218" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#4a4a68">&#x0643;&#x062A;&#x0627;&#x0628; &#x0627;&#x0644;&#x0625;&#x064A;&#x0645;&#x0627;&#x0646;</text>
+  <text x="190" y="232" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#9ca3af">line: 842  text: "..."</text>
+
+  <!-- Section nodes under chapter 1 -->
+  <line x1="60" y1="240" x2="60" y2="256" stroke="#e5e7eb" stroke-width="1"/>
+  <rect x="30" y="256" width="100" height="26" rx="4" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="80" y="270" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7" fill="#4a4a68">&#x0628;&#x0627;&#x0628; &#x0643;&#x064A;&#x0641; &#x0643;&#x0627;&#x0646;</text>
+  <text x="80" y="280" text-anchor="middle" font-family="ui-monospace, monospace" font-size="6" fill="#9ca3af">line: 20</text>
+
+  <!-- Node structure annotation -->
+  <rect x="250" y="210" width="180" height="90" rx="8" fill="#1a1a2e"/>
+  <text x="340" y="228" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#c8a96a">Node Structure</text>
+  <text x="264" y="244" font-family="ui-monospace, monospace" font-size="7" fill="#e2e8f0">{</text>
+  <text x="270" y="256" font-family="ui-monospace, monospace" font-size="7" fill="#e2e8f0">  title: "...",</text>
+  <text x="270" y="268" font-family="ui-monospace, monospace" font-size="7" fill="#e2e8f0">  line_num: 15,</text>
+  <text x="270" y="280" font-family="ui-monospace, monospace" font-size="7" fill="#e2e8f0">  text: "...",</text>
+  <text x="270" y="292" font-family="ui-monospace, monospace" font-size="7" fill="#e2e8f0">  nodes: [...]</text>
+  <text x="264" y="304" font-family="ui-monospace, monospace" font-size="7" fill="#e2e8f0">}</text>
+
+  <!-- Right panel: annotations -->
+  <rect x="456" y="82" width="224" height="240" rx="12" fill="#faf8f5" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="568" y="102" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">KEY PARAMETERS</text>
+
+  <rect x="470" y="112" width="196" height="32" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="480" y="128" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#4a4a68">TOC Token Budget</text>
+  <text x="660" y="128" text-anchor="end" font-family="ui-monospace, monospace" font-size="9" font-weight="700" fill="#c8a96a">80,000</text>
+  <text x="480" y="140" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">~3 chars/token (Arabic + JSON)</text>
+
+  <rect x="470" y="152" width="196" height="32" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="480" y="168" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#4a4a68">Max Sections per Query</text>
+  <text x="660" y="168" text-anchor="end" font-family="ui-monospace, monospace" font-size="9" font-weight="700" fill="#c8a96a">5</text>
+  <text x="480" y="180" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">Truncated after merge</text>
+
+  <rect x="470" y="192" width="196" height="32" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="480" y="208" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#4a4a68">Answer Context Cap</text>
+  <text x="660" y="208" text-anchor="end" font-family="ui-monospace, monospace" font-size="9" font-weight="700" fill="#c8a96a">25 KB</text>
+  <text x="480" y="220" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">Concatenated section text</text>
+
+  <rect x="470" y="232" width="196" height="32" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="480" y="248" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#4a4a68">Navigation Cache</text>
+  <text x="660" y="248" text-anchor="end" font-family="ui-monospace, monospace" font-size="9" font-weight="700" fill="#c8a96a">10 min</text>
+  <text x="480" y="260" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">LRU, max 100 entries</text>
+
+  <rect x="470" y="272" width="196" height="32" rx="6" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="480" y="288" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#4a4a68">Parallel Slabs</text>
+  <text x="660" y="288" text-anchor="end" font-family="system-ui, sans-serif" font-size="9" font-weight="700" fill="#c8a96a">1 per chapter</text>
+  <text x="480" y="300" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">When TOC exceeds budget</text>
+</svg>

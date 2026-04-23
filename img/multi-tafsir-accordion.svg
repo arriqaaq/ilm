@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 380">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Main card -->
+  <rect x="20" y="20" width="660" height="340" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+
+  <!-- Ayah reference pill -->
+  <rect x="240" y="34" width="220" height="28" rx="14" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="350" y="53" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#c8a96a">2:255 — Ayat al-Kursi</text>
+
+  <!-- Expand/Collapse All -->
+  <text x="630" y="53" text-anchor="end" font-family="system-ui, sans-serif" font-size="10" fill="#9ca3af">Expand All</text>
+
+  <!-- Accordion Item 1: Ibn Kathir (expanded) -->
+  <rect x="40" y="76" width="620" height="170" rx="8" fill="#faf8f5" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+
+  <!-- Header -->
+  <text x="60" y="98" font-family="system-ui, sans-serif" font-size="10" fill="#c8a96a">&#9662;</text>
+  <text x="78" y="98" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#1a1a2e">Tafsir Ibn Kathir</text>
+  <text x="220" y="98" font-family="system-ui, sans-serif" font-size="12" fill="#4a4a68">&#x062A;&#x0641;&#x0633;&#x064A;&#x0631; &#x0627;&#x0628;&#x0646; &#x0643;&#x062B;&#x064A;&#x0631;</text>
+
+  <!-- Volume/page badge -->
+  <rect x="540" y="84" width="100" height="22" rx="6" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="590" y="99" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#c8a96a">Vol. 1 / p. 312</text>
+
+  <!-- Arabic commentary text -->
+  <text x="640" y="128" text-anchor="end" font-family="'Traditional Arabic', 'Noto Naskh Arabic', serif" font-size="14" fill="#1a1a2e">&#x0627;&#x0644;&#x0644;&#x0651;&#x064E;&#x0647;&#x064F; &#x0644;&#x064E;&#x0627; &#x0625;&#x0650;&#x0644;&#x064E;&#x0647;&#x064E; &#x0625;&#x0650;&#x0644;&#x0651;&#x064E;&#x0627; &#x0647;&#x064F;&#x0648;&#x064E; &#x0627;&#x0644;&#x0652;&#x062D;&#x064E;&#x064A;&#x0651;&#x064F; &#x0627;&#x0644;&#x0652;&#x0642;&#x064E;&#x064A;&#x0651;&#x064F;&#x0648;&#x0645;&#x064F;</text>
+
+  <!-- Commentary text lines -->
+  <rect x="60" y="144" width="580" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="60" y="158" width="560" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="60" y="172" width="540" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+
+  <!-- English tafsir -->
+  <rect x="60" y="192" width="600" height="36" rx="4" fill="#ffffff"/>
+  <text x="68" y="207" font-family="system-ui, sans-serif" font-size="9" font-weight="600" letter-spacing="1" fill="#9ca3af">ENGLISH</text>
+  <text x="68" y="222" font-family="Georgia, serif" font-size="11" fill="#4a4a68">Allah — there is no deity except Him, the Ever-Living, the Self-Sustaining. This is the greatest</text>
+
+  <!-- Open in reader link -->
+  <text x="580" y="238" text-anchor="end" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#c8a96a">Open in Full Reader &#8594;</text>
+
+  <!-- Accordion Item 2: Tabari (collapsed) -->
+  <rect x="40" y="256" width="620" height="40" rx="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="60" y="281" font-family="system-ui, sans-serif" font-size="10" fill="#9ca3af">&#9656;</text>
+  <text x="78" y="281" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#1a1a2e">Tafsir al-Tabari</text>
+  <text x="220" y="281" font-family="system-ui, sans-serif" font-size="12" fill="#4a4a68">&#x062A;&#x0641;&#x0633;&#x064A;&#x0631; &#x0627;&#x0644;&#x0637;&#x0628;&#x0631;&#x064A;</text>
+  <rect x="540" y="268" width="100" height="22" rx="6" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="590" y="283" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#c8a96a">Vol. 3 / p. 1847</text>
+
+  <!-- Accordion Item 3: placeholder for future -->
+  <rect x="40" y="306" width="620" height="40" rx="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,4"/>
+  <text x="350" y="330" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#9ca3af">+ More tafsir sources coming soon</text>
+</svg>

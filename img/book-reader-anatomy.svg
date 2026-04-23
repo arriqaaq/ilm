@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 400">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Outer frame -->
+  <rect x="20" y="20" width="660" height="360" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+
+  <!-- ReaderHeader -->
+  <rect x="20" y="20" width="660" height="40" rx="12" fill="#faf8f5"/>
+  <rect x="20" y="48" width="660" height="12" fill="#faf8f5"/>
+  <!-- Label -->
+  <rect x="560" y="28" width="110" height="16" rx="4" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="615" y="40" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#c8a96a">ReaderHeader</text>
+  <!-- Header content -->
+  <rect x="32" y="32" width="14" height="2" rx="1" fill="#9ca3af"/>
+  <rect x="32" y="37" width="14" height="2" rx="1" fill="#9ca3af"/>
+  <rect x="32" y="42" width="14" height="2" rx="1" fill="#9ca3af"/>
+  <text x="350" y="46" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#1a1a2e">Book Title</text>
+  <text x="460" y="46" font-family="ui-monospace, monospace" font-size="9" fill="#9ca3af">Vol. 1 / p. 142</text>
+
+  <!-- Left panel: ReaderContent (70%) -->
+  <rect x="24" y="64" width="440" height="310" fill="#ffffff"/>
+  <!-- Label -->
+  <rect x="160" y="72" width="140" height="16" rx="4" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="230" y="84" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#c8a96a">ReaderContent</text>
+
+  <!-- Page content simulation -->
+  <rect x="44" y="96" width="400" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+  <rect x="44" y="112" width="380" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+  <rect x="44" y="128" width="390" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+  <rect x="44" y="144" width="360" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+  <rect x="44" y="160" width="400" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+  <rect x="44" y="176" width="370" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+  <rect x="44" y="192" width="395" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+  <rect x="44" y="208" width="350" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+  <rect x="44" y="224" width="400" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+  <rect x="44" y="240" width="380" height="8" rx="2" fill="#e5e7eb" opacity="0.4"/>
+
+  <!-- Annotation: render window -->
+  <line x1="30" y1="92" x2="30" y2="250" stroke="#c8a96a" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="26" y1="92" x2="34" y2="92" stroke="#c8a96a" stroke-width="1"/>
+  <line x1="26" y1="250" x2="34" y2="250" stroke="#c8a96a" stroke-width="1"/>
+
+  <!-- Annotation: lazy load -->
+  <rect x="44" y="260" width="400" height="24" rx="4" fill="#faf8f5" stroke="rgba(200,169,106,0.15)" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="244" y="276" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">&#8595; Lazy load next chunk of 20 pages &#8595;</text>
+
+  <!-- Annotation box: virtual rendering -->
+  <rect x="44" y="294" width="200" height="40" rx="6" fill="#faf8f5"/>
+  <text x="54" y="308" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#c8a96a">VIRTUAL RENDERING</text>
+  <text x="54" y="322" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">40-page window &#183; Chunks of 20</text>
+  <text x="54" y="334" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Prefetch within 5 pages of edge</text>
+
+  <!-- Annotation box: page format -->
+  <rect x="260" y="294" width="196" height="40" rx="6" fill="#faf8f5"/>
+  <text x="270" y="308" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#c8a96a">PAGE FORMAT</text>
+  <text x="270" y="322" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Turath HTML &#8594; convertPageToHtml()</text>
+  <text x="270" y="334" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Blocks + footnotes + RTL layout</text>
+
+  <!-- Divider between panels -->
+  <line x1="468" y1="64" x2="468" y2="376" stroke="#e5e7eb" stroke-width="1"/>
+
+  <!-- Right panel: ReaderSidebar (30%) -->
+  <!-- Label -->
+  <rect x="488" y="72" width="110" height="16" rx="4" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="543" y="84" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#c8a96a">ReaderSidebar</text>
+
+  <!-- Tab: Contents (active) / Chat -->
+  <rect x="476" y="96" width="88" height="22" rx="6" fill="rgba(200,169,106,0.08)"/>
+  <text x="520" y="111" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="#c8a96a">Contents</text>
+  <rect x="570" y="96" width="60" height="22" rx="6" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="600" y="111" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">Chat</text>
+
+  <!-- TOC tree -->
+  <!-- Level 1: expanded -->
+  <text x="484" y="140" font-family="system-ui, sans-serif" font-size="9" fill="#c8a96a">&#9662;</text>
+  <text x="498" y="140" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#1a1a2e">Chapter 1</text>
+  <text x="640" y="140" text-anchor="end" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">LEVEL 1</text>
+
+  <!-- Level 2 children -->
+  <text x="510" y="158" font-family="system-ui, sans-serif" font-size="9" fill="#4a4a68">Section 1.1</text>
+  <text x="640" y="158" text-anchor="end" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">LEVEL 2</text>
+  <rect x="504" y="163" width="140" height="1" fill="#f0f1f3"/>
+  <text x="510" y="176" font-family="system-ui, sans-serif" font-size="9" fill="#4a4a68">Section 1.2</text>
+  <rect x="504" y="181" width="140" height="1" fill="#f0f1f3"/>
+  <text x="510" y="194" font-family="system-ui, sans-serif" font-size="9" fill="#4a4a68">Section 1.3</text>
+
+  <!-- Level 1: collapsed -->
+  <text x="484" y="218" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">&#9656;</text>
+  <text x="498" y="218" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#1a1a2e">Chapter 2</text>
+
+  <text x="484" y="238" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">&#9656;</text>
+  <text x="498" y="238" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#1a1a2e">Chapter 3</text>
+
+  <text x="484" y="258" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">&#9656;</text>
+  <text x="498" y="258" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#1a1a2e">Chapter 4</text>
+
+  <!-- Sidebar annotation -->
+  <rect x="476" y="278" width="194" height="36" rx="6" fill="#faf8f5"/>
+  <text x="486" y="292" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#c8a96a">EXPANDABLE TOC</text>
+  <text x="486" y="306" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Set&lt;number&gt; state &#183; localStorage</text>
+
+  <!-- BookChat label -->
+  <rect x="476" y="322" width="194" height="36" rx="6" fill="#faf8f5" stroke="rgba(200,169,106,0.15)" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="486" y="336" font-family="system-ui, sans-serif" font-size="8" font-weight="600" fill="#c8a96a">BOOK CHAT</text>
+  <text x="486" y="350" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Ask AI about this book (Phase 2)</text>
+
+  <!-- Mobile inset label -->
+  <rect x="476" y="362" width="194" height="14" rx="3" fill="rgba(200,169,106,0.06)"/>
+  <text x="573" y="372" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7" fill="#9ca3af">Mobile: floating btn &#8594; drawer overlay</text>
+</svg>

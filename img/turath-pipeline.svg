@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 400">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Stage 1: Turath API -->
+  <rect x="170" y="16" width="360" height="56" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="350" y="36" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">STAGE 1 — SOURCE</text>
+  <text x="350" y="56" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#1a1a2e">turath.io API</text>
+  <text x="350" y="68" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#9ca3af">/book?id={id}&amp;include=indexes   /page?book_id={id}&amp;pg={pg}</text>
+
+  <!-- Arrow -->
+  <line x1="350" y1="72" x2="350" y2="92" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="350" cy="72" r="3" fill="#c8a96a"/>
+  <circle cx="350" cy="92" r="3" fill="#c8a96a"/>
+
+  <!-- Stage 2: Python Fetch -->
+  <rect x="120" y="92" width="460" height="66" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="350" y="112" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">STAGE 2 — FETCH</text>
+  <text x="350" y="130" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#1a1a2e">Python Concurrent Downloader</text>
+  <!-- Sub-chips -->
+  <rect x="138" y="138" width="136" height="16" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="206" y="150" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#4a4a68">ThreadPoolExecutor (8)</text>
+  <rect x="282" y="138" width="130" height="16" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="347" y="150" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#4a4a68">Checkpoint every 200 pg</text>
+  <rect x="420" y="138" width="80" height="16" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="460" y="150" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#4a4a68">Resume-safe</text>
+  <rect x="508" y="138" width="60" height="16" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="538" y="150" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#4a4a68">Atomic I/O</text>
+
+  <!-- Arrow -->
+  <line x1="350" y1="158" x2="350" y2="178" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="350" cy="158" r="3" fill="#c8a96a"/>
+  <circle cx="350" cy="178" r="3" fill="#c8a96a"/>
+
+  <!-- Stage 3: Build Mappings (three parallel boxes) -->
+  <rect x="20" y="178" width="660" height="72" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="350" y="198" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">STAGE 3 — BUILD MAPPINGS</text>
+
+  <!-- Sub-box 1 -->
+  <rect x="36" y="208" width="196" height="32" rx="8" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="134" y="222" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#4a4a68">Tafsir &#8594; Ayah</text>
+  <text x="134" y="234" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Regex heading parse</text>
+
+  <!-- Sub-box 2 -->
+  <rect x="248" y="208" width="196" height="32" rx="8" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="346" y="222" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#4a4a68">Sharh &#8594; Hadith</text>
+  <text x="346" y="234" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">3-method mapping</text>
+
+  <!-- Sub-box 3 -->
+  <rect x="460" y="208" width="206" height="32" rx="8" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="563" y="222" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#4a4a68">Narrator &#8594; Bio</text>
+  <text x="563" y="234" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">3-tier fuzzy match</text>
+
+  <!-- Arrow -->
+  <line x1="350" y1="250" x2="350" y2="270" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="350" cy="250" r="3" fill="#c8a96a"/>
+  <circle cx="350" cy="270" r="3" fill="#c8a96a"/>
+
+  <!-- Stage 4: SurrealDB Ingest -->
+  <rect x="60" y="270" width="580" height="56" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="350" y="290" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">STAGE 4 — INGEST INTO SURREALDB</text>
+
+  <!-- Table chips -->
+  <rect x="82" y="300" width="70" height="18" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="117" y="313" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">book</text>
+  <rect x="160" y="300" width="90" height="18" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="205" y="313" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">book_page</text>
+  <rect x="258" y="300" width="120" height="18" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="318" y="313" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">tafsir_ayah_map</text>
+  <rect x="386" y="300" width="120" height="18" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="446" y="313" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">hadith_sharh_map</text>
+  <rect x="514" y="300" width="114" height="18" rx="4" fill="rgba(200,169,106,0.08)"/>
+  <text x="571" y="313" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">narrator_book_map</text>
+
+  <!-- Arrow -->
+  <line x1="350" y1="326" x2="350" y2="346" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="350" cy="326" r="3" fill="#c8a96a"/>
+  <circle cx="350" cy="346" r="3" fill="#c8a96a"/>
+
+  <!-- Stage 5: Serve -->
+  <rect x="140" y="346" width="420" height="42" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="350" y="366" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">STAGE 5 — SERVE</text>
+  <text x="350" y="382" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#1a1a2e">Rust / Axum API  &#8594;  SvelteKit Book Reader</text>
+</svg>

@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Building a Classical Library: How Ilm Learned to Read Books — Part 2 — Ilm</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent: #c8a96a;
+      --accent-muted: rgba(200, 169, 106, 0.1);
+      --accent-border: rgba(200, 169, 106, 0.15);
+      --text-primary: #1a1a2e;
+      --text-secondary: #4a4a68;
+      --text-muted: #9ca3af;
+      --bg: #ffffff;
+      --bg-warm: #faf8f5;
+      --border: #e5e7eb;
+    }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-primary);
+      background: var(--bg);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); }
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px; max-width: 780px; margin: 0 auto;
+    }
+    .nav-logo { font-size: 1.3rem; font-weight: 800; color: var(--accent); text-decoration: none; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--accent); }
+    .article-header {
+      text-align: center; padding: 48px 24px 32px;
+      background: linear-gradient(180deg, var(--bg-warm) 0%, var(--bg) 100%);
+    }
+    .article-header h1 {
+      font-size: 2rem; font-weight: 800; letter-spacing: -0.5px;
+      max-width: 700px; margin: 0 auto; line-height: 1.3;
+    }
+    .article-date { display: block; margin-top: 12px; font-size: 0.82rem; color: var(--text-muted); }
+    .article-body {
+      max-width: 780px; margin: 0 auto; padding: 40px 24px 80px;
+      font-size: 1.02rem; color: var(--text-secondary);
+    }
+    .article-body h1, .article-body h2, .article-body h3 { color: var(--text-primary); margin: 2em 0 0.6em; }
+    .article-body h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .article-body h3 { font-size: 1.2rem; }
+    .article-body p { margin-bottom: 1.2em; }
+    .article-body img { max-width: 100%; border-radius: 8px; margin: 1.5em 0; }
+    .article-body figure { text-align: center; margin: 2em 0; }
+    .article-body figcaption { font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; }
+    .article-body pre {
+      background: #1a1a2e; color: #e2e8f0; border-radius: 12px;
+      padding: 20px; overflow-x: auto; margin: 1.5em 0; font-size: 0.85rem; line-height: 1.6;
+    }
+    .article-body code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.88em; background: var(--accent-muted);
+      padding: 2px 6px; border-radius: 4px;
+    }
+    .article-body pre code { background: none; padding: 0; }
+    .article-body blockquote {
+      border-left: 3px solid var(--accent-border); padding-left: 16px;
+      margin: 1.5em 0; color: var(--text-muted); font-style: italic;
+    }
+    .article-body table {
+      width: 100%; border-collapse: collapse; margin: 1.5em 0; font-size: 0.9rem;
+    }
+    .article-body th, .article-body td {
+      border: 1px solid var(--border); padding: 10px 14px; text-align: left;
+    }
+    .article-body th { background: var(--bg-warm); font-weight: 600; }
+    .article-body hr { border: none; border-top: 1px solid var(--border); margin: 2.5em 0; }
+    .article-body ul, .article-body ol { margin: 1em 0; padding-left: 1.5em; }
+    .article-body li { margin-bottom: 0.5em; }
+    footer {
+      border-top: 1px solid var(--border); padding: 36px 0 24px; text-align: center;
+    }
+    .footer-logo { font-size: 1.2rem; font-weight: 800; color: var(--accent); text-decoration: none; }
+    .footer-tagline { display: block; color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; }
+    /* Override Prism theme to match site dark code blocks */
+    .article-body pre[class*="language-"] {
+      background: #1a1a2e; border-radius: 12px; padding: 20px;
+      margin: 1.5em 0; overflow-x: auto; font-size: 0.85rem; line-height: 1.6;
+    }
+    .article-body code[class*="language-"] { background: none; padding: 0; font-size: 0.85rem; }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-logo">Ilm</a>
+    <div class="nav-links">
+      <a href="../blog.html">Blog</a>
+      <a href="https://github.com/arriqaaq/ilm" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </nav>
+  <header class="article-header">
+    <h1>Building a Classical Library: How Ilm Learned to Read Books — Part 2</h1>
+    <span class="article-date">April 2026</span>
+  </header>
+  <article class="article-body">
+    <p>بسم الله الرحمن الرحيم</p>
+<hr />
+<h2 id="what-changed-since-launch">What Changed Since Launch</h2>
+<p><a href="launch.html">Part 1</a> introduced Ilm — an open-source platform for searching the Quran and Sunnah using graph traversal, vector similarity, full-text search, and LLMs, all running in a single SurrealDB instance. It covered the domain complexity of hadith science, the narrator graph (18,000+ nodes, ~450K edges), the hybrid search pipeline (BM25 + HNSW + RRF fusion), the RAG system, and the isnad analysis engine.</p>
+<p>That article described a <strong>search tool</strong>. You could find hadiths by meaning, traverse narrator chains by graph, and ask questions answered from retrieved sources. But search is only half the story. When a scholar finds a hadith, the next step is always the same: <strong>read the commentary</strong>. What does Ibn Hajar say about this hadith in <em>Fath al-Bari</em>? What does Imam an-Nawawi explain in his <em>Sharh</em> of Sahih Muslim? What does Ibn Kathir say about this ayah in his tafsir? Who is this narrator — what does Ibn Hajar write about him in <em>Tahdhib al-Tahdhib</em>?</p>
+<p>These questions require <strong>books</strong> — the classical Arabic texts that have been the backbone of Islamic scholarship for centuries. The texts exist, digitized by <a href="https://turath.io">turath.io</a> — a library of over 10,000 classical Arabic works. The challenge was connecting them to the domain objects Ilm already understood: ayahs, hadiths, and narrators.</p>
+<p>In the ten days following launch (April 10–20, 2026), Ilm went from a search tool to a <strong>library</strong>. Here is what was built:</p>
+<ol>
+<li><strong>Full Book Reader</strong> — infinite-scroll reader with hierarchical table of contents, page rendering from Turath source, and mobile-responsive sidebar</li>
+<li><strong>Multi-Tafsir Comparison</strong> — view tafsir from multiple classical scholars for any Quran verse, side by side</li>
+<li><strong>Commentary for All Six Hadith Collections</strong> — every hadith in the <em>Kutub al-Sittah</em> now links to its classical sharh (commentary)</li>
+<li><strong>Narrator Biographies</strong> — read the original entry from Ibn Hajar's <em>Tahdhib al-Tahdhib</em> for any narrator</li>
+<li><strong>Cross-Encoder Search Reranking</strong> — BGE-reranker-v2-m3 rescores hybrid search results for better relevance</li>
+<li><strong>Hadith Variant Comparison</strong> — word-level diff between hadith texts transmitted through different chains</li>
+<li><strong>Agentic Book Chat</strong> — ask any question about any book; a two-phase LLM system navigates the table of contents, fetches relevant sections, and streams an answer with clickable page citations</li>
+<li><strong>Quote Verification Guard</strong> — every Arabic quote the LLM extracts is verified verbatim against the source page; fabricated or paraphrased quotes are silently dropped</li>
+</ol>
+<h3 id="the-books">The Books</h3>
+<p>Nine classical Arabic texts are now fully integrated:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Book ID</th>
+<th>Name (English)</th>
+<th>Name (Arabic)</th>
+<th>Author</th>
+<th>Type</th>
+<th>Covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>23604</td>
+<td>Tafsir Ibn Kathir</td>
+<td>تفسير ابن كثير</td>
+<td>ابن كثير</td>
+<td>Tafsir</td>
+<td>Quran — all 6,236 ayahs</td>
+</tr>
+<tr>
+<td>2</td>
+<td>7798</td>
+<td>Tafsir al-Tabari</td>
+<td>تفسير الطبري جامع البيان</td>
+<td>الطبري</td>
+<td>Tafsir</td>
+<td>Quran — all 6,236 ayahs</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1673</td>
+<td>Fath al-Bari</td>
+<td>فتح الباري بشرح البخاري</td>
+<td>ابن حجر العسقلاني</td>
+<td>Sharh</td>
+<td>Sahih al-Bukhari (7,322 hadiths)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>1711</td>
+<td>Sharh Nawawi</td>
+<td>شرح النووي على مسلم</td>
+<td>النووي</td>
+<td>Sharh</td>
+<td>Sahih Muslim (7,454 hadiths)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>5760</td>
+<td>Awn al-Mabud</td>
+<td>عون المعبود شرح سنن أبي داود</td>
+<td>العظيم آبادي</td>
+<td>Sharh</td>
+<td>Sunan Abu Dawud (5,244 hadiths)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>21662</td>
+<td>Tuhfat al-Ahwadhi</td>
+<td>تحفة الأحوذي</td>
+<td>المباركفوري</td>
+<td>Sharh</td>
+<td>Jami at-Tirmidhi (3,925 hadiths)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>1147</td>
+<td>Sahih Sunan al-Nasai</td>
+<td>صحيح سنن النسائي</td>
+<td>الألباني</td>
+<td>Collection</td>
+<td>Sunan an-Nasa'i (5,736 hadiths)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>98138</td>
+<td>Sunan Ibn Majah</td>
+<td>سنن ابن ماجه - ت الأرنؤوط</td>
+<td>ابن ماجه</td>
+<td>Collection</td>
+<td>Sunan Ibn Majah (4,330 hadiths)</td>
+</tr>
+<tr>
+<td>9</td>
+<td>1278</td>
+<td>Tahdhib al-Tahdhib</td>
+<td>تهذيب التهذيب</td>
+<td>ابن حجر العسقلاني</td>
+<td>Biography</td>
+<td>7,844 narrator entries</td>
+</tr>
+</tbody>
+</table>
+<p><strong>2 tafsir</strong> books covering the entire Quran. <strong>4 sharh</strong> (commentary) books covering all six canonical hadith collections. <strong>2 hadith collections</strong> in their original Arabic editions. <strong>1 biographical dictionary</strong> covering nearly 8,000 hadith narrators.</p>
+<p>The rest of this article walks through every feature, then dives deep into how each one was built — the mapping algorithms, the data pipeline, the reader architecture, and the design decisions behind them. We start with what each feature looks like from the user's perspective, then peel back the layers: the data pipeline that makes it possible, the mapping algorithms that connect books to domain objects, the reader infrastructure that renders them, and the AI systems that help navigate and verify them.</p>
+<hr />
+<h2 id="feature-walkthrough">Feature Walkthrough</h2>
+<h3 id="the-book-reader">The Book Reader</h3>
+<p align="center">
+  <img src="../img/feature-book-reader.svg" alt="Full book reader with sidebar table of contents and page navigation" width="700">
+</p>
+
+<p>The book reader is the foundation of everything else. Click any tafsir reference, any sharh link, any narrator biography — and you are reading the original classical Arabic text within seconds.</p>
+<p>The reader renders full pages from Turath's digitized library. Each page shows the Arabic text in its original layout with volume and page number references that match the printed editions. A hierarchical table of contents sidebar lets you navigate by chapter and section — click any heading and the reader jumps to the exact page. The sidebar is collapsible and remembers its width across sessions.</p>
+<p>Scrolling is infinite. The reader maintains a 40-page render window and lazily loads pages in chunks of 20 as you scroll. When you are within 5 pages of the edge, the next chunk prefetches automatically. The effect is seamless: you can scroll through a 5,000-page book without loading screens.</p>
+<p>For mobile, the sidebar collapses to a floating button that opens as a drawer overlay. The reader is fully responsive — Arabic text remains right-to-left with proper font stacks at every viewport width.</p>
+<p>At the bottom of the sidebar, a "Chat" tab lets you ask questions about the book you are reading. The system navigates the table of contents, finds relevant sections, and streams an answer with clickable page citations. More on this in the deep dive below.</p>
+<h3 id="multi-tafsir-for-every-ayah">Multi-Tafsir for Every Ayah</h3>
+<p align="center">
+  <img src="../img/multi-tafsir-accordion.svg" alt="Multi-tafsir accordion showing Ibn Kathir and Tabari for a single ayah" width="700">
+</p>
+
+<p>Pick any ayah in the Quran. The tafsir view shows every available commentary in a collapsible accordion — currently Ibn Kathir and al-Tabari, with more sources planned.</p>
+<p>Each accordion entry shows the tafsir source name in English and Arabic, the volume and page number from the printed edition, and the full Arabic commentary text. For Ibn Kathir, an English translation is also available from the QUL dataset. You can expand individual sources, expand all, or collapse all.</p>
+<p>The key interaction is <strong>switching between sources while staying on the same verse</strong>. When you switch from Ibn Kathir to al-Tabari, the system resolves the correct <code>page_index</code> for that verse in that book. The same ayah might be on page 312 in Ibn Kathir and page 1,847 in al-Tabari — the <code>tafsir_ayah_map</code> table handles this lookup. Click "Open in Full Reader" to jump to the full book reader at that exact page.</p>
+<h3 id="commentary-for-all-six-hadith-collections">Commentary for All Six Hadith Collections</h3>
+<p align="center">
+  <img src="../img/feature-sharh.svg" alt="Hadith card with floating Fath al-Bari commentary modal" width="700">
+</p>
+
+<p>This is the feature that changes how you use Ilm. Every hadith in every collection now has its classical commentary one click away:</p>
+<table>
+<thead>
+<tr>
+<th>Hadith Collection</th>
+<th>Commentary (Sharh)</th>
+<th>Author</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sahih al-Bukhari</td>
+<td>Fath al-Bari</td>
+<td>Ibn Hajar al-Asqalani</td>
+</tr>
+<tr>
+<td>Sahih Muslim</td>
+<td>Sharh Nawawi</td>
+<td>Imam an-Nawawi</td>
+</tr>
+<tr>
+<td>Sunan Abu Dawud</td>
+<td>Awn al-Mabud</td>
+<td>al-Azim Abadi</td>
+</tr>
+<tr>
+<td>Jami at-Tirmidhi</td>
+<td>Tuhfat al-Ahwadhi</td>
+<td>al-Mubarakfuri</td>
+</tr>
+<tr>
+<td>Sunan an-Nasa'i</td>
+<td>Sahih Sunan al-Nasai</td>
+<td>al-Albani</td>
+</tr>
+<tr>
+<td>Sunan Ibn Majah</td>
+<td>Sunan Ibn Majah (Arnaut ed.)</td>
+<td>Ibn Majah / Arnaut</td>
+</tr>
+</tbody>
+</table>
+<p>Click "Read Commentary" on any hadith, and a floating modal opens with the sharh page from the corresponding book. The modal is <strong>draggable</strong> — grab the header and reposition it anywhere on screen. It is <strong>resizable</strong> — drag any edge or corner to adjust the size (minimum 450×350px). It stays within the viewport bounds.</p>
+<p>Inside the modal, a chapter sidebar shows the book's heading structure. Page navigation arrows let you read forward and backward. Keyboard shortcuts work: arrow keys for page navigation, Escape to close. A link at the bottom opens the full book reader at the current page.</p>
+<p>The significance: you no longer need to leave Ilm to look up what the scholars said about a hadith. The commentary is right there, from the most authoritative classical sources, rendered from the same digitized text that scholars have used for centuries.</p>
+<h3 id="narrator-biographies-from-tahdhib-al-tahdhib">Narrator Biographies from Tahdhib al-Tahdhib</h3>
+<p align="center">
+  <img src="../img/feature-narrator-bio.svg" alt="Narrator profile with Read Bio tab showing Tahdhib al-Tahdhib entry" width="700">
+</p>
+
+<p>Every narrator profile now has a "Read Bio" tab. Click it, and you are reading the original entry from Ibn Hajar al-Asqalani's <em>Tahdhib al-Tahdhib</em> — the most authoritative biographical dictionary in hadith science, covering the narrators of the six canonical collections.</p>
+<p>The entry shows the narrator's full Arabic name, biographical details, and the scholarly assessments (<em>jarh wa ta'dil</em>) that Ibn Hajar compiled from dozens of earlier biographical works. The volume and page number match the printed Hyderabad edition.</p>
+<p>Why this matters: narrator assessment is the foundation of hadith authentication. Whether a hadith is considered sahih (authentic), hasan (good), or da'if (weak) depends primarily on the reliability of its narrators. Having the original biographical entries accessible directly from the narrator profile — not a summary, not an extraction, but the actual classical text — grounds every assessment in its primary source.</p>
+<p>Page navigation lets you read beyond the initial entry. Many narrator entries span multiple pages, and the biography often includes detailed chains of transmission for the assessments themselves.</p>
+<h3 id="cross-encoder-search-reranking">Cross-Encoder Search Reranking</h3>
+<p align="center">
+  <img src="../img/cross-encoder-flow.svg" alt="Hybrid search pipeline with cross-encoder reranking stage" width="700">
+</p>
+
+<p>Part 1 described the hybrid search pipeline: BM25 full-text (English + Arabic) fused with HNSW vector search via Reciprocal Rank Fusion. This works well for most queries, but RRF has a limitation — it fuses results by <strong>rank position</strong>, not by <strong>semantic relevance</strong>. A document ranked #3 by BM25 and #5 by vector gets a combined score regardless of how relevant it actually is to the query.</p>
+<p>A cross-encoder fixes this. Unlike the bi-encoder used for initial retrieval (which embeds query and document separately), a cross-encoder takes the <strong>(query, passage) pair together</strong> and produces a single relevance score. This joint encoding is more expensive — you cannot precompute it — but it is more accurate.</p>
+<p>The reranking stage activates with <code>?rerank=true</code> on the search API. It expands the candidate pool to 5× (minimum 80 results), runs RRF fusion to get a ranked list, then passes the top candidates through the cross-encoder. The final results are re-sorted by cross-encoder scores.</p>
+<p>A key design decision: the reranker scores <strong>matn text only</strong>, with narrator chains stripped. Narrator names like Abu Hurayrah and az-Zuhri appear in thousands of hadiths. Including them would let shared narrators dominate the relevance signal, drowning out the actual content similarity.</p>
+<h3 id="hadith-variant-comparison-matn-diff">Hadith Variant Comparison (Matn Diff)</h3>
+<p align="center">
+  <img src="../img/hadith-diff.svg" alt="Side-by-side hadith text diff with color-coded segments" width="700">
+</p>
+
+<p>The same hadith is often transmitted through multiple chains, and each chain can carry slightly different wording. These textual variations (<em>ikhtilaf al-alfaz</em>) are a fundamental part of hadith science — they reveal how narrators transmitted text, whether they used exact wording (<em>riwayah bil-lafz</em>) or transmitted by meaning (<em>riwayah bil-ma'na</em>), and where key differences lie.</p>
+<p>The diff feature takes any two hadith texts and produces a word-level comparison using the Longest Common Subsequence (LCS) algorithm. Each word is classified as:</p>
+<ul>
+<li><strong>Unchanged</strong> — appears in both texts at the same position in the sequence</li>
+<li><strong>Missing</strong> — appears only in the first text (highlighted red)</li>
+<li><strong>Added</strong> — appears only in the second text (highlighted green)</li>
+</ul>
+<p>A similarity ratio is computed: <code>(2 × LCS_length) / (total_words_in_both)</code>, ranging from 0.0 (completely different) to 1.0 (identical). The frontend renders the two texts side by side with right-to-left Arabic layout and color-coded segments.</p>
+<h3 id="ask-ai-about-any-book-book-chat">Ask AI About Any Book (Book Chat)</h3>
+<p align="center">
+  <img src="../img/book-chat-flow.svg" alt="Two-phase agentic book chat: navigation then answer with SSE streaming" width="700">
+</p>
+
+<p>The book chat lets you ask natural language questions about any of the nine integrated books. Type "What does Ibn Hajar say about the conditions of a sahih hadith?" while reading Fath al-Bari, and the system finds the relevant sections and streams an answer.</p>
+<p>This is not simple RAG. These books are thousands of pages long — Fath al-Bari alone has nearly 5,000 pages. You cannot embed the entire book and do vector search over chunks. The content is too dense, too interconnected, and too large for naive chunking.</p>
+<p>Instead, the system uses a <strong>two-phase agentic approach</strong>:</p>
+<p><strong>Phase 1 — Navigation</strong>: The LLM receives the book's table of contents (hierarchical, with line numbers) and returns the line ranges most likely to contain the answer. If the TOC is too large (over 80,000 tokens), it is split into parallel slabs (one per top-level chapter), processed concurrently, and the results merged. Navigation results are cached for 10 minutes.</p>
+<p><strong>Phase 2 — Answer</strong>: The system walks the book's tree structure, collects the sections falling within the returned line ranges, concatenates them (capped at 25KB), and streams an answer from Ollama via Server-Sent Events.</p>
+<p>Responses include clickable citations like <code>[Vol. 1 / p. 142]</code> that navigate directly to the referenced page in the reader. Chat history is persisted per book in localStorage.</p>
+<h3 id="quote-verification-guard">Quote Verification Guard</h3>
+<p align="center">
+  <img src="../img/anti-hallucination.svg" alt="Quote verification pipeline: LLM output validated against source pages" width="700">
+</p>
+
+<p>When the LLM extracts passages from tafsir or sharh books, it can invent quotes or paraphrase — both unacceptable in Islamic scholarship, where fabricating an attribution to the Prophet ﷺ is among the gravest sins.</p>
+<p>The quote verification guard ensures that every Arabic quote the LLM claims to have found actually exists in the source page. The pipeline works as follows: the LLM returns structured JSON with <code>book_id</code>, <code>page_index</code>, <code>arabic_quote</code>, and <code>english_note</code> for each citation. Each entry is validated against an allow-list of known book IDs — the LLM cannot reference a book that was not in its context. Next, the actual page text is fetched from <code>page_texts[(book_id, page_index)]</code>. Finally, <code>verify_quote()</code> normalizes both the quoted text and the page text (stripping diacritics, unifying alef variants) and checks whether the quote appears as a substring.</p>
+<p>Entries that fail any check — missing fields, unknown book, unknown page, or quote not verbatim — are silently dropped. The <code>dropped</code> count is included in the response so the frontend can indicate "N sources could not be verified." Only entries that pass all checks become <code>ValidatedEntry</code> objects and reach the client.</p>
+<hr />
+<p>Every feature above depends on the same foundation: connecting domain objects — ayahs, hadiths, narrators — to specific pages in specific books. The next sections go under the hood, starting with where the data comes from and how it flows through the system.</p>
+<h2 id="the-turath-integration-how-it-works">The Turath Integration: How It Works</h2>
+<h3 id="the-problem">The Problem</h3>
+<p>Part 1 built a search tool. But when you find a hadith and want to read the commentary, you need the actual book page — not a summary, not an embedding, but the text as the scholar wrote it. When you find a narrator and want to verify an assessment, you need the biographical dictionary entry. When you read an ayah and want deeper understanding, you need the tafsir page.</p>
+<p>These texts exist digitally. <a href="https://turath.io">Turath.io</a> hosts over 10,000 classical Arabic texts, professionally digitized from printed editions. The API is free, unauthenticated, and provides page-level access to every book.</p>
+<p>The challenge is <strong>connecting domain objects to book pages</strong>. A hadith is identified by collection and number (Bukhari #1). A tafsir entry is identified by surah and ayah (2:255). A narrator is identified by a name in Arabic. A book page is identified by a <code>page_index</code> (an integer offset within the digitized text). The mapping between these identifiers is not trivial — it requires parsing Arabic headings, matching chapter structures across books, and fuzzy-matching Arabic names with their many orthographic variants.</p>
+<h3 id="architecture-from-api-to-reader">Architecture: From API to Reader</h3>
+<p align="center">
+  <img src="../img/turath-pipeline.svg" alt="End-to-end Turath integration pipeline: API fetch, mapping, ingestion, serving" width="700">
+</p>
+
+<p>The pipeline has five stages:</p>
+<p><strong>Stage 1 — Source</strong>: The turath.io API provides two key endpoints:
+- <code>GET /book?id={id}&amp;include=indexes&amp;ver=3</code> — returns book metadata: title, author, and a hierarchical headings structure with page references
+- <code>GET /page?book_id={id}&amp;pg={page_id}&amp;ver=3</code> — returns a single page's text content</p>
+<p><strong>Stage 2 — Fetch</strong>: A Python script downloads all pages for each book using a <code>ThreadPoolExecutor</code> with 8 concurrent workers. Downloads are resume-safe: progress is checkpointed every 200 pages with atomic JSON writes (write to a temp file, then <code>os.replace</code> to swap it in). If the script is interrupted and restarted, it picks up where it left off.</p>
+<p><strong>Stage 3 — Build Mappings</strong>: Three parallel mapping scripts parse the downloaded data to create lookup tables:
+- <strong>Tafsir → Ayah</strong>: Parse heading text with regex to extract surah and ayah numbers, producing a mapping from <code>(surah, ayah, book_id)</code> to <code>page_index</code>
+- <strong>Sharh → Hadith</strong>: Use three methods (direct text markers, chapter alignment, interpolation) to map hadith numbers to commentary pages
+- <strong>Narrator → Bio</strong>: Fuzzy-match narrator names from the database against biographical dictionary entries using a three-tier strategy</p>
+<p><strong>Stage 4 — Ingest</strong>: A Rust CLI command reads the JSON data and mapping files, then batch-inserts everything into SurrealDB: book metadata, book pages, and all three mapping tables. Ingestion is idempotent — if a book's pages already exist, the command skips it.</p>
+<p><strong>Stage 5 — Serve</strong>: The Axum API exposes endpoints for page retrieval, tafsir lookup, sharh lookup, and narrator biography lookup. The SvelteKit frontend renders pages in the book reader.</p>
+<h3 id="the-database-schema">The Database Schema</h3>
+<p>Five new tables were added to the SurrealDB schema:</p>
+<pre><code class="language-sql">-- Book metadata
+DEFINE TABLE IF NOT EXISTS book SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS book_id     ON book TYPE int;
+DEFINE FIELD IF NOT EXISTS name_ar     ON book TYPE string;
+DEFINE FIELD IF NOT EXISTS name_en     ON book TYPE string;
+DEFINE FIELD IF NOT EXISTS author_ar   ON book TYPE string;
+DEFINE FIELD IF NOT EXISTS total_pages ON book TYPE int;
+DEFINE FIELD IF NOT EXISTS headings    ON book TYPE option&lt;string&gt;;
+DEFINE FIELD IF NOT EXISTS category    ON book TYPE option&lt;string&gt;;
+DEFINE FIELD IF NOT EXISTS book_type   ON book TYPE option&lt;string&gt;;
+DEFINE INDEX IF NOT EXISTS book_id_idx ON book FIELDS book_id UNIQUE;
+
+-- Individual pages
+DEFINE TABLE IF NOT EXISTS book_page SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS book_id     ON book_page TYPE int;
+DEFINE FIELD IF NOT EXISTS page_index  ON book_page TYPE int;
+DEFINE FIELD IF NOT EXISTS text        ON book_page TYPE string;
+DEFINE FIELD IF NOT EXISTS vol         ON book_page TYPE string;
+DEFINE FIELD IF NOT EXISTS page_num    ON book_page TYPE int;
+DEFINE INDEX IF NOT EXISTS book_page_lookup ON book_page FIELDS book_id, page_index UNIQUE;
+
+-- Tafsir ↔ Ayah mapping
+DEFINE TABLE IF NOT EXISTS tafsir_ayah_map SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS surah       ON tafsir_ayah_map TYPE int;
+DEFINE FIELD IF NOT EXISTS ayah        ON tafsir_ayah_map TYPE int;
+DEFINE FIELD IF NOT EXISTS book_id     ON tafsir_ayah_map TYPE int;
+DEFINE FIELD IF NOT EXISTS page_index  ON tafsir_ayah_map TYPE int;
+DEFINE FIELD IF NOT EXISTS heading     ON tafsir_ayah_map TYPE option&lt;string&gt;;
+DEFINE INDEX IF NOT EXISTS tafsir_ayah_book_lookup
+    ON tafsir_ayah_map FIELDS surah, ayah, book_id UNIQUE;
+
+-- Sharh ↔ Hadith mapping
+DEFINE TABLE IF NOT EXISTS hadith_sharh_map SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS hadith_number ON hadith_sharh_map TYPE int;
+DEFINE FIELD IF NOT EXISTS collection_id ON hadith_sharh_map TYPE int;
+DEFINE FIELD IF NOT EXISTS book_id       ON hadith_sharh_map TYPE int;
+DEFINE FIELD IF NOT EXISTS page_index    ON hadith_sharh_map TYPE int;
+DEFINE INDEX IF NOT EXISTS hadith_sharh_lookup
+    ON hadith_sharh_map FIELDS hadith_number, collection_id UNIQUE;
+
+-- Narrator ↔ Biography mapping
+DEFINE TABLE IF NOT EXISTS narrator_book_map SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS narrator_id ON narrator_book_map TYPE string;
+DEFINE FIELD IF NOT EXISTS book_id     ON narrator_book_map TYPE int;
+DEFINE FIELD IF NOT EXISTS page_index  ON narrator_book_map TYPE int;
+DEFINE FIELD IF NOT EXISTS entry_num   ON narrator_book_map TYPE option&lt;int&gt;;
+DEFINE FIELD IF NOT EXISTS book_name   ON narrator_book_map TYPE string;
+DEFINE INDEX IF NOT EXISTS narrator_book_lookup
+    ON narrator_book_map FIELDS narrator_id, book_id UNIQUE;
+</code></pre>
+<p>Every mapping table uses a <strong>composite unique index</strong>. Tafsir is uniquely identified by <code>(surah, ayah, book_id)</code> — the same ayah can have entries in multiple tafsir books. Sharh is uniquely identified by <code>(hadith_number, collection_id)</code> — the same hadith number in different collections maps to different commentary books. Narrator biography is uniquely identified by <code>(narrator_id, book_id)</code> — a narrator could appear in multiple biographical dictionaries.</p>
+<p>The <code>headings</code> field on <code>book</code> stores a JSON-serialized array of the book's heading structure. This is parsed client-side to build the table of contents tree. Storing it as a single JSON field rather than a separate table avoids the overhead of hundreds of small records per book while keeping the heading hierarchy intact.</p>
+<hr />
+<p>The schema defines <em>where</em> mappings live. The harder question is <em>how</em> to create them — each mapping type solves a different matching problem, from regex parsing of Arabic headings to fuzzy name matching across orthographic variants. The feature walkthrough showed the user-facing result: click a hadith, see its commentary. Here is how that click resolves to the right page.</p>
+<h2 id="deep-dive-mapping-books-to-domain-objects">Deep Dive: Mapping Books to Domain Objects</h2>
+<h3 id="tafsir-ayah-mapping">Tafsir → Ayah Mapping</h3>
+<p align="center">
+  <img src="../img/tafsir-mapping.svg" alt="Tafsir ayah mapping: heading regex extraction to page_index lookup" width="700">
+</p>
+
+<p>The tafsir mapping connects each of the 6,236 Quran verses to the specific page in each tafsir book where the commentary for that verse begins.</p>
+<p>The approach: parse the heading structure that Turath provides for each book. Tafsir headings follow a consistent Arabic format:</p>
+<pre><code>[سورة البقرة (٢): آية ٢٥٥]
+</code></pre>
+<p>This translates to: "[Surah al-Baqarah (2): Ayah 255]". The surah number and ayah number are embedded in the heading text, sometimes using Arabic-Indic digits (٠١٢٣٤٥٦٧٨٩) instead of Western digits.</p>
+<p>The extraction uses multiple regex patterns to handle the variations:</p>
+<pre><code class="language-python">patterns = [
+    # [سورة البقرة (٢): آية ١]
+    re.compile(r'\[سورة\s+.+?\s*\(([٠-٩\d]+)\)\s*:\s*آية\s+([٠-٩\d]+)\]'),
+    # [سورة البقرة (٢): الآيات ٨ إلى ٩]  (verse range)
+    re.compile(r'\[سورة\s+.+?\s*\(([٠-٩\d]+)\)\s*:\s*الآيات\s+([٠-٩\d]+)'
+               r'\s*إلى\s*([٠-٩\d]+)\]'),
+    # [سورة البقرة (٢): الآيات ٤]  (single ayah with الآيات)
+    re.compile(r'\[سورة\s+.+?\s*\(([٠-٩\d]+)\)\s*:\s*الآيات\s+([٠-٩\d]+)\]'),
+]
+</code></pre>
+<p>Arabic-Indic digits are converted to their Western equivalents before parsing:</p>
+<pre><code class="language-python">ARABIC_DIGITS = str.maketrans('٠١٢٣٤٥٦٧٨٩', '0123456789')
+
+def arabic_to_int(s: str) -&gt; int:
+    return int(s.translate(ARABIC_DIGITS))
+</code></pre>
+<p>Edge cases include:
+- <strong>Verse ranges</strong> — "الآيات ٨ إلى ٩" (ayahs 8 to 9): the mapping assigns the page to the first ayah in the range, then subsequent ayahs inherit the same page_index until the next heading
+- <strong>Multi-page entries</strong> — some tafsir entries for complex verses span 5–15 pages; the mapping always points to the start page
+- <strong>Missing headings</strong> — not every ayah has an explicit heading; the script infers the page from the nearest preceding heading</p>
+<p>The mapping file is a JSON dictionary keyed by <code>"surah:ayah"</code>:</p>
+<pre><code class="language-json">{
+  &quot;1:1&quot;: {&quot;page_index&quot;: 5, &quot;heading&quot;: &quot;[سورة الفاتحة (١): آية ١]&quot;},
+  &quot;2:255&quot;: {&quot;page_index&quot;: 312, &quot;heading&quot;: &quot;[سورة البقرة (٢): آية ٢٥٥]&quot;},
+  ...
+}
+</code></pre>
+<p>Ingestion batches records in groups of 200:</p>
+<pre><code class="language-sql">CREATE tafsir_ayah_map SET
+    surah = $surah,
+    ayah = $ayah,
+    book_id = $book_id,
+    page_index = $page_index,
+    heading = $heading;
+</code></pre>
+<p>The same process runs for each tafsir book (Ibn Kathir: 23604, al-Tabari: 7798), producing separate mapping files that are all ingested into the same <code>tafsir_ayah_map</code> table. The composite unique index on <code>(surah, ayah, book_id)</code> ensures no duplicate entries.</p>
+<h3 id="sharh-hadith-mapping-three-methods">Sharh → Hadith Mapping: Three Methods</h3>
+<p align="center">
+  <img src="../img/sharh-mapping.svg" alt="Three-method sharh mapping: direct markers, bab alignment, interpolation" width="700">
+</p>
+
+<p>Mapping hadith commentary is the hardest of the three mapping problems. Unlike tafsir books (which have explicit <code>[سورة X: آية Y]</code> headings), sharh books do not always mark which hadith they are discussing. The commentary flows continuously, with hadiths referenced by context rather than explicit markers.</p>
+<p>The solution uses three complementary methods, demonstrated here for Fath al-Bari (the commentary on Sahih al-Bukhari):</p>
+<h4 id="method-1-direct-text-markers-1620-hadiths">Method 1: Direct Text Markers (~1,620 hadiths)</h4>
+<p>Some pages contain explicit markers like <code>[الحديث N]</code> ("Hadith N"). The script scans every page's text for this pattern:</p>
+<pre><code class="language-python">def method1_direct_markers(pages: list) -&gt; dict[int, int]:
+    &quot;&quot;&quot;Scan page text for [الحديث N] markers.&quot;&quot;&quot;
+    pattern = re.compile(r&quot;\[الحديث\s*(\d+)&quot;)
+    mapping = {}
+    for page in pages:
+        page_index = page[&quot;page_id&quot;] - 1
+        stripped = strip_diacritics(page.get(&quot;text&quot;, &quot;&quot;))
+        for m in pattern.findall(stripped):
+            num = int(m)
+            if num not in mapping:
+                mapping[num] = page_index
+    return mapping
+</code></pre>
+<p>This produces about 1,620 direct hits for Fath al-Bari — roughly 21% of Bukhari's 7,563 hadiths. These are the highest-confidence mappings.</p>
+<h4 id="method-2-sequential-alignment-5165-hadiths">Method 2: Sequential باب Alignment (~5,165 hadiths)</h4>
+<p>Sahih al-Bukhari is organized into <em>kutub</em> (books) and <em>abwab</em> (chapters/sections). Fath al-Bari follows the same structure — each باب in Fath corresponds to the same باب in Bukhari, in the same order. The script matches these chapter headings:</p>
+<pre><code class="language-python">def method2_bab_alignment(headings_data, hadith_data):
+    &quot;&quot;&quot;Match sequential باب headings to Bukhari chapter order.&quot;&quot;&quot;
+    headings = headings_data[&quot;indexes&quot;][&quot;headings&quot;]
+
+    # Extract ordered باب entries from commentary
+    bab_pages = []
+    for h in headings:
+        if re.match(r&quot;\d+\s*-\s*باب&quot;, h[&quot;title&quot;]) and h[&quot;level&quot;] == 2:
+            bab_pages.append(h[&quot;page&quot;] - 1)  # 0-based
+
+    # Group Bukhari hadiths by chapter, sorted by hadith number
+    sorted_chapters = sorted(chapters.items(),
+                             key=lambda x: x[1][&quot;min_ref&quot;])
+
+    # Map each chapter's hadiths to corresponding باب page
+    for i in range(min(len(sorted_chapters), len(bab_pages))):
+        ch_data = sorted_chapters[i][1]
+        page_idx = bab_pages[i]
+        for ref in range(ch_data[&quot;min_ref&quot;], ch_data[&quot;max_ref&quot;] + 1):
+            mapping[ref] = page_idx
+</code></pre>
+<p>This is the workhorse — it maps about 5,165 hadiths (68%). The approach relies on the structural correspondence between Bukhari and Fath al-Bari: both books have the same chapter ordering, so the N-th باب heading in Fath al-Bari corresponds to the N-th chapter in Bukhari.</p>
+<h4 id="method-3-interpolation-779-hadiths">Method 3: Interpolation (~779 hadiths)</h4>
+<p>After Methods 1 and 2, some hadiths between two mapped points still have no explicit mapping. The interpolation method assigns them the page of the nearest preceding mapped hadith:</p>
+<pre><code class="language-python">def method3_interpolation(combined: dict[int, int]) -&gt; dict[int, int]:
+    &quot;&quot;&quot;Fill gaps using nearest preceding mapped hadith's page.&quot;&quot;&quot;
+    all_refs = sorted(combined.keys())
+    additions = {}
+    for ref in range(1, BUKHARI_TOTAL + 1):
+        if ref not in combined:
+            prev_ref = None
+            for r in all_refs:
+                if r &lt;= ref:
+                    prev_ref = r
+                else:
+                    break
+            if prev_ref:
+                additions[ref] = combined[prev_ref]
+    return additions
+</code></pre>
+<p>The logic: if hadith #5 maps to page 142 and hadith #8 maps to page 145, then hadiths #6 and #7 are assigned to page 142 (the nearest preceding mapped page). This fills the remaining ~779 gaps.</p>
+<p><strong>Result: 100% of Bukhari's 7,563 hadiths mapped to Fath al-Bari pages.</strong></p>
+<p>The same three-method pattern is adapted for other collections:
+- <strong>Nawawi on Muslim</strong>: similar باب structure to Sahih Muslim
+- <strong>Tuhfat al-Ahwadhi on Tirmidhi</strong>: uses numbered hadith markers and chapter alignment
+- <strong>Awn al-Mabud on Abu Dawud</strong>: uses باب alignment with Abu Dawud's chapter structure
+- <strong>Sahih Sunan al-Nasai</strong>: hadith numbering aligns directly
+- <strong>Sunan Ibn Majah (Arnaut edition)</strong>: hadith numbering aligns directly</p>
+<p>Each collection has its own mapping script that handles the specific heading format and numbering conventions of that book.</p>
+<h3 id="narrator-biography-mapping">Narrator → Biography Mapping</h3>
+<p align="center">
+  <img src="../img/narrator-book-mapping.svg" alt="Three-tier narrator matching with Arabic name normalization" width="700">
+</p>
+
+<p>The narrator mapping connects the 18,000+ narrators in Ilm's graph to their biographical entries in Tahdhib al-Tahdhib. The challenge is Arabic name matching — the same narrator can appear with different diacritics, different alef variants, different spellings of patronymics, and different lengths of their full name chain.</p>
+<h4 id="step-1-normalization">Step 1: Normalization</h4>
+<p>Before any matching, both the narrator names from the database and the entry names from Tahdhib are normalized:</p>
+<pre><code class="language-python">def normalize(s: str) -&gt; str:
+    s = strip_diacritics(s)             # Remove tashkeel (0x064B-0x065F)
+    s = s.replace(&quot;أ&quot;, &quot;ا&quot;)             # Hamza-above alef → plain alef
+    s = s.replace(&quot;إ&quot;, &quot;ا&quot;)             # Hamza-below alef → plain alef
+    s = s.replace(&quot;آ&quot;, &quot;ا&quot;)             # Madda alef → plain alef
+    s = s.replace(&quot;ة&quot;, &quot;ه&quot;)             # Taa marbuta → haa
+    s = s.replace(&quot;ى&quot;, &quot;ي&quot;)             # Alef maqsura → yaa
+    s = re.sub(r&quot;\s+&quot;, &quot; &quot;, s).strip()  # Collapse whitespace
+    return s
+</code></pre>
+<p>This collapses the four Unicode representations of "Abu Hurayrah" (أبو هريرة / ابو هريره / أبو هريره / ابو هريرة) into a single canonical form.</p>
+<h4 id="step-2-three-tier-matching">Step 2: Three-Tier Matching</h4>
+<p>The matching uses three tiers of decreasing confidence:</p>
+<p><strong>Tier 1 — Exact Full Name</strong>: The full normalized name is looked up in a dictionary built from Tahdhib entries. If exactly one entry matches, it is assigned. This catches narrators whose full name chain (e.g., "محمد بن مسلم بن عبيد الله بن شهاب الزهري") appears identically in both datasets.</p>
+<p><strong>Tier 2 — 4+ Word Prefix</strong>: If the full name does not match, the first 4 words are extracted and matched. Arabic names are chains — a scholar might be known by their first four name parts in one source and their full seven-part chain in another. If the 4-word prefix uniquely identifies one Tahdhib entry, it is assigned. If multiple entries share the same 4-word prefix, the script tries 5-word prefix disambiguation.</p>
+<p><strong>Tier 3 — 3-Word Prefix (Unique Only)</strong>: If Tiers 1 and 2 fail, the script tries matching on the first 3 name words — but <strong>only if this prefix uniquely identifies one entry</strong>. If multiple entries share the same 3-word prefix, the match is skipped entirely. Better no mapping than a wrong mapping.</p>
+<pre><code class="language-python"># Tier 3: Prefix-3 match ONLY if unambiguous
+k3 = name_parts(name_to_try, 3)
+if k3 in idx_3:
+    candidates = idx_3[k3]
+    if len(candidates) == 1:
+        matched = candidates[0]          # Safe — unique match
+    else:
+        skipped_ambiguous += 1           # DO NOT match — too risky
+</code></pre>
+<p><strong>Results</strong>: 7,844 entries in Tahdhib al-Tahdhib, approximately 6,500 matched to narrators in Ilm's graph. <strong>91%+ coverage</strong> with zero ambiguous matches. Every mapping is either high-confidence or absent — there are no "probably right" entries.</p>
+<p>Why strict matching matters: a wrong narrator-to-biography link undermines scholarly trust in the entire platform. If you click "Read Bio" for az-Zuhri and get someone else's entry, you have done real damage. The cost of an unmapped narrator is low (you just see no "Read Bio" tab). The cost of a wrong mapping is high.</p>
+<hr />
+<p>With books fetched, mapped, and ingested, the remaining challenge is rendering them. The reader looks simple — Arabic text, table of contents, page navigation — but under the surface it solves three performance problems: rendering 5,000-page books without choking the browser, building navigable hierarchies from flat heading lists, and enabling inline reading without losing your place.</p>
+<h2 id="deep-dive-the-book-reader">Deep Dive: The Book Reader</h2>
+<p align="center">
+  <img src="../img/book-reader-anatomy.svg" alt="Annotated book reader anatomy: header, content area, sidebar, chat" width="700">
+</p>
+
+<h3 id="page-rendering-pipeline">Page Rendering Pipeline</h3>
+<p>Turath pages arrive as raw HTML-like text: <code>&lt;span&gt;</code> tags for inline styling, <code>\n</code> for line breaks, and <code>_________</code> (a line of underscores) as a footnote separator. The <code>convertPageToHtml()</code> utility transforms this into semantic HTML:</p>
+<ol>
+<li><strong>Split on separator</strong>: Text before <code>_________</code> is the main content; text after is footnotes</li>
+<li><strong>Block wrapping</strong>: Each line in the main content is wrapped in <code>&lt;div class="block"&gt;</code> for consistent spacing</li>
+<li><strong>Footnote extraction</strong>: Footnote lines are wrapped in <code>&lt;p class="footnotes"&gt;</code> with distinct styling</li>
+<li><strong>Inline preservation</strong>: <code>&lt;span&gt;</code> tags from Turath are preserved for inline emphasis and formatting</li>
+</ol>
+<p>The rendered HTML uses right-to-left layout (<code>dir="rtl"</code>) with Arabic-optimized font stacks. Volume and page number labels (e.g., "Vol. 1 / p. 142") are displayed at the top of each page, matching the printed edition references.</p>
+<h3 id="infinite-scroll-with-virtual-rendering">Infinite Scroll with Virtual Rendering</h3>
+<p>Loading all pages of a 5,000-page book into the DOM would be prohibitive. The reader uses a <strong>virtual rendering</strong> strategy:</p>
+<ul>
+<li><strong>Render window</strong>: Only 40 pages are in the DOM at any time — 20 pages above the viewport and 20 below</li>
+<li><strong>Lazy loading</strong>: Pages are fetched from the API in chunks of 20 (<code>PAGE_SIZE</code>). The API endpoint is <code>GET /api/books/{book_id}/pages?start={start}&amp;size=20</code>, which returns pages with their text, volume, and page number</li>
+<li><strong>Scroll tracking</strong>: As the user scrolls, the reader tracks which page is currently in view (<code>currentPageIndex</code>) by comparing scroll position to page element offsets</li>
+<li><strong>Automatic prefetch</strong>: When the current page is within 5 pages of the render window edge, the next chunk is fetched in the background</li>
+</ul>
+<p>Pages are cached in a <code>Map&lt;number, BookPage&gt;</code> on the client, so scrolling back does not re-fetch. The scroll position restoration on page load uses the URL's <code>?page={index}</code> parameter to jump to the correct offset.</p>
+<h3 id="hierarchical-table-of-contents">Hierarchical Table of Contents</h3>
+<p>The table of contents is built from the <code>headings</code> field on the <code>book</code> record — a JSON array of <code>{title, level, page_index}</code> objects. The frontend parses this into a tree:</p>
+<ul>
+<li><strong>Level 1</strong> headings are top-level expandable parents (e.g., "كتاب بدء الوحي" — Book of the Beginning of Revelation)</li>
+<li><strong>Level 2+</strong> headings are children that appear only when their parent is expanded</li>
+</ul>
+<p>State management uses a <code>Set&lt;number&gt;</code> (<code>expandedSections</code>) to track which parents are open. Clicking a parent toggles it. Clicking any heading — parent or child — navigates to the exact <code>page_index</code> by scrolling the reader content and triggering a page fetch if needed.</p>
+<p>The sidebar width and collapsed/expanded state are persisted to <code>localStorage</code>, so returning to the same book restores your reading position and sidebar layout.</p>
+<h3 id="the-draggable-modal-reader-bookviewermodal">The Draggable Modal Reader (BookViewerModal)</h3>
+<p>The modal reader is designed for inline reading — you want to check a commentary or tafsir without leaving the page you are on.</p>
+<p><strong>Drag system</strong>: The header contains a drag handle (a vertical dots icon ⁝). Pressing the mouse on the header initiates drag tracking: <code>dragStartX/Y</code> records the mouse position, <code>dragStartPanelX/Y</code> records the panel position, and every <code>mousemove</code> event updates <code>panelX/Y</code> by the delta. The panel snaps to viewport bounds on release.</p>
+<p><strong>Resize system</strong>: Eight invisible handles surround the panel — one on each edge and one on each corner. Each handle has a CSS cursor hint (<code>n-resize</code>, <code>se-resize</code>, etc.). Dragging a handle adjusts the panel dimensions in the corresponding direction, with a minimum size of 450×350px and maximum width of 700px. Corner handles resize both axes simultaneously.</p>
+<p><strong>Chapter sidebar</strong>: Inside the modal, a collapsible sidebar shows the book's heading structure. It uses the same expandable tree as the full reader sidebar. Click any heading to navigate to that page within the modal.</p>
+<p><strong>Tafsir source switcher</strong>: When viewing tafsir for a specific ayah, a dropdown lets you switch between Ibn Kathir and al-Tabari. Switching resolves the <code>page_index</code> for the current verse in the new book by querying <code>tafsir_ayah_map</code>, then loads the correct page. This means you can compare what two classical scholars said about the same verse without leaving the modal.</p>
+<p><strong>Keyboard navigation</strong>: Left/right arrow keys navigate to the previous/next page. Escape closes the modal. During drag or resize operations, a <code>.is-moving</code> CSS class disables pointer events on the modal's children to prevent accidental clicks on page content.</p>
+<hr />
+<p>Browsing is one mode of reading. But sometimes you do not want to scroll through pages — you want to ask a question. "What does Ibn Hajar say about the conditions of a sahih hadith?" The challenge: these books are too large for naive RAG. Fath al-Bari has nearly 5,000 pages. You cannot embed the entire book and vector-search over chunks. The chat feature's two-phase architecture exists because of this scale problem.</p>
+<h2 id="deep-dive-agentic-book-chat">Deep Dive: Agentic Book Chat</h2>
+<p align="center">
+  <img src="../img/pageindex-tree.svg" alt="PageIndex tree structure with hierarchical nodes and key parameters" width="700">
+</p>
+
+<h3 id="the-pageindex-tree">The PageIndex Tree</h3>
+<p>Before the chat system can navigate a book, the book's content must be structured into a searchable tree. The build pipeline converts Turath's JSON pages into this tree in two stages:</p>
+<p><strong>Stage 1 — JSON to Markdown</strong>: For each book, the script reads the downloaded pages and headings, inserts headings at their corresponding page boundaries (mapping Turath heading levels 1–5 to markdown <code>##</code> through <code>######</code>), appends each page's text, and writes the result as a single markdown file.</p>
+<p><strong>Stage 2 — Markdown to Tree</strong>: The PageIndex library parses the markdown into a hierarchical tree. Each node has:</p>
+<pre><code class="language-json">{
+  &quot;title&quot;: &quot;كتاب بدء الوحي&quot;,
+  &quot;line_num&quot;: 15,
+  &quot;text&quot;: &quot;...&quot;,
+  &quot;nodes&quot;: [...]
+}
+</code></pre>
+<p>The <code>line_num</code> corresponds to the line in the intermediate markdown file. This is the anchor that Phase 1 navigation returns and Phase 2 section fetching uses. The tree is serialized to <code>data/pageindex/{book_id}.json</code>, and a metadata index at <code>data/pageindex/book_map.json</code> maps book IDs to their tree files and metadata (name, line count, markdown path).</p>
+<h3 id="two-phase-retrieval">Two-Phase Retrieval</h3>
+<h4 id="phase-1-navigation">Phase 1 — Navigation</h4>
+<p>The navigation phase formats the tree as an indented table of contents with line numbers:</p>
+<pre><code>[Line 1] Fath al-Bari
+  [Line 15] كتاب بدء الوحي
+    [Line 20] باب كيف كان بدء الوحي
+    [Line 842] باب الإيمان
+  [Line 4521] كتاب الإيمان
+    ...
+</code></pre>
+<p>This formatted TOC is sent to the LLM (via Ollama) with a system prompt asking it to return JSON line ranges:</p>
+<pre><code class="language-json">[{&quot;start_line&quot;: 15415, &quot;end_line&quot;: 15500}]
+</code></pre>
+<p><strong>Token budget</strong>: The TOC budget is 80,000 tokens, estimated at ~3 characters per token for Arabic + JSON overhead. If the full TOC fits within budget, a single LLM call is made. If it exceeds the budget (which happens for large books like Fath al-Bari and Tafsir al-Tabari), the TOC is split into <strong>parallel slabs</strong> — one per top-level chapter. Each slab is processed by a separate LLM call concurrently, the results are merged, and the top 5 ranges are kept.</p>
+<p><strong>Validation</strong>: Returned line numbers are checked against the tree — any <code>start_line</code> or <code>end_line</code> that does not correspond to an actual node in the tree is rejected.</p>
+<p><strong>Caching</strong>: Navigation results are cached in an LRU cache with a 10-minute TTL and a maximum of 100 entries, keyed by <code>(book_id, question)</code>. This means asking the same question twice within 10 minutes skips the LLM navigation call entirely.</p>
+<h4 id="phase-2-section-fetch-and-answer">Phase 2 — Section Fetch and Answer</h4>
+<p>Once line ranges are determined, the system walks the tree recursively, collecting all nodes whose <code>line_num</code> falls within any of the returned ranges. The collected sections are deduplicated by <code>line_num</code>, sorted by line position, and their text content is concatenated — capped at 25KB to stay within the LLM's context window.</p>
+<p>The concatenated text is sent to Ollama with the original question and a system prompt that instructs citation of volume and page numbers. The response is streamed back via Server-Sent Events.</p>
+<h3 id="streaming-protocol">Streaming Protocol</h3>
+<p>The SSE stream follows a defined event sequence:</p>
+<ol>
+<li><code>{"status": "navigating"}</code> — Phase 1 has started, LLM is processing the TOC</li>
+<li><code>{"status": "reading", "sections": [...]}</code> — Phase 1 complete, sections identified</li>
+<li><code>{"sources": [...]}</code> — source references for the answer (titles, page numbers)</li>
+<li><code>{"text": "..."}</code> — streamed answer text chunks (multiple events)</li>
+<li><code>{"done": true}</code> — stream complete</li>
+</ol>
+<p>The frontend <code>BookChat.svelte</code> component parses this stream in real-time, rendering each text chunk as it arrives. Post-processing converts citation patterns like <code>[Vol. 1/p. 142]</code> into clickable buttons that navigate the reader to the referenced page. Chat history is persisted to <code>localStorage</code> keyed by <code>book_chat_{bookId}</code>.</p>
+<hr />
+<p>The book chat navigates <em>within</em> a single book. But the search that gets you <em>to</em> the right book in the first place also improved. Reranking is invisible to the user — results just feel more relevant. The engineering underneath is where the subtlety lies.</p>
+<h2 id="deep-dive-cross-encoder-reranking">Deep Dive: Cross-Encoder Reranking</h2>
+<h3 id="why-rerank-after-rrf">Why Rerank After RRF</h3>
+<p>Reciprocal Rank Fusion combines BM25 and vector search results by <strong>rank position</strong>: a document ranked 3rd gets a score of <code>1/(k+3)</code> regardless of whether it is extremely relevant or barely relevant. This is effective for combining heterogeneous signals, but it loses the calibrated relevance information that each search method produced.</p>
+<p>A cross-encoder jointly encodes the (query, document) pair and produces a single scalar relevance score. Unlike bi-encoders (which embed query and document independently and compare vectors), cross-encoders see the full interaction between query and passage tokens. This makes them more accurate for relevance judgment — but too expensive for initial retrieval over 34,000+ hadiths.</p>
+<p>The architecture: use the fast but approximate retrieval (BM25 + vector + RRF) to get a candidate set, then use the slow but accurate cross-encoder to re-sort the candidates.</p>
+<h3 id="two-reranker-backends">Two Reranker Backends</h3>
+<p>Both backends implement the same contract: <code>rerank(query, passages) -&gt; Vec&lt;f32&gt;</code>.</p>
+<p><strong>FastembedReranker</strong> — the local, CPU-based option:</p>
+<pre><code class="language-rust">pub struct FastembedReranker {
+    model: Mutex&lt;TextRerank&gt;,
+}
+
+impl FastembedReranker {
+    pub fn new() -&gt; Result&lt;Self&gt; {
+        let model = TextRerank::try_new(
+            RerankInitOptions::new(RerankerModel::BGERerankerV2M3)
+                .with_show_download_progress(true),
+        )?;
+        Ok(Self { model: Mutex::new(model) })
+    }
+
+    fn rerank(&amp;self, query: &amp;str, passages: &amp;[&amp;str]) -&gt; Result&lt;Vec&lt;f32&gt;&gt; {
+        let mut model = self.model.lock().unwrap();
+        let results = model.rerank(query, passages, false, Some(BATCH_SIZE))?;
+        let mut scores = vec![0.0f32; passages.len()];
+        for r in results {
+            scores[r.index] = r.score;
+        }
+        Ok(scores)
+    }
+}
+</code></pre>
+<p>The model (BAAI/bge-reranker-v2-m3) is loaded once at server startup and protected by a <code>Mutex</code>. Reranking happens in batches of 64 passages. Scores are meaningful only for ranking within a single query — they are not calibrated across queries.</p>
+<p><strong>OllamaReranker</strong> — the remote, model-flexible option:</p>
+<p>The Ollama reranker batches passages in groups of 10, constructs a system prompt asking the model to return <code>{"scores": [0.0-1.0, ...]}</code> with exactly one score per passage, parses the JSON response, and clamps scores to [0.0, 1.0]. This is slower but works with any model Ollama supports.</p>
+<h3 id="integration-with-hybrid-search">Integration with Hybrid Search</h3>
+<p>Reranking is activated via query parameters: <code>GET /api/search?q=...&amp;type=hybrid&amp;rerank=true</code>.</p>
+<p>When reranking is enabled, the search pipeline adjusts:</p>
+<ol>
+<li><strong>Expand candidate pool</strong>: Instead of fetching the final <code>limit</code> results, fetch 5× more (minimum 80). This gives the cross-encoder a meaningful pool to reshuffle — if you only rerank 20 results, the reranker cannot surface a document that the initial retrieval ranked 25th.</li>
+<li><strong>Run hybrid search</strong>: BM25 English + BM25 Arabic + HNSW vector, fused with <code>search::rrf()</code>.</li>
+<li><strong>Strip narrator chains</strong>: Before passing to the reranker, the hadith text is stripped of its narrator chain (isnad). Only the body text (matn) is scored.</li>
+<li><strong>Rerank</strong>: The cross-encoder scores each (query, matn) pair.</li>
+<li><strong>Re-sort</strong>: Results are re-ordered by cross-encoder scores and truncated to the original limit.</li>
+</ol>
+<h3 id="why-strip-narrator-chains">Why Strip Narrator Chains</h3>
+<p>This is a critical design decision. Consider a query about "prayer at night" (<em>qiyam al-layl</em>). Two hadiths might discuss this topic:</p>
+<ul>
+<li>Hadith A: narrated through Abu Hurayrah → az-Zuhri → Malik → al-Bukhari</li>
+<li>Hadith B: narrated through Anas ibn Malik → Qatadah → Shu'bah → Muslim</li>
+</ul>
+<p>Both hadiths discuss prayer at night, but their narrator chains are completely different. If the cross-encoder sees the full text (isnad + matn), the shared narrator names across <em>other</em> hadiths would create spurious similarity signals — az-Zuhri appears in thousands of isnads, and his name would dominate the relevance score.</p>
+<p>By stripping the isnad and scoring only the matn, the cross-encoder focuses on <strong>what the hadith says</strong>, not <strong>who transmitted it</strong>. The narrator chain is still available in the full result — it is just not part of the relevance scoring.</p>
+<hr />
+<p>Better retrieval reduces noise, but the LLM can still hallucinate. When it extracts passages from tafsir or sharh books, it can invent quotes, paraphrase, or reference pages it was never shown. The final layer of the system ensures that every quote attributed to a source actually appears in that source — verbatim.</p>
+<h2 id="deep-dive-quote-verification-guard">Deep Dive: Quote Verification Guard</h2>
+<h3 id="the-problem_1">The Problem</h3>
+<p>In Islamic scholarship, the consequences of fabrication are severe. The Prophet ﷺ said: <em>"Whoever tells lies about me deliberately, let him take his seat in Hellfire."</em> (Sahih al-Bukhari, #110). The entire science of hadith — the isnad system, narrator criticism, textual comparison — exists to prevent fabricated attributions.</p>
+<p>When the book chat or tafsir extraction system asks the LLM to identify relevant passages, the model returns structured citations: a <code>book_id</code>, a <code>page_index</code>, an <code>arabic_quote</code>, and an <code>english_note</code>. The risk is that the model invents a quote that sounds plausible but does not actually appear on the referenced page — or worse, references a page it was never given. A paraphrase is almost as dangerous as a fabrication: if a scholar sees a quote attributed to Ibn Hajar, they expect the exact words.</p>
+<h3 id="the-validation-pipeline">The Validation Pipeline</h3>
+<p>The guard is implemented in <code>validate_extract_result()</code> in <code>book_chat.rs</code>. Every entry the LLM returns passes through five checks:</p>
+<pre><code class="language-rust">pub fn validate_extract_result(
+    raw: serde_json::Value,
+    allowed_book_ids: &amp;HashSet&lt;u64&gt;,
+    page_texts: &amp;HashMap&lt;(u64, u64), String&gt;,
+) -&gt; ValidatedExtract {
+</code></pre>
+<ol>
+<li>
+<p><strong>Parse</strong>: The raw JSON is deserialized into <code>RawExtract { overview, entries[] }</code>. Malformed JSON produces an empty extract — the system never panics on bad LLM output.</p>
+</li>
+<li>
+<p><strong>Require fields</strong>: Each entry must have <code>book_id</code>, <code>page_index</code>, and a non-empty <code>arabic_quote</code>. Entries missing any field are dropped.</p>
+</li>
+<li>
+<p><strong>Allow-list check</strong>: The <code>book_id</code> must be in <code>allowed_book_ids</code> — the set of books whose pages were actually provided in the LLM's context. The model cannot reference a book it was not shown.</p>
+</li>
+<li>
+<p><strong>Page lookup</strong>: The actual page text is fetched from <code>page_texts[(book_id, page_index)]</code>. If the page does not exist in the context, the entry is dropped.</p>
+</li>
+<li>
+<p><strong>Verbatim verification</strong>: The core check — <code>verify_quote(&amp;arabic_quote, page_text)</code>:</p>
+</li>
+</ol>
+<pre><code class="language-rust">pub fn verify_quote(quote: &amp;str, haystack: &amp;str) -&gt; bool {
+    let q = normalize_arabic(quote);
+    if q.is_empty() {
+        return false;
+    }
+    normalize_arabic(haystack).contains(&amp;q)
+}
+</code></pre>
+<p>Both the quote and the page text are normalized (diacritics stripped, alef variants unified, taa marbuta normalized, whitespace collapsed), then the quote must appear as a substring of the page text. This tolerates diacritic differences — the same word with or without <em>tashkeel</em> will match — while requiring the exact words in the exact order.</p>
+<h3 id="the-trust-boundary">The Trust Boundary</h3>
+<p>Only entries that pass all five checks become <code>ValidatedEntry</code> objects:</p>
+<pre><code class="language-rust">pub struct ValidatedEntry {
+    pub book_id: u64,
+    pub page_index: u64,
+    pub arabic_quote: String,
+    pub english_note: String,
+}
+
+pub struct ValidatedExtract {
+    pub overview: Option&lt;String&gt;,
+    pub entries: Vec&lt;ValidatedEntry&gt;,
+    pub dropped: usize,
+}
+</code></pre>
+<p><code>ValidatedExtract</code> is the server's trust boundary — only its fields are forwarded to the client. The <code>dropped</code> count tells the frontend how many LLM citations could not be verified, allowing it to display "N sources could not be verified" when the model hallucinated. Per-entry failures are logged with <code>tracing::warn!</code> for debugging but never surfaced as errors — the system still returns the good entries alongside the drop count.</p>
+<p>The design principle: it is better to show three verified quotes and silently drop two fabricated ones than to show all five and risk a scholar reading words that Ibn Hajar never wrote.</p>
+<hr />
+<p>Quote verification ensures fidelity when extracting from a single source. The diff tool takes fidelity further — comparing texts across different transmission chains to surface exactly where they diverge.</p>
+<h2 id="deep-dive-hadith-variant-diffing">Deep Dive: Hadith Variant Diffing</h2>
+<h3 id="the-lcs-algorithm">The LCS Algorithm</h3>
+<p>The diff engine in <code>matn_diff.rs</code> implements word-level Longest Common Subsequence comparison:</p>
+<pre><code class="language-rust">pub fn diff_matn(text_a: &amp;str, text_b: &amp;str,
+                 id_a: &amp;str, id_b: &amp;str) -&gt; MatnDiffResult {
+</code></pre>
+<p>The algorithm:</p>
+<ol>
+<li><strong>Tokenize</strong>: Split both texts by whitespace into word arrays</li>
+<li><strong>Build DP table</strong>: <code>dp[i][j]</code> stores the length of the longest common subsequence of the first <code>i</code> words from text A and first <code>j</code> words from text B. Grid size is <code>(len_a + 1) × (len_b + 1)</code></li>
+<li><strong>Backtrack</strong>: Starting from <code>dp[len_a][len_b]</code>, walk backwards to produce operations:</li>
+<li><code>Match(ai, bi)</code> — word at index <code>ai</code> in A matches word at index <code>bi</code> in B</li>
+<li><code>DeleteA(ai)</code> — word only in A (marked "Missing")</li>
+<li><code>InsertB(bi)</code> — word only in B (marked "Added")</li>
+<li><strong>Merge segments</strong>: Consecutive operations of the same kind are merged into contiguous <code>DiffSegment</code>s</li>
+</ol>
+<p>A safety guard limits the DP grid to 120,000 cells. If two very long texts would exceed this (e.g., both over 350 words), the algorithm falls back to marking both texts entirely as <code>Missing</code>/<code>Added</code> rather than risking memory exhaustion.</p>
+<h3 id="output-structure">Output Structure</h3>
+<pre><code class="language-rust">pub struct MatnDiffResult {
+    pub hadith_a: String,
+    pub hadith_b: String,
+    pub segments_a: Vec&lt;DiffSegment&gt;,
+    pub segments_b: Vec&lt;DiffSegment&gt;,
+    pub similarity_ratio: f64,
+}
+
+pub struct DiffSegment {
+    pub text: String,
+    pub kind: DiffKind,  // Unchanged, Added, or Missing
+}
+</code></pre>
+<p>The <strong>similarity ratio</strong> is <code>(2 × LCS_length) / (words_in_A + words_in_B)</code>. A ratio of 1.0 means the texts are identical; 0.0 means no shared words. Typical variants of the same hadith score between 0.75 and 0.95.</p>
+<h3 id="scholarly-significance">Scholarly Significance</h3>
+<p>Matn comparison is a classical hadith science technique. When the same report reaches the collector through different chains, the wording may vary. These variations reveal:</p>
+<ul>
+<li><strong>Riwayah bil-lafz vs bil-ma'na</strong>: Did narrators transmit the exact words, or the meaning in their own words?</li>
+<li><strong>Textual stability</strong>: Highly stable text across multiple chains suggests careful preservation</li>
+<li><strong>Narrator influence</strong>: If one chain consistently adds a phrase that others omit, it may indicate that narrator's personal commentary crept into the transmission</li>
+</ul>
+<p>The diff tool makes this analysis immediate: select two hadith variants, see exactly which words differ, and calculate the textual similarity in one step.</p>
+<hr />
+<p>That covers the engineering — from data ingestion through mapping, rendering, AI navigation, verification, and textual comparison. For reference, here is the complete catalog of integrated books and the API surface that ties everything together.</p>
+<h2 id="the-books-complete-reference">The Books: Complete Reference</h2>
+<h3 id="book-configuration">Book Configuration</h3>
+<p>Each book in the system has a <code>category</code> (what domain it serves) and a <code>book_type</code> (what kind of content it contains):</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Book Type</th>
+<th>Mapping Table</th>
+<th>Lookup Key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>quran</code></td>
+<td><code>tafsir</code></td>
+<td><code>tafsir_ayah_map</code></td>
+<td><code>(surah, ayah) → page_index</code></td>
+</tr>
+<tr>
+<td><code>hadith</code></td>
+<td><code>sharh</code></td>
+<td><code>hadith_sharh_map</code></td>
+<td><code>(hadith_number, collection_id) → page_index</code></td>
+</tr>
+<tr>
+<td><code>hadith</code></td>
+<td><code>collection</code></td>
+<td><code>hadith_sharh_map</code></td>
+<td><code>(hadith_number, collection_id) → page_index</code></td>
+</tr>
+<tr>
+<td><code>narrator</code></td>
+<td><code>biography</code></td>
+<td><code>narrator_book_map</code></td>
+<td><code>(narrator_id) → page_index</code></td>
+</tr>
+</tbody>
+</table>
+<p>The book configuration API (<code>GET /api/books/config</code>) returns metadata for all books including:
+- Whether chat is enabled (requires a PageIndex tree)
+- Default questions tailored to the book type</p>
+<h3 id="api-endpoints">API Endpoints</h3>
+<p>The Turath integration added these API routes:</p>
+<pre><code>GET  /api/books/config                     → Book metadata + tafsir_books list
+GET  /api/books/list                       → All books with summaries
+GET  /api/books/{book_id}                  → Book detail with headings
+GET  /api/books/{book_id}/pages?start=&amp;size= → Paginated page retrieval
+POST /api/books/{book_id}/chat             → Agentic book chat (SSE stream)
+
+GET  /api/quran/surah/{surah}/tafsir-pages → All tafsir pages for a surah
+GET  /api/quran/ayah/{surah}/{ayah}/tafsir → Single ayah tafsir with page text
+GET  /api/tafsir/ayah/{surah}/{ayah}/all   → Multi-tafsir comparison
+POST /api/tafsir/ask                       → Extractive Q&amp;A over tafsir books
+
+GET  /api/hadiths/sharh-pages?book=&amp;numbers= → Batch hadith → sharh lookup
+GET  /api/narrators/{id}/books             → Narrator biography references
+</code></pre>
+<h3 id="the-ingestion-cli">The Ingestion CLI</h3>
+<p>Adding a new book is a four-step process:</p>
+<pre><code class="language-bash"># 1. Fetch from turath.io
+python3 scripts/fetch_tafsir.py --book-id 23604
+
+# 2. Build mapping (method depends on book type)
+python3 scripts/build_hadith_mapping.py
+
+# 3. Ingest into SurrealDB
+cargo run -- ingest-turath \
+  --pages-file data/tafsir_ibn_kathir_pages.json \
+  --headings-file data/tafsir_ibn_kathir_headings.json \
+  --book-id 23604 \
+  --name-ar &quot;تفسير القرآن العظيم&quot; \
+  --name-en &quot;Tafsir Ibn Kathir&quot; \
+  --author-ar &quot;ابن كثير&quot; \
+  --tafsir-mapping data/tafsir_verse_mapping.json \
+  --category quran --book-type tafsir
+
+# 4. Build PageIndex tree (for chat)
+python3 scripts/index_books.py --book-id 23604
+</code></pre>
+<p>The Makefile provides convenience targets: <code>make turath-fetch</code> downloads all books, <code>make turath-mapping</code> builds all mappings, <code>make book-ingest</code> runs all ingestion commands, and <code>make pageindex-build</code> generates all tree structures.</p>
+<p>Ingestion is idempotent: if <code>count(book_page WHERE book_id = $id) &gt; 0</code>, the command skips that book. This means you can safely re-run the full ingestion pipeline after adding a new book without duplicating existing data.</p>
+<hr />
+<h2 id="whats-next">What's Next</h2>
+<p>The nine books currently integrated are just the beginning. The architecture is designed so that adding a new source is a data pipeline task, not a code change.</p>
+<h3 id="more-tafsir-sources">More Tafsir Sources</h3>
+<ul>
+<li><strong>al-Qurtubi</strong> (<em>al-Jami' li-Ahkam al-Quran</em>) — focuses on legal rulings derived from Quranic verses</li>
+<li><strong>as-Sa'di</strong> (<em>Taysir al-Karim ar-Rahman</em>) — accessible modern tafsir widely used for study</li>
+<li><strong>al-Baghawi</strong> (<em>Ma'alim at-Tanzil</em>) — classical tafsir with narrator-based methodology</li>
+</ul>
+<h3 id="more-biographical-dictionaries">More Biographical Dictionaries</h3>
+<ul>
+<li><strong>Mizan al-I'tidal</strong> (adh-Dhahabi) — focuses on criticized narrators, essential for grading weak hadiths</li>
+<li><strong>Siyar A'lam an-Nubala</strong> (adh-Dhahabi) — comprehensive biographical encyclopedia of notable scholars</li>
+</ul>
+<h3 id="expanding-the-hadith-corpus">Expanding the Hadith Corpus</h3>
+<ul>
+<li>Full ingestion of the <strong>Sanadset 650K</strong> dataset — 650,986 hadith records from 926 books, with complete narrator chains</li>
+<li>This would multiply the narrator graph several times over, from ~450K edges to potentially millions</li>
+</ul>
+<h3 id="technical-improvements">Technical Improvements</h3>
+<ul>
+<li><strong>Cross-encoder fine-tuning</strong> on Islamic Q&amp;A pairs from the training pipeline described in Part 1</li>
+<li><strong>Offline book reader</strong> via SurrealDB's WebAssembly + IndexedDB mode — read books without an internet connection</li>
+<li><strong>Multi-language translations</strong> — Urdu, French, Turkish, Indonesian translations alongside Arabic and English</li>
+<li><strong>Collaborative annotations</strong> — shared study notes with @mentions across user groups</li>
+</ul>
+<hr />
+<h2 id="contributing">Contributing</h2>
+<p>Ilm is open source. The <a href="https://github.com/arriqaaq/ilm">repository</a> contains everything needed to build, ingest, and run the platform.</p>
+<p>The expansion opportunities since Part 1 have grown:</p>
+<ul>
+<li><strong>Book mappings</strong> — add mapping scripts for new Turath books (sharh, tafsir, biographical dictionaries)</li>
+<li><strong>Arabic name matching</strong> — improve the narrator normalization pipeline for better coverage</li>
+<li><strong>Frontend</strong> — accessibility improvements, mobile reading experience, keyboard navigation</li>
+<li><strong>Scholarly review</strong> — verify that sharh-to-hadith and narrator-to-biography mappings are correct against printed editions</li>
+<li><strong>Data quality</strong> — cross-validate tafsir page mappings against multiple printed editions</li>
+</ul>
+<p>The books are there. The infrastructure is there. What remains is extending it — more books, more languages, more scholarly review — until the full classical Islamic library is searchable, readable, and accessible to anyone.</p>
+  </article>
+  <footer>
+    <a href="../index.html" class="footer-logo">Ilm</a>
+    <span class="footer-tagline">Islamic Knowledge Platform</span>
+  </footer>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-toml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+</body>
+</html>

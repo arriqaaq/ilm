@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 350">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+    <filter id="shadow-lg" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <!-- Hadith card (background) -->
+  <rect x="20" y="20" width="340" height="310" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+
+  <!-- Hadith header -->
+  <rect x="20" y="20" width="340" height="36" rx="12" fill="#faf8f5"/>
+  <rect x="20" y="44" width="340" height="12" fill="#faf8f5"/>
+  <text x="40" y="44" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">SAHIH AL-BUKHARI</text>
+  <text x="320" y="44" text-anchor="end" font-family="ui-monospace, monospace" font-size="10" fill="#9ca3af">#1</text>
+
+  <!-- Arabic hadith text -->
+  <text x="340" y="82" text-anchor="end" font-family="'Traditional Arabic', 'Noto Naskh Arabic', serif" font-size="13" fill="#1a1a2e">&#x0625;&#x0650;&#x0646;&#x0651;&#x064E;&#x0645;&#x064E;&#x0627; &#x0627;&#x0644;&#x0623;&#x064E;&#x0639;&#x0652;&#x0645;&#x064E;&#x0627;&#x0644;&#x064F; &#x0628;&#x0650;&#x0627;&#x0644;&#x0646;&#x0651;&#x0650;&#x064A;&#x0651;&#x064E;&#x0627;&#x062A;&#x0650;</text>
+  <text x="340" y="102" text-anchor="end" font-family="'Traditional Arabic', 'Noto Naskh Arabic', serif" font-size="13" fill="#1a1a2e">&#x0648;&#x064E;&#x0625;&#x0650;&#x0646;&#x0651;&#x064E;&#x0645;&#x064E;&#x0627; &#x0644;&#x0650;&#x0643;&#x064F;&#x0644;&#x0651;&#x0650; &#x0627;&#x0645;&#x0652;&#x0631;&#x0650;&#x0626;&#x064D; &#x0645;&#x064E;&#x0627; &#x0646;&#x064E;&#x0648;&#x064E;&#x0649;</text>
+
+  <!-- English translation -->
+  <text x="40" y="132" font-family="Georgia, serif" font-size="11" fill="#4a4a68">Actions are but by intentions, and</text>
+  <text x="40" y="148" font-family="Georgia, serif" font-size="11" fill="#4a4a68">every person will have what he</text>
+  <text x="40" y="164" font-family="Georgia, serif" font-size="11" fill="#4a4a68">intended...</text>
+
+  <!-- Narrator chain -->
+  <rect x="36" y="180" width="308" height="56" rx="6" fill="#faf8f5"/>
+  <text x="48" y="197" font-family="system-ui, sans-serif" font-size="9" font-weight="600" letter-spacing="1" fill="#9ca3af">CHAIN OF NARRATION</text>
+  <text x="48" y="214" font-family="system-ui, sans-serif" font-size="10" fill="#4a4a68">al-Bukhari &#8594; Abdullah ibn Yusuf &#8594;</text>
+  <text x="48" y="228" font-family="system-ui, sans-serif" font-size="10" fill="#4a4a68">Malik &#8594; Yahya &#8594; Muhammad &#8594; Alqama &#8594; Umar</text>
+
+  <!-- Read Commentary button -->
+  <rect x="100" y="252" width="180" height="34" rx="8" fill="rgba(200,169,106,0.08)" stroke="#c8a96a" stroke-width="1.5"/>
+  <text x="190" y="274" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#c8a96a">Read Commentary &#8594;</text>
+
+  <!-- Arrow from button to modal -->
+  <line x1="280" y1="269" x2="350" y2="200" stroke="#c8a96a" stroke-width="2" stroke-dasharray="6,3" opacity="0.5"/>
+  <circle cx="280" cy="269" r="3" fill="#c8a96a"/>
+  <circle cx="350" cy="200" r="3" fill="#c8a96a"/>
+
+  <!-- Commentary modal (floating, overlapping) -->
+  <rect x="340" y="40" width="340" height="290" rx="12" fill="#ffffff" stroke="#c8a96a" stroke-width="1.5" filter="url(#shadow-lg)"/>
+
+  <!-- Modal header (draggable) -->
+  <rect x="340" y="40" width="340" height="40" rx="12" fill="#faf8f5"/>
+  <rect x="340" y="68" width="340" height="12" fill="#faf8f5"/>
+  <!-- Drag handle -->
+  <text x="356" y="64" font-family="system-ui, sans-serif" font-size="14" fill="#9ca3af">&#x2807;</text>
+  <text x="510" y="64" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="11" font-weight="700" fill="#1a1a2e">Fath al-Bari</text>
+  <text x="510" y="76" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#9ca3af">&#x0641;&#x062A;&#x062D; &#x0627;&#x0644;&#x0628;&#x0627;&#x0631;&#x064A;</text>
+  <!-- Close button -->
+  <text x="660" y="64" text-anchor="end" font-family="system-ui, sans-serif" font-size="14" fill="#9ca3af">&#x2715;</text>
+
+  <!-- Modal content: commentary text -->
+  <text x="660" y="108" text-anchor="end" font-family="'Traditional Arabic', 'Noto Naskh Arabic', serif" font-size="13" fill="#1a1a2e">&#x0642;&#x064E;&#x0648;&#x0652;&#x0644;&#x064F;&#x0647;&#x064F; &#x0625;&#x0650;&#x0646;&#x0651;&#x064E;&#x0645;&#x064E;&#x0627; &#x0627;&#x0644;&#x0623;&#x064E;&#x0639;&#x0652;&#x0645;&#x064E;&#x0627;&#x0644;&#x064F; &#x0628;&#x0650;&#x0627;&#x0644;&#x0646;&#x0651;&#x0650;&#x064A;&#x0651;&#x064E;&#x0627;&#x062A;&#x0650;</text>
+
+  <!-- Commentary lines -->
+  <rect x="360" y="120" width="300" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="134" width="280" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="148" width="290" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="162" width="260" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="176" width="300" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="190" width="270" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="204" width="285" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="218" width="250" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="232" width="295" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="246" width="240" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+  <rect x="360" y="260" width="275" height="7" rx="2" fill="#e5e7eb" opacity="0.5"/>
+
+  <!-- Modal footer: page nav -->
+  <line x1="340" y1="292" x2="680" y2="292" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="370" y="316" font-family="system-ui, sans-serif" font-size="10" fill="#c8a96a" font-weight="600">&#9664; Prev</text>
+  <text x="510" y="316" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#9ca3af">Vol. 1 / p. 142</text>
+  <text x="650" y="316" text-anchor="end" font-family="system-ui, sans-serif" font-size="10" fill="#c8a96a" font-weight="600">Next &#9654;</text>
+
+  <!-- Resize handle dots (bottom-right of modal) -->
+  <circle cx="672" cy="324" r="1.5" fill="#9ca3af"/>
+  <circle cx="672" cy="318" r="1.5" fill="#9ca3af"/>
+  <circle cx="666" cy="324" r="1.5" fill="#9ca3af"/>
+</svg>

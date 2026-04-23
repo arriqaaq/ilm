@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 280">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Left column card -->
+  <rect x="20" y="20" width="320" height="200" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+
+  <!-- Left header -->
+  <rect x="20" y="20" width="320" height="36" rx="12" fill="#faf8f5"/>
+  <rect x="20" y="44" width="320" height="12" fill="#faf8f5"/>
+  <text x="36" y="44" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">HADITH A</text>
+  <text x="320" y="44" text-anchor="end" font-family="ui-monospace, monospace" font-size="10" fill="#9ca3af">Bukhari #1</text>
+
+  <!-- Left text with diff segments -->
+  <!-- Unchanged -->
+  <rect x="225" y="64" width="100" height="22" rx="4" fill="#f3f4f6"/>
+  <text x="275" y="79" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#1a1a2e">&#x0625;&#x0650;&#x0646;&#x0651;&#x064E;&#x0645;&#x064E;&#x0627;</text>
+
+  <!-- Unchanged -->
+  <rect x="105" y="64" width="112" height="22" rx="4" fill="#f3f4f6"/>
+  <text x="161" y="79" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#1a1a2e">&#x0627;&#x0644;&#x0623;&#x064E;&#x0639;&#x0652;&#x0645;&#x064E;&#x0627;&#x0644;&#x064F;</text>
+
+  <!-- Missing (only in A) -->
+  <rect x="188" y="92" width="138" height="22" rx="4" fill="#fecaca"/>
+  <text x="257" y="107" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#991b1b">&#x0628;&#x0650;&#x0627;&#x0644;&#x0646;&#x0651;&#x0650;&#x064A;&#x0651;&#x064E;&#x0627;&#x062A;&#x0650;</text>
+
+  <!-- Unchanged -->
+  <rect x="68" y="92" width="112" height="22" rx="4" fill="#f3f4f6"/>
+  <text x="124" y="107" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#1a1a2e">&#x0648;&#x064E;&#x0625;&#x0650;&#x0646;&#x0651;&#x064E;&#x0645;&#x064E;&#x0627;</text>
+
+  <!-- Unchanged -->
+  <rect x="118" y="120" width="208" height="22" rx="4" fill="#f3f4f6"/>
+  <text x="222" y="135" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#1a1a2e">&#x0644;&#x0650;&#x0643;&#x064F;&#x0644;&#x0651;&#x0650; &#x0627;&#x0645;&#x0652;&#x0631;&#x0650;&#x0626;&#x064D; &#x0645;&#x064E;&#x0627; &#x0646;&#x064E;&#x0648;&#x064E;&#x0649;</text>
+
+  <!-- More unchanged lines -->
+  <rect x="36" y="150" width="290" height="7" rx="2" fill="#f3f4f6" opacity="0.6"/>
+  <rect x="36" y="164" width="260" height="7" rx="2" fill="#f3f4f6" opacity="0.6"/>
+  <rect x="36" y="178" width="280" height="7" rx="2" fill="#f3f4f6" opacity="0.6"/>
+  <rect x="36" y="192" width="250" height="7" rx="2" fill="#f3f4f6" opacity="0.6"/>
+
+  <!-- Legend (left) -->
+  <rect x="36" y="204" width="8" height="8" rx="2" fill="#fecaca"/>
+  <text x="50" y="212" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Missing</text>
+
+  <!-- Right column card -->
+  <rect x="360" y="20" width="320" height="200" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+
+  <!-- Right header -->
+  <rect x="360" y="20" width="320" height="36" rx="12" fill="#faf8f5"/>
+  <rect x="360" y="44" width="320" height="12" fill="#faf8f5"/>
+  <text x="376" y="44" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">HADITH B</text>
+  <text x="660" y="44" text-anchor="end" font-family="ui-monospace, monospace" font-size="10" fill="#9ca3af">Muslim #1907</text>
+
+  <!-- Right text with diff segments -->
+  <!-- Unchanged -->
+  <rect x="565" y="64" width="100" height="22" rx="4" fill="#f3f4f6"/>
+  <text x="615" y="79" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#1a1a2e">&#x0625;&#x0650;&#x0646;&#x0651;&#x064E;&#x0645;&#x064E;&#x0627;</text>
+
+  <!-- Unchanged -->
+  <rect x="445" y="64" width="112" height="22" rx="4" fill="#f3f4f6"/>
+  <text x="501" y="79" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#1a1a2e">&#x0627;&#x0644;&#x0623;&#x064E;&#x0639;&#x0652;&#x0645;&#x064E;&#x0627;&#x0644;&#x064F;</text>
+
+  <!-- Added (only in B) -->
+  <rect x="508" y="92" width="158" height="22" rx="4" fill="#bbf7d0"/>
+  <text x="587" y="107" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#166534">&#x0628;&#x0650;&#x0627;&#x0644;&#x0646;&#x0651;&#x0650;&#x064A;&#x0651;&#x064E;&#x0629;&#x0650;</text>
+
+  <!-- Unchanged -->
+  <rect x="388" y="92" width="112" height="22" rx="4" fill="#f3f4f6"/>
+  <text x="444" y="107" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#1a1a2e">&#x0648;&#x064E;&#x0625;&#x0650;&#x0646;&#x0651;&#x064E;&#x0645;&#x064E;&#x0627;</text>
+
+  <!-- Unchanged -->
+  <rect x="458" y="120" width="208" height="22" rx="4" fill="#f3f4f6"/>
+  <text x="562" y="135" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#1a1a2e">&#x0644;&#x0650;&#x0643;&#x064F;&#x0644;&#x0651;&#x0650; &#x0627;&#x0645;&#x0652;&#x0631;&#x0650;&#x0626;&#x064D; &#x0645;&#x064E;&#x0627; &#x0646;&#x064E;&#x0648;&#x064E;&#x0649;</text>
+
+  <!-- More unchanged lines -->
+  <rect x="376" y="150" width="290" height="7" rx="2" fill="#f3f4f6" opacity="0.6"/>
+  <rect x="376" y="164" width="260" height="7" rx="2" fill="#f3f4f6" opacity="0.6"/>
+  <rect x="376" y="178" width="280" height="7" rx="2" fill="#f3f4f6" opacity="0.6"/>
+  <rect x="376" y="192" width="250" height="7" rx="2" fill="#f3f4f6" opacity="0.6"/>
+
+  <!-- Legend (right) -->
+  <rect x="376" y="204" width="8" height="8" rx="2" fill="#bbf7d0"/>
+  <text x="390" y="212" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Added</text>
+
+  <!-- Similarity badge (centered bottom) -->
+  <rect x="275" y="238" width="150" height="32" rx="16" fill="rgba(200,169,106,0.08)" stroke="#c8a96a" stroke-width="1"/>
+  <text x="350" y="259" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#c8a96a">87.3% similar</text>
+
+  <!-- Connector lines -->
+  <line x1="340" y1="80" x2="360" y2="80" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="340" y1="107" x2="360" y2="107" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="340" y1="135" x2="360" y2="135" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4,3"/>
+</svg>

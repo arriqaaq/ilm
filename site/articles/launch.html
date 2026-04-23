@@ -126,6 +126,38 @@
 </ul>
 <p>The rest of this article explains the domain complexity that drives the architecture, the technical challenges involved, and how everything fits together. If you study hadith science, you will recognize the domain concepts and see how they map to a graph database. If you build search systems or work with databases, you will see why this domain needs graph traversal, vector similarity, and full-text search working together — and what that looks like in practice.</p>
 <hr />
+<h2 id="feature-walkthrough">Feature Walkthrough</h2>
+<h3 id="quran-reader">Quran Reader</h3>
+<p align="center">
+  <img src="../img/feature-quran.svg" alt="Quran reader with Tajweed Arabic, translation, and tafsir" width="600">
+</p>
+
+<p>114 surahs with Tajweed Arabic (QPC Hafs font), Sahih International English, expandable Tafsir Ibn Kathir per ayah. Click any word to see its root, lemma, POS, and grammatical features. Early manuscript images from Corpus Coranicum (Berlin-Brandenburg Academy). Mutashabihat (similar phrases) detection across ayahs.</p>
+<h3 id="hadith-explorer">Hadith Explorer</h3>
+<p align="center">
+  <img src="../img/feature-hadith.svg" alt="Hadith browsing with narrator chains" width="600">
+</p>
+
+<p>34,457 hadiths from six collections: Sahih al-Bukhari (7,322), Sahih Muslim (7,454), Sunan an-Nasa'i (5,736), Sunan Abi Dawud (5,244), Sunan Ibn Majah (4,330), Jami at-Tirmidhi (3,925). Each detail page runs a single multi-statement query: hadith text + <code>&lt;-narrates&lt;-narrator</code> for the chain + <code>references_hadith</code> for linked ayahs + <code>-&gt;similar_to-&gt;hadith</code> for related hadiths.</p>
+<h3 id="narrator-networks">Narrator Networks</h3>
+<p align="center">
+  <img src="../img/feature-narrators.svg" alt="Interactive narrator graph visualization" width="600">
+</p>
+
+<p>18,000+ narrators with interactive Sigma.js force-directed graph visualization. Each profile shows teachers, students, hadiths narrated, Ibn Hajar reliability grade, and biographical data. The graph uses tabaqah-based layering.</p>
+<h3 id="hybrid-search">Hybrid Search</h3>
+<p align="center">
+  <img src="../img/feature-search.svg" alt="Unified search across Quran and Hadith" width="600">
+</p>
+
+<p>Three modes: Hybrid (BM25 + vector via RRF), Text (BM25 only), Semantic (vector only). Works in Arabic and English. The Explore page searches Quran and Hadith simultaneously.</p>
+<h3 id="personal-study-notes">Personal Study Notes</h3>
+<p align="center">
+  <img src="../img/feature-notes.svg" alt="Study notes with @mentions" width="600">
+</p>
+
+<p>Rich editor with @mentions: type <code>@2:255</code> to embed Ayat al-Kursi inline, or <code>@bukhari_1</code> for a hadith. Mentions resolve to rich cards with actual Arabic text + translation. Tags, color-coded highlights, full-text search, JSON export. No user accounts — notes stored by device ID.</p>
+<hr />
 <h2 id="the-domain-why-this-is-complex">The Domain: Why This Is Complex</h2>
 <h3 id="what-is-a-hadith">What Is a Hadith</h3>
 <p>A hadith has two parts: the <strong>sanad</strong> (chain of narration) and the <strong>matn</strong> (text). Every hadith traces its content back to the Prophet through a sequence of named individuals, each of whom transmitted it to the next.</p>
@@ -373,38 +405,6 @@ DEFINE FIELD layer    ON evidence TYPE string;  -- &quot;reported&quot; or &quot
 <li><strong>Matn Diffing</strong>: Word-level LCS between variant texts, with segments marked as unchanged/added/missing.</li>
 </ul>
 <hr />
-<h2 id="feature-walkthrough">Feature Walkthrough</h2>
-<h3 id="quran-reader">Quran Reader</h3>
-<p align="center">
-  <img src="../img/feature-quran.svg" alt="Quran reader with Tajweed Arabic, translation, and tafsir" width="600">
-</p>
-
-<p>114 surahs with Tajweed Arabic (QPC Hafs font), Sahih International English, expandable Tafsir Ibn Kathir per ayah. Click any word to see its root, lemma, POS, and grammatical features. Early manuscript images from Corpus Coranicum (Berlin-Brandenburg Academy). Mutashabihat (similar phrases) detection across ayahs.</p>
-<h3 id="hadith-explorer">Hadith Explorer</h3>
-<p align="center">
-  <img src="../img/feature-hadith.svg" alt="Hadith browsing with narrator chains" width="600">
-</p>
-
-<p>34,457 hadiths from six collections: Sahih al-Bukhari (7,322), Sahih Muslim (7,454), Sunan an-Nasa'i (5,736), Sunan Abi Dawud (5,244), Sunan Ibn Majah (4,330), Jami at-Tirmidhi (3,925). Each detail page runs a single multi-statement query: hadith text + <code>&lt;-narrates&lt;-narrator</code> for the chain + <code>references_hadith</code> for linked ayahs + <code>-&gt;similar_to-&gt;hadith</code> for related hadiths.</p>
-<h3 id="narrator-networks">Narrator Networks</h3>
-<p align="center">
-  <img src="../img/feature-narrators.svg" alt="Interactive narrator graph visualization" width="600">
-</p>
-
-<p>18,000+ narrators with interactive Sigma.js force-directed graph visualization. Each profile shows teachers, students, hadiths narrated, Ibn Hajar reliability grade, and biographical data. The graph uses tabaqah-based layering.</p>
-<h3 id="hybrid-search">Hybrid Search</h3>
-<p align="center">
-  <img src="../img/feature-search.svg" alt="Unified search across Quran and Hadith" width="600">
-</p>
-
-<p>Three modes: Hybrid (BM25 + vector via RRF), Text (BM25 only), Semantic (vector only). Works in Arabic and English. The Explore page searches Quran and Hadith simultaneously.</p>
-<h3 id="personal-study-notes">Personal Study Notes</h3>
-<p align="center">
-  <img src="../img/feature-notes.svg" alt="Study notes with @mentions" width="600">
-</p>
-
-<p>Rich editor with @mentions: type <code>@2:255</code> to embed Ayat al-Kursi inline, or <code>@bukhari_1</code> for a hadith. Mentions resolve to rich cards with actual Arabic text + translation. Tags, color-coded highlights, full-text search, JSON export. No user accounts — notes stored by device ID.</p>
-<hr />
 <h2 id="data-pipeline">Data Pipeline</h2>
 <p align="center">
   <img src="../img/ingest-pipeline.svg" alt="Data ingestion pipeline" width="700">
@@ -505,9 +505,6 @@ DEFINE FIELD layer    ON evidence TYPE string;  -- &quot;reported&quot; or &quot
 <li><strong>UI/UX</strong> — accessibility, mobile, reading modes</li>
 </ul>
 <p>This tool is for study and research, grounded in classical <em>mustalah al-hadith</em> methodology. It reports structural facts about hadith chains and narrator assessments from classical biographical dictionaries — it does not issue religious rulings.</p>
-<p>The scholars of hadith preserved this knowledge with great care and rigor — travelling across lands, spending their lives memorizing, verifying, and documenting. Imam al-Bukhari said: "I have memorized one hundred thousand <em>sahih</em> hadiths, and two hundred thousand hadiths which are not <em>sahih</em>." Imam Muslim said: "I did not include here everything which I consider <em>sahih</em>. I only included what the scholars have agreed upon."</p>
-<p>The least we can do is make their work searchable.</p>
-<p>والحمد لله رب العالمين</p>
   </article>
   <footer>
     <a href="../index.html" class="footer-logo">Ilm</a>

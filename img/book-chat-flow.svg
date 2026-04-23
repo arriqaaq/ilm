@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Phase 1: Navigation -->
+  <rect x="20" y="20" width="320" height="140" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="180" y="42" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">PHASE 1 — NAVIGATION</text>
+
+  <!-- Question input -->
+  <rect x="36" y="56" width="120" height="34" rx="8" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="96" y="70" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="#4a4a68">User Question</text>
+  <text x="96" y="83" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">"What is niyyah?"</text>
+
+  <!-- Arrow -->
+  <line x1="156" y1="73" x2="170" y2="73" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="156" cy="73" r="3" fill="#c8a96a"/>
+  <circle cx="170" cy="73" r="3" fill="#c8a96a"/>
+
+  <!-- LLM + TOC -->
+  <rect x="174" y="52" width="70" height="42" rx="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="209" y="70" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#1a1a2e">LLM</text>
+  <text x="209" y="83" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">+ TOC</text>
+
+  <!-- Arrow -->
+  <line x1="244" y1="73" x2="258" y2="73" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="244" cy="73" r="3" fill="#c8a96a"/>
+  <circle cx="258" cy="73" r="3" fill="#c8a96a"/>
+
+  <!-- Line ranges output -->
+  <rect x="262" y="56" width="64" height="34" rx="8" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="294" y="70" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">[{start,</text>
+  <text x="294" y="82" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">end}]</text>
+
+  <!-- TOC budget note -->
+  <rect x="36" y="100" width="130" height="20" rx="4" fill="#faf8f5"/>
+  <text x="101" y="114" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">TOC budget: 80K tokens</text>
+
+  <!-- Cache note -->
+  <rect x="180" y="100" width="146" height="20" rx="4" fill="#faf8f5"/>
+  <text x="253" y="114" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">&#128274; 10-min LRU cache (100)</text>
+
+  <!-- Parallel slabs note -->
+  <rect x="36" y="126" width="292" height="20" rx="4" fill="#faf8f5"/>
+  <text x="182" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">If TOC &gt; budget: split into parallel slabs per chapter, merge results</text>
+
+  <!-- Arrow between phases -->
+  <line x1="340" y1="90" x2="370" y2="90" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="340" cy="90" r="3" fill="#c8a96a"/>
+  <circle cx="370" cy="90" r="3" fill="#c8a96a"/>
+
+  <!-- Phase 2: Answer -->
+  <rect x="376" y="20" width="304" height="140" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#shadow)"/>
+  <text x="528" y="42" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="#c8a96a">PHASE 2 — ANSWER</text>
+
+  <!-- Tree walk -->
+  <rect x="392" y="56" width="80" height="34" rx="8" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="432" y="70" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="#4a4a68">Tree Walk</text>
+  <text x="432" y="83" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Match lines</text>
+
+  <!-- Arrow -->
+  <line x1="472" y1="73" x2="486" y2="73" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="472" cy="73" r="3" fill="#c8a96a"/>
+  <circle cx="486" cy="73" r="3" fill="#c8a96a"/>
+
+  <!-- Section text -->
+  <rect x="490" y="56" width="80" height="34" rx="8" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="530" y="70" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="600" fill="#1a1a2e">Sections</text>
+  <text x="530" y="83" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">&#8804; 25KB</text>
+
+  <!-- Arrow -->
+  <line x1="570" y1="73" x2="584" y2="73" stroke="#c8a96a" stroke-width="2" opacity="0.5"/>
+  <circle cx="570" cy="73" r="3" fill="#c8a96a"/>
+  <circle cx="584" cy="73" r="3" fill="#c8a96a"/>
+
+  <!-- Ollama -->
+  <rect x="588" y="56" width="76" height="34" rx="8" fill="rgba(200,169,106,0.08)" stroke="#c8a96a" stroke-width="1"/>
+  <text x="626" y="70" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" fill="#c8a96a">Ollama</text>
+  <text x="626" y="83" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">SSE stream</text>
+
+  <!-- Dedup note -->
+  <rect x="392" y="100" width="272" height="20" rx="4" fill="#faf8f5"/>
+  <text x="528" y="114" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Deduplicate by line_num &#8594; sort &#8594; concatenate &#8594; cap at 25KB</text>
+
+  <!-- Citation note -->
+  <rect x="392" y="126" width="272" height="20" rx="4" fill="#faf8f5"/>
+  <text x="528" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#9ca3af">Citations: [Vol.X/p.Y] &#8594; clickable page navigation buttons</text>
+
+  <!-- SSE Event Sequence (bottom) -->
+  <rect x="20" y="180" width="660" height="60" rx="12" fill="#faf8f5" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="350" y="198" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#c8a96a">SSE EVENT SEQUENCE</text>
+
+  <!-- Event chips -->
+  <rect x="50" y="208" width="80" height="22" rx="6" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="90" y="223" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">navigating</text>
+
+  <text x="142" y="223" font-family="system-ui, sans-serif" font-size="12" fill="#c8a96a" opacity="0.5">&#8594;</text>
+
+  <rect x="158" y="208" width="70" height="22" rx="6" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="193" y="223" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">reading</text>
+
+  <text x="240" y="223" font-family="system-ui, sans-serif" font-size="12" fill="#c8a96a" opacity="0.5">&#8594;</text>
+
+  <rect x="256" y="208" width="70" height="22" rx="6" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="291" y="223" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">sources</text>
+
+  <text x="338" y="223" font-family="system-ui, sans-serif" font-size="12" fill="#c8a96a" opacity="0.5">&#8594;</text>
+
+  <rect x="354" y="208" width="120" height="22" rx="6" fill="rgba(200,169,106,0.08)" stroke="rgba(200,169,106,0.15)" stroke-width="1"/>
+  <text x="414" y="223" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#4a4a68">text chunks...</text>
+
+  <text x="486" y="223" font-family="system-ui, sans-serif" font-size="12" fill="#c8a96a" opacity="0.5">&#8594;</text>
+
+  <rect x="502" y="208" width="52" height="22" rx="6" fill="rgba(22,163,74,0.08)" stroke="rgba(22,163,74,0.2)" stroke-width="1"/>
+  <text x="528" y="223" text-anchor="middle" font-family="ui-monospace, monospace" font-size="8" fill="#16a34a">done</text>
+</svg>
