@@ -6,6 +6,7 @@
   import AyahCard from '$lib/components/quran/AyahCard.svelte';
   import Pagination from '$lib/components/common/Pagination.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import { appConfig } from '$lib/stores/config';
 
   let result: QuranSearchResponse | null = $state(null);
   let rootResult: RootSearchResponse | null = $state(null);
@@ -75,8 +76,10 @@
     <input type="text" placeholder="Search the Quran..." bind:value={query} class="search-input" />
     <div class="type-toggle">
       <button type="button" class="toggle-btn" class:active={searchType === 'text'} onclick={() => searchType = 'text'}>Text</button>
-      <button type="button" class="toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
-      <button type="button" class="toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
+      {#if $appConfig.advanced_enabled}
+        <button type="button" class="toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
+        <button type="button" class="toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
+      {/if}
       <button type="button" class="toggle-btn" class:active={searchType === 'root'} onclick={() => searchType = 'root'}>Root</button>
     </div>
     <button type="submit" class="search-btn">Search</button>

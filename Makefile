@@ -1,7 +1,17 @@
-.PHONY: build frontend backend server dev stop blog semantic-download semantic-extract semantic-verify semantic-setup ingest ingest-test ingest-full hadith-full hadith-ingest sanadset-download quran-prepare quran-prepare-deps quran-ingest quran-hadith-refs quran-morphology quran-similar quran quran-full quran-check turath-fetch-tafsir turath-fetch-fathulbari turath-fetch-nawawi turath-fetch-tuhfat turath-fetch-nasai turath-fetch-awnmabud turath-fetch-ibnmajah turath-fetch-tahdhib turath-fetch turath-mapping turath-mapping-narrators book-ingest-tafsir book-ingest-fathulbari book-ingest-nawawi book-ingest-tuhfat book-ingest-nasai book-ingest-awnmabud book-ingest-ibnmajah book-ingest-tahdhib book-ingest book-full pageindex-clone pageindex-deps pageindex-build pageindex-build-with-summaries pageindex-build-test pageindex-status analyze analyze-families analyze-transmission pipeline-check pipeline-test pipeline-full clean
+.PHONY: build frontend backend server dev stop blog semantic-download semantic-extract semantic-verify semantic-setup ingest ingest-test ingest-full hadith-full hadith-ingest sanadset-download quran-prepare quran-prepare-deps quran-ingest quran-hadith-refs quran-morphology quran-similar quran quran-full quran-check turath-fetch-tafsir turath-fetch-fathulbari turath-fetch-nawawi turath-fetch-tuhfat turath-fetch-nasai turath-fetch-awnmabud turath-fetch-ibnmajah turath-fetch-tahdhib turath-fetch turath-mapping turath-mapping-narrators book-ingest-tafsir book-ingest-fathulbari book-ingest-nawawi book-ingest-tuhfat book-ingest-nasai book-ingest-awnmabud book-ingest-ibnmajah book-ingest-tahdhib book-ingest book-full pageindex-clone pageindex-deps pageindex-build pageindex-build-with-summaries pageindex-build-test pageindex-status analyze analyze-families analyze-transmission pipeline-check pipeline-test pipeline-full clean build-lite backend-lite server-lite dev-lite hadith-lite quran-lite pipeline-lite ingest-test-lite
 
 # SurrealDB HNSW index traversal needs extra stack space
 export RUST_MIN_STACK=8388608
+
+# Advanced features (embeddings, semantic search, RAG, analysis)
+# Set ADVANCED=false to build without ONNX/fastembed
+ADVANCED ?= true
+
+ifeq ($(ADVANCED),true)
+  CARGO_FEATURES :=
+else
+  CARGO_FEATURES := --no-default-features
+endif
 
 # Build everything
 build: backend frontend
@@ -12,16 +22,16 @@ frontend:
 
 # Build backend
 backend:
-	cargo build
+	cargo build $(CARGO_FEATURES)
 
 # Start server (foreground) with command-r7b-arabic
 server: build
-	cargo run -- serve --port 3000 --ollama-model command-r7b-arabic
+	cargo run $(CARGO_FEATURES) -- serve --port 3000 --ollama-model command-r7b-arabic
 
 # Build everything and start server in background with command-r7b-arabic
 dev: build
 	@echo "Starting server on http://localhost:3000..."
-	@cargo run -- serve --port 3000 --ollama-model command-r7b-arabic &
+	@cargo run $(CARGO_FEATURES) -- serve --port 3000 --ollama-model command-r7b-arabic &
 	@sleep 2
 	@echo "Server running at http://localhost:3000 (use 'make stop' to shut down)"
 
@@ -71,7 +81,7 @@ data/semantic_hadith.json:
 
 # Quick test ingest (5 per book)
 ingest-test:
-	cargo run -- ingest --limit 5
+	cargo run $(CARGO_FEATURES) -- ingest --limit 5
 
 # Full hadith pipeline: ingest all 6 books + families + transmission analysis
 hadith-full:
@@ -79,31 +89,31 @@ hadith-full:
 	@echo "═══════════════════════════════════════"
 	@echo "  Step 1/3: Ingesting hadith data"
 	@echo "═══════════════════════════════════════"
-	cargo run -- ingest
+	cargo run $(CARGO_FEATURES) -- ingest
 	@echo ""
 	@echo "═══════════════════════════════════════"
 	@echo "  Step 2/3: Computing hadith families"
 	@echo "═══════════════════════════════════════"
-	cargo run -- analyze --families
+	cargo run $(CARGO_FEATURES) -- analyze --families
 	@echo ""
 	@echo "═══════════════════════════════════════"
 	@echo "  Step 3/3: Transmission analysis"
 	@echo "═══════════════════════════════════════"
-	cargo run -- analyze --mustalah
+	cargo run $(CARGO_FEATURES) -- analyze --mustalah
 	@echo ""
 	@echo "✓ Hadith pipeline complete."
 
 # Ingest hadith only (no analysis)
 hadith-ingest:
-	cargo run -- ingest
+	cargo run $(CARGO_FEATURES) -- ingest
 
 # Full ingest with Ollama translation for remaining gaps
 ingest-full:
-	cargo run -- ingest --translate --translate-model command-r7b-arabic
+	cargo run $(CARGO_FEATURES) -- ingest --translate --translate-model command-r7b-arabic
 
 # Ingest with sunnah.com English translations (no Ollama needed)
 ingest:
-	cargo run -- ingest
+	cargo run $(CARGO_FEATURES) -- ingest
 
 # Download Sanadset dataset (reference only — not used in current pipeline)
 sanadset-download:
@@ -165,11 +175,11 @@ quran-prepare: $(if $(VIRTUAL_ENV),,$(VENV_PYTHON)) quran-prepare-deps
 
 # Ingest Quran into SurrealDB (requires data/quran.csv from quran-prepare)
 quran-ingest:
-	cargo run -- ingest-quran
+	cargo run $(CARGO_FEATURES) -- ingest-quran
 
 # Ingest Quran→Hadith reference mappings from Quran.com (requires ingest + quran-ingest first)
 quran-hadith-refs:
-	cargo run -- ingest-quran-hadith-refs
+	cargo run $(CARGO_FEATURES) -- ingest-quran-hadith-refs
 
 # Download morphology data (if not present)
 data/quran-morphology.txt:
@@ -198,12 +208,12 @@ quran-check:
 #    Requires: data/quran-morphology.txt (auto-downloaded)
 #    Optional: qul/colored-english-wbw-translation.json (download "Colored English wbw translation" JSON from qul.tarteel.ai/resources/translation)
 quran-morphology:
-	cargo run -- ingest-morphology
+	cargo run $(CARGO_FEATURES) -- ingest-morphology
 
 # 2. Ingest mutashabihat + similar ayahs from QUL JSON (must run after morphology)
 #    Requires: qul/phrases.json + qul/matching-ayah.json (download from qul.tarteel.ai/resources)
 quran-similar:
-	cargo run -- ingest-quran-similar --qul-dir qul
+	cargo run $(CARGO_FEATURES) -- ingest-quran-similar --qul-dir qul
 
 # Base Quran pipeline: prepare data + ingest ayahs + hadith refs
 quran: quran-prepare quran-ingest quran-hadith-refs
@@ -269,7 +279,7 @@ turath-mapping:
 
 # Ingest Tafsir Ibn Kathir (needs: turath-fetch-tafsir)
 book-ingest-tafsir:
-	cargo run -- ingest-turath \
+	cargo run $(CARGO_FEATURES) -- ingest-turath \
 		--pages-file data/tafsir_ibn_kathir_pages.json \
 		--headings-file data/tafsir_ibn_kathir_headings.json \
 		--book-id 23604 \
@@ -281,7 +291,7 @@ book-ingest-tafsir:
 
 # Ingest Tafsir al-Tabari (needs: turath-fetch-tabari)
 book-ingest-tabari:
-	cargo run -- ingest-turath \
+	cargo run $(CARGO_FEATURES) -- ingest-turath \
 		--pages-file data/tafsir_tabari_pages.json \
 		--headings-file data/tafsir_tabari_headings.json \
 		--book-id 7798 \
@@ -293,7 +303,7 @@ book-ingest-tabari:
 
 # Ingest Fath al-Bari (needs: turath-fetch-fathulbari + turath-mapping)
 book-ingest-fathulbari:
-	cargo run -- ingest-turath \
+	cargo run $(CARGO_FEATURES) -- ingest-turath \
 		--pages-file data/fath_al_bari_pages.json \
 		--headings-file data/fath_al_bari_headings.json \
 		--book-id 1673 \
@@ -306,7 +316,7 @@ book-ingest-fathulbari:
 
 # Ingest Sharh Nawawi (needs: turath-fetch-nawawi + turath-mapping)
 book-ingest-nawawi:
-	cargo run -- ingest-turath \
+	cargo run $(CARGO_FEATURES) -- ingest-turath \
 		--pages-file data/nawawi_on_muslim_pages.json \
 		--headings-file data/nawawi_on_muslim_headings.json \
 		--book-id 1711 \
@@ -319,7 +329,7 @@ book-ingest-nawawi:
 
 # Ingest Tuhfat al-Ahwadhi (needs: turath-fetch-tuhfat + turath-mapping)
 book-ingest-tuhfat:
-	cargo run -- ingest-turath \
+	cargo run $(CARGO_FEATURES) -- ingest-turath \
 		--pages-file data/tuhfat_ahwadhi_pages.json \
 		--headings-file data/tuhfat_ahwadhi_headings.json \
 		--book-id 21662 \
@@ -332,7 +342,7 @@ book-ingest-tuhfat:
 
 # Ingest Sahih Sunan al-Nasa'i
 book-ingest-nasai:
-	cargo run -- ingest-turath \
+	cargo run $(CARGO_FEATURES) -- ingest-turath \
 		--pages-file data/sahih_nasai_pages.json \
 		--headings-file data/sahih_nasai_headings.json \
 		--book-id 1147 \
@@ -345,7 +355,7 @@ book-ingest-nasai:
 
 # Ingest Awn al-Ma'bud
 book-ingest-awnmabud:
-	cargo run -- ingest-turath \
+	cargo run $(CARGO_FEATURES) -- ingest-turath \
 		--pages-file data/awn_mabud_pages.json \
 		--headings-file data/awn_mabud_headings.json \
 		--book-id 5760 \
@@ -358,7 +368,7 @@ book-ingest-awnmabud:
 
 # Ingest Sunan Ibn Majah
 book-ingest-ibnmajah:
-	cargo run -- ingest-turath \
+	cargo run $(CARGO_FEATURES) -- ingest-turath \
 		--pages-file data/ibn_majah_pages.json \
 		--headings-file data/ibn_majah_headings.json \
 		--book-id 98138 \
@@ -371,7 +381,7 @@ book-ingest-ibnmajah:
 
 # Ingest Tahdhib al-Tahdhib (narrator bios)
 book-ingest-tahdhib:
-	cargo run -- ingest-turath \
+	cargo run $(CARGO_FEATURES) -- ingest-turath \
 		--pages-file data/tahdhib_pages.json \
 		--headings-file data/tahdhib_headings.json \
 		--book-id 1278 \
@@ -424,21 +434,21 @@ extract-glossary:
 
 # Compute hadith families from embedding similarity
 analyze-families:
-	cargo run -- analyze --families
+	cargo run $(CARGO_FEATURES) -- analyze --families
 
 # Run all analysis: families
 analyze:
-	cargo run -- analyze --families
+	cargo run $(CARGO_FEATURES) -- analyze --families
 
 # Run mustalah al-hadith transmission analysis
 analyze-transmission:
-	cargo run -- analyze --mustalah
+	cargo run $(CARGO_FEATURES) -- analyze --mustalah
 
 # Full pipeline: ingest 100 per book + all analysis
 pipeline-test:
-	cargo run -- ingest --limit 100
-	cargo run -- analyze --families
-	cargo run -- analyze --mustalah
+	cargo run $(CARGO_FEATURES) -- ingest --limit 100
+	cargo run $(CARGO_FEATURES) -- analyze --families
+	cargo run $(CARGO_FEATURES) -- analyze --mustalah
 
 # === Full pipeline (everything from scratch) ===
 
@@ -516,6 +526,54 @@ pipeline-full: data/semantic_hadith.json pageindex-clone pipeline-check
 	$(MAKE) book-full
 	@echo ""
 	@echo "✓ Full pipeline complete. Run: make server"
+
+# === Lite mode (no embeddings, no Ollama, no analysis) ===
+
+# Build backend without advanced features (no ONNX download)
+backend-lite:
+	cargo build --no-default-features
+
+# Build everything (lite)
+build-lite: backend-lite frontend
+
+# Start server without advanced features (text search only, no Ollama needed)
+server-lite: build-lite
+	cargo run --no-default-features -- serve --port 3000
+
+# Dev mode without advanced features
+dev-lite: build-lite
+	@echo "Starting lite server on http://localhost:3000..."
+	@cargo run --no-default-features -- serve --port 3000 &
+	@sleep 2
+	@echo "Lite server running at http://localhost:3000 (text search only, use 'make stop' to shut down)"
+
+# Hadith ingestion without embeddings or analysis
+hadith-lite:
+	@echo "═══════════════════════════════════════"
+	@echo "  Ingesting hadith data (lite mode)"
+	@echo "═══════════════════════════════════════"
+	cargo run --no-default-features -- ingest
+	@echo ""
+	@echo "Done. Hadith ingestion complete (no embeddings, no analysis)."
+
+# Quran ingestion without embeddings
+quran-lite: quran-check quran-prepare
+	cargo run --no-default-features -- ingest-quran
+	cargo run --no-default-features -- ingest-quran-hadith-refs
+	cargo run --no-default-features -- ingest-morphology
+	cargo run --no-default-features -- ingest-quran-similar --qul-dir qul
+
+# Full lite pipeline: hadith + quran + turath books (no embeddings, no analysis)
+pipeline-lite: data/semantic_hadith.json pageindex-clone pipeline-check
+	$(MAKE) hadith-lite
+	$(MAKE) quran-lite
+	$(MAKE) book-full
+	@echo ""
+	@echo "Lite pipeline complete. Run: make server-lite"
+
+# Quick test ingest (lite)
+ingest-test-lite:
+	cargo run --no-default-features -- ingest --limit 5
 
 # Clean all generated data
 clean:

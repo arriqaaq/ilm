@@ -2,6 +2,7 @@
   import type { ApiHadithSearchResult, ApiAyahSearchResult } from '$lib/types';
   import { truncate, stripHtml } from '$lib/utils';
   import { language } from '$lib/stores/language';
+  import { appConfig } from '$lib/stores/config';
   import { marked } from 'marked';
 
   marked.setOptions({ breaks: true, gfm: true });
@@ -172,6 +173,12 @@
   }
 </script>
 
+{#if !$appConfig.advanced_enabled}
+<div class="ask-page">
+  <h1>Ask</h1>
+  <p style="color: var(--text-secondary); font-size: 0.9rem;">Advanced features are not available in this build.</p>
+</div>
+{:else}
 <div class="ask-page">
   <div class="ask-header">
     <div class="mode-toggle">
@@ -267,6 +274,7 @@
     <button type="submit" class="send-btn" disabled={loading || !input.trim()}>{loading ? '...' : 'Send'}</button>
   </form>
 </div>
+{/if}
 
 <style>
   .ask-page { display: flex; flex-direction: column; height: 100%; }

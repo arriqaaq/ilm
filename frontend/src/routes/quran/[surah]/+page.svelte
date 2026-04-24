@@ -14,6 +14,7 @@
   import BookChat from '$lib/components/reader/BookChat.svelte';
   import ResizeHandle from '$lib/components/layout/ResizeHandle.svelte';
   import { loadBooksConfig, getBookConfig, getTafsirBookId } from '$lib/stores/books';
+  import { appConfig } from '$lib/stores/config';
   import type { BooksConfig } from '$lib/types';
   import { preferences } from '$lib/stores/preferences';
 
@@ -201,13 +202,17 @@
                   />
                 {/snippet}
                 {#snippet chat()}
-                  <BookChat
-                    bookId={tafsirBookId ?? 0}
-                    bookName={tafsirBookName}
-                    currentPageIndex={0}
-                    onNavigate={() => {}}
-                    defaultQuestions={tafsirDefaultQuestions}
-                  />
+                  {#if $appConfig.advanced_enabled}
+                    <BookChat
+                      bookId={tafsirBookId ?? 0}
+                      bookName={tafsirBookName}
+                      currentPageIndex={0}
+                      onNavigate={() => {}}
+                      defaultQuestions={tafsirDefaultQuestions}
+                    />
+                  {:else}
+                    <p style="padding: 16px; color: var(--text-muted); font-size: 0.85rem;">Chat is not available in this build.</p>
+                  {/if}
                 {/snippet}
               </SidebarTabs>
             </div>
@@ -237,13 +242,17 @@
             />
           {/snippet}
           {#snippet chat()}
-            <BookChat
-              bookId={tafsirBookId ?? 0}
-              bookName={tafsirBookName}
-              currentPageIndex={0}
-              onNavigate={() => { mobileDrawerOpen = false; }}
-              defaultQuestions={tafsirDefaultQuestions}
-            />
+            {#if $appConfig.advanced_enabled}
+              <BookChat
+                bookId={tafsirBookId ?? 0}
+                bookName={tafsirBookName}
+                currentPageIndex={0}
+                onNavigate={() => { mobileDrawerOpen = false; }}
+                defaultQuestions={tafsirDefaultQuestions}
+              />
+            {:else}
+              <p style="padding: 16px; color: var(--text-muted); font-size: 0.85rem;">Chat is not available in this build.</p>
+            {/if}
           {/snippet}
         </SidebarTabs>
       </div>

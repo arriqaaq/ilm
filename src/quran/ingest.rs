@@ -54,7 +54,7 @@ struct CsvAyah {
     tafsir_en: String,
 }
 
-pub async fn ingest(db: &Surreal<Db>, csv_path: &str, embedder: &Embedder) -> Result<()> {
+pub async fn ingest(db: &Surreal<Db>, csv_path: &str, embedder: Option<&Embedder>) -> Result<()> {
     // 1. Create surah records from hardcoded metadata
     println!("📖 Creating surah records...");
     create_surahs(db).await?;
@@ -110,9 +110,13 @@ pub async fn ingest(db: &Surreal<Db>, csv_path: &str, embedder: &Embedder) -> Re
     pb.finish_with_message("done");
     println!("   ✓ {total} ayahs ingested");
 
-    // 3. Generate embeddings
-    println!("🧠 Generating ayah embeddings...");
-    embed_all_ayahs(db, embedder).await?;
+    // 3. Generate embeddings (only when advanced features are enabled)
+    if let Some(embedder) = embedder {
+        println!("🧠 Generating ayah embeddings...");
+        embed_all_ayahs(db, embedder).await?;
+    } else {
+        println!("   Skipping ayah embeddings (advanced features disabled)");
+    }
 
     Ok(())
 }

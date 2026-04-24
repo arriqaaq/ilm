@@ -1,14 +1,21 @@
 use anyhow::Result;
+#[cfg(feature = "advanced")]
 use fastembed::{
     EmbeddingModel, InitOptions, RerankInitOptions, RerankerModel, TextEmbedding, TextRerank,
 };
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(feature = "advanced")]
+use std::sync::Mutex;
+#[cfg(feature = "advanced")]
 use surrealdb::Surreal;
+#[cfg(feature = "advanced")]
 use surrealdb::types::{RecordId, SurrealValue};
 
+#[cfg(feature = "advanced")]
 use crate::db::Db;
 use crate::rag::OllamaClient;
 
+#[cfg(feature = "advanced")]
 const BATCH_SIZE: usize = 64;
 
 /// Supported embedding models.
@@ -24,6 +31,7 @@ pub enum EmbedModel {
 }
 
 impl EmbedModel {
+    #[cfg(feature = "advanced")]
     pub fn fastembed_model(&self) -> EmbeddingModel {
         match self {
             Self::BgeM3 => EmbeddingModel::BGEM3,
@@ -38,6 +46,7 @@ impl EmbedModel {
         }
     }
 
+    #[cfg(feature = "advanced")]
     fn query_prefix(&self) -> &'static str {
         match self {
             Self::BgeM3 => "",
@@ -45,6 +54,7 @@ impl EmbedModel {
         }
     }
 
+    #[cfg(feature = "advanced")]
     fn passage_prefix(&self) -> &'static str {
         match self {
             Self::BgeM3 => "",
@@ -53,11 +63,15 @@ impl EmbedModel {
     }
 }
 
+// ── Embedder ─────────────────────────────────────────────────────────────────
+
+#[cfg(feature = "advanced")]
 pub struct Embedder {
     model: Mutex<TextEmbedding>,
     config: EmbedModel,
 }
 
+#[cfg(feature = "advanced")]
 impl Embedder {
     pub fn new(config: EmbedModel) -> Result<Self> {
         let model = TextEmbedding::try_new(
@@ -103,6 +117,32 @@ impl Embedder {
     }
 }
 
+#[cfg(not(feature = "advanced"))]
+pub struct Embedder;
+
+#[cfg(not(feature = "advanced"))]
+impl Embedder {
+    pub fn new(_config: EmbedModel) -> Result<Self> {
+        anyhow::bail!(
+            "Advanced features (embeddings) are disabled in this build. Rebuild with: cargo build (default features)"
+        );
+    }
+
+    pub fn dimension(&self) -> usize {
+        0
+    }
+
+    pub fn embed(&self, _texts: &[&str]) -> Result<Vec<Vec<f32>>> {
+        anyhow::bail!("Advanced features disabled")
+    }
+
+    pub fn embed_single(&self, _text: &str) -> Result<Vec<f32>> {
+        anyhow::bail!("Advanced features disabled")
+    }
+}
+
+// ── Reranker ─────────────────────────────────────────────────────────────────
+
 /// Which reranker backend to use at runtime.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum RerankBackendKind {
@@ -112,11 +152,12 @@ pub enum RerankBackendKind {
     Ollama,
 }
 
-/// Cross-encoder reranker backed by fastembed.
+#[cfg(feature = "advanced")]
 pub struct FastembedReranker {
     model: Mutex<TextRerank>,
 }
 
+#[cfg(feature = "advanced")]
 impl FastembedReranker {
     pub fn new() -> Result<Self> {
         let model = TextRerank::try_new(
@@ -143,6 +184,7 @@ impl FastembedReranker {
 /// implement the same `rerank(query, passages) -> Vec<f32>` contract; scores
 /// are raw model outputs and only meaningful as a within-query ranking signal.
 pub enum RerankerBackend {
+    #[cfg(feature = "advanced")]
     Fastembed(FastembedReranker),
     Ollama {
         client: Arc<OllamaClient>,
@@ -153,6 +195,7 @@ pub enum RerankerBackend {
 impl RerankerBackend {
     pub async fn rerank(&self, query: &str, passages: &[&str]) -> Result<Vec<f32>> {
         match self {
+            #[cfg(feature = "advanced")]
             Self::Fastembed(r) => r.rerank(query, passages),
             Self::Ollama { client, model } => ollama_rerank(client, model, query, passages).await,
         }
@@ -209,8 +252,11 @@ async fn ollama_rerank(
     Ok(scores)
 }
 
+// ── Embedding helpers (advanced-only) ────────────────────────────────────────
+
 /// Check that existing embeddings (if any) match the expected dimension.
 /// Returns an error with instructions if there's a mismatch.
+#[cfg(feature = "advanced")]
 pub async fn check_embedding_dimension(db: &Surreal<Db>, expected_dim: usize) -> Result<()> {
     #[derive(Debug, SurrealValue)]
     struct EmbedProbe {
@@ -238,8 +284,8 @@ pub async fn check_embedding_dimension(db: &Surreal<Db>, expected_dim: usize) ->
 }
 
 /// Generate embeddings for all hadiths that don't have one yet.
+#[cfg(feature = "advanced")]
 pub async fn embed_all_hadiths(db: &Surreal<Db>, embedder: &Embedder) -> Result<()> {
-    // Get hadiths without embeddings
     let mut response = db
         .query("SELECT id, hadith_number, text_ar, text_en, narrator_text FROM hadith WHERE embedding IS NONE")
         .await?;
@@ -296,6 +342,7 @@ pub async fn embed_all_hadiths(db: &Surreal<Db>, embedder: &Embedder) -> Result<
     Ok(())
 }
 
+#[cfg(feature = "advanced")]
 #[derive(Debug, SurrealValue)]
 struct HadithForEmbed {
     id: Option<RecordId>,

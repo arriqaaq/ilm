@@ -14,17 +14,18 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use crate::book_chat::{BookTree, NavCache};
 use crate::db::Db;
-use crate::embed::{EmbedModel, Embedder, FastembedReranker, RerankBackendKind, RerankerBackend};
+use crate::embed::{EmbedModel, Embedder, RerankBackendKind, RerankerBackend};
 use crate::rag::OllamaClient;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: Surreal<Db>,
-    pub embedder: Arc<Embedder>,
+    pub embedder: Option<Arc<Embedder>>,
     pub reranker: Option<Arc<RerankerBackend>>,
     pub ollama: Option<Arc<OllamaClient>>,
     pub book_trees: Option<Arc<std::collections::HashMap<u64, BookTree>>>,
     pub nav_cache: Arc<NavCache>,
+    pub advanced_enabled: bool,
 }
 
 pub async fn serve(
@@ -37,14 +38,21 @@ pub async fn serve(
     reranker_ollama_model: Option<String>,
     pageindex_dir: Option<String>,
 ) -> Result<()> {
-    let embedder = Arc::new(Embedder::new(embed_model)?);
+    let embedder = if cfg!(feature = "advanced") {
+        Some(Arc::new(Embedder::new(embed_model)?))
+    } else {
+        tracing::info!("Advanced features disabled — skipping embedding model");
+        None
+    };
+
     let ollama_client = Arc::new(OllamaClient::new(ollama_url, ollama_model.clone()));
 
     let reranker = match rerank_backend {
+        #[cfg(feature = "advanced")]
         Some(RerankBackendKind::Fastembed) => {
             tracing::info!("Loading fastembed reranker: bge-reranker-v2-m3");
             Some(Arc::new(RerankerBackend::Fastembed(
-                FastembedReranker::new()?,
+                crate::embed::FastembedReranker::new()?,
             )))
         }
         Some(RerankBackendKind::Ollama) => {
@@ -56,6 +64,11 @@ pub async fn serve(
                 client: ollama_client.clone(),
                 model,
             }))
+        }
+        #[cfg(not(feature = "advanced"))]
+        Some(RerankBackendKind::Fastembed) => {
+            tracing::warn!("Fastembed reranker requires advanced features — ignoring");
+            None
         }
         None => None,
     };
@@ -84,6 +97,7 @@ pub async fn serve(
         ollama,
         book_trees,
         nav_cache: Arc::new(NavCache::new()),
+        advanced_enabled: cfg!(feature = "advanced"),
     };
 
     let cors = CorsLayer::new()
@@ -92,6 +106,7 @@ pub async fn serve(
         .allow_headers(Any);
 
     let api = Router::new()
+        .route("/api/config", axum::routing::get(handlers::app_config))
         .route("/api/stats", axum::routing::get(handlers::stats))
         .route("/api/collections", axum::routing::get(handlers::books))
         .route("/api/search", axum::routing::get(handlers::search))

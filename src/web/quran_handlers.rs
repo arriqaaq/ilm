@@ -139,28 +139,19 @@ pub async fn quran_search(
     let offset = (page - 1) * limit;
     let search_type = params.search_type.as_deref().unwrap_or("text");
 
-    let results = match search_type {
-        "semantic" => {
-            crate::quran::search::search_ayahs_semantic(
-                &state.db,
-                &state.embedder,
-                &query,
-                limit,
-                offset,
-            )
-            .await
+    let results = match (search_type, state.embedder.as_deref()) {
+        ("semantic", Some(embedder)) => {
+            crate::quran::search::search_ayahs_semantic(&state.db, embedder, &query, limit, offset)
+                .await
         }
-        "hybrid" => {
-            crate::quran::search::search_ayahs_hybrid(
-                &state.db,
-                &state.embedder,
-                &query,
-                limit,
-                offset,
-            )
-            .await
+        ("hybrid", Some(embedder)) => {
+            crate::quran::search::search_ayahs_hybrid(&state.db, embedder, &query, limit, offset)
+                .await
         }
-        // "tafsir" search type retired — falls through to text search.
+        ("semantic" | "hybrid", None) => {
+            // Advanced features disabled — fall back to text search
+            crate::quran::search::search_ayahs_text(&state.db, &query, limit, offset).await
+        }
         _ => crate::quran::search::search_ayahs_text(&state.db, &query, limit, offset).await,
     };
 
@@ -230,6 +221,11 @@ pub async fn ask_quran(
         return Err(StatusCode::BAD_REQUEST);
     }
 
+    let embedder = state.embedder.as_deref().ok_or_else(|| {
+        tracing::error!("Advanced features (embeddings) not available");
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
+
     let ollama = state.ollama.as_ref().ok_or_else(|| {
         tracing::error!("Ollama client not configured");
         StatusCode::SERVICE_UNAVAILABLE
@@ -237,12 +233,10 @@ pub async fn ask_quran(
 
     let model_name = body.model.clone();
 
-    // Quran scope bypasses intent classification (no Quran-specific structured
-    // intents yet) and goes straight to ayah-only semantic RAG with inline tafsir.
     let result = ollama
         .ask_agentic(
             &state.db,
-            &state.embedder,
+            embedder,
             &question,
             model_name.as_deref(),
             crate::agentic_rag::AskScope::Quran,

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { AyahSimilarResponse } from '$lib/types';
+  import { appConfig } from '$lib/stores/config';
 
   let { data }: { data: AyahSimilarResponse } = $props();
 
@@ -40,7 +41,7 @@
   </div>
 {/if}
 
-{#if data.similar.length > 0}
+{#if $appConfig.advanced_enabled && data.similar.length > 0}
   <div class="section">
     <div class="section-label">Similar Verses</div>
     {#each data.similar as sim}
@@ -61,8 +62,8 @@
   </div>
 {/if}
 
-{#if data.phrases.length === 0 && data.similar.length === 0}
-  <div class="empty">No similar verses or shared phrases found.</div>
+{#if data.phrases.length === 0 && (!$appConfig.advanced_enabled || data.similar.length === 0)}
+  <div class="empty">No shared phrases found.</div>
 {/if}
 
 <style>

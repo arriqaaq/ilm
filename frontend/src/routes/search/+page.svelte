@@ -4,6 +4,7 @@
   import type { SearchResponse } from '$lib/types';
   import { truncate, stripHtml, formatScore } from '$lib/utils';
   import { language } from '$lib/stores/language';
+  import { appConfig } from '$lib/stores/config';
   import Badge from '$lib/components/common/Badge.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
@@ -62,10 +63,12 @@
     <input type="text" placeholder="Search hadiths and narrators..." bind:value={query} class="search-input" />
     <div class="type-toggle">
       <button type="button" class="toggle-btn" class:active={searchType === 'text'} onclick={() => searchType = 'text'}>Text</button>
-      <button type="button" class="toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
-      <button type="button" class="toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
+      {#if $appConfig.advanced_enabled}
+        <button type="button" class="toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
+        <button type="button" class="toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
+      {/if}
     </div>
-    {#if searchType === 'hybrid'}
+    {#if $appConfig.advanced_enabled && searchType === 'hybrid'}
       <label class="rerank-toggle" title="Slower but better ranking for theological queries (~200ms).">
         <input type="checkbox" bind:checked={rerank} />
         <span>⚡ Precision mode</span>

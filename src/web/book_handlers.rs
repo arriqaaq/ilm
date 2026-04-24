@@ -274,7 +274,7 @@ pub async fn books_config(State(state): State<AppState>) -> impl IntoResponse {
                         name_en: b.name_en,
                         category: b.category,
                         book_type: b.book_type.clone(),
-                        chat_enabled: chat_book_ids.contains(&bid),
+                        chat_enabled: state.advanced_enabled && chat_book_ids.contains(&bid),
                         default_questions: default_questions_for_type(bt),
                     }
                 })

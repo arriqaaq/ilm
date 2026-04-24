@@ -1,4 +1,4 @@
-# Building a Classical Library: How Ilm Learned to Read Books — Part 2
+# Building a Classical Library: How Ilm Learned to Read Books
 
 بسم الله الرحمن الرحيم
 

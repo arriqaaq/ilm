@@ -1,6 +1,7 @@
 <script lang="ts">
   import { searchQuran } from '$lib/api';
   import type { ApiSurah, ApiAyahSearchResult } from '$lib/types';
+  import { appConfig } from '$lib/stores/config';
 
   let { surah, totalAyahs, onNavigateAyah, onClose }: {
     surah: ApiSurah;
@@ -69,12 +70,14 @@
       <label class="type-option">
         <input type="radio" bind:group={searchType} value="text" /> Text
       </label>
-      <label class="type-option">
-        <input type="radio" bind:group={searchType} value="semantic" /> Semantic
-      </label>
-      <label class="type-option">
-        <input type="radio" bind:group={searchType} value="hybrid" /> Hybrid
-      </label>
+      {#if $appConfig.advanced_enabled}
+        <label class="type-option">
+          <input type="radio" bind:group={searchType} value="semantic" /> Semantic
+        </label>
+        <label class="type-option">
+          <input type="radio" bind:group={searchType} value="hybrid" /> Hybrid
+        </label>
+      {/if}
     </div>
 
     {#if searchResults.length > 0}

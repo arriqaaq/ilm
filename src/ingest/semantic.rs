@@ -188,7 +188,7 @@ pub async fn ingest(
     db: &Surreal<Db>,
     json_path: &str,
     limit_per_book: Option<usize>,
-    embedder: &crate::embed::Embedder,
+    embedder: Option<&crate::embed::Embedder>,
 ) -> Result<()> {
     let path = Path::new(json_path);
     if !path.exists() {
@@ -571,9 +571,21 @@ pub async fn ingest(
         heard_from_count,
     );
 
-    // Generate embeddings
-    println!("🔢 Generating embeddings...");
-    crate::embed::embed_all_hadiths(db, embedder).await?;
+    // Generate embeddings (only when advanced features are compiled in)
+    #[cfg(feature = "advanced")]
+    {
+        if let Some(embedder) = embedder {
+            println!("🔢 Generating embeddings...");
+            crate::embed::embed_all_hadiths(db, embedder).await?;
+        } else {
+            println!("   Skipping embeddings (no embedder provided)");
+        }
+    }
+    #[cfg(not(feature = "advanced"))]
+    {
+        let _ = embedder;
+        println!("   Skipping embeddings (advanced features disabled)");
+    }
 
     // Backfill narrator hadith counts
     println!("📊 Computing narrator hadith counts...");

@@ -22,6 +22,14 @@ fn rid(table: &str, key: &str) -> RecordId {
     RecordId::new(table, key)
 }
 
+pub async fn app_config(State(state): State<AppState>) -> impl IntoResponse {
+    Json(serde_json::json!({
+        "advanced_enabled": state.advanced_enabled,
+        "ollama_available": state.ollama.is_some(),
+        "reranker_available": state.reranker.is_some(),
+    }))
+}
+
 // ── Query parameter types ──
 
 #[derive(Deserialize)]
@@ -127,34 +135,32 @@ pub async fn search(
         }));
     }
 
-    let hadith_results = match search_type.as_str() {
-        "semantic" => {
-            crate::search::search_hadiths_semantic(&state.db, &state.embedder, &query, limit)
+    let hadith_results = match (search_type.as_str(), state.embedder.as_deref()) {
+        ("semantic", Some(embedder)) => {
+            crate::search::search_hadiths_semantic(&state.db, embedder, &query, limit)
                 .await
                 .unwrap_or_default()
         }
-        "text" => crate::search::search_hadiths_text(&state.db, &query, limit, 0)
+        ("semantic" | "hybrid", None) => {
+            // Advanced features disabled — fall back to text search
+            crate::search::search_hadiths_text(&state.db, &query, limit, 0)
+                .await
+                .unwrap_or_default()
+        }
+        ("text", _) => crate::search::search_hadiths_text(&state.db, &query, limit, 0)
             .await
             .unwrap_or_default(),
-        _ => {
-            // Default: hybrid search (BM25 + vector via RRF).
-            // Rerank is only passed when both requested and configured.
+        (_, Some(embedder)) => {
             let reranker = if rerank {
                 state.reranker.as_deref()
             } else {
                 None
             };
-            crate::search::search_hadiths_hybrid(
-                &state.db,
-                &state.embedder,
-                &query,
-                limit,
-                0,
-                reranker,
-            )
-            .await
-            .unwrap_or_default()
+            crate::search::search_hadiths_hybrid(&state.db, embedder, &query, limit, 0, reranker)
+                .await
+                .unwrap_or_default()
         }
+        _ => unreachable!(),
     };
 
     let narrator_results = crate::search::search_narrators(&state.db, &query, 10, 0)
@@ -622,6 +628,11 @@ pub async fn ask(
         return Err(StatusCode::BAD_REQUEST);
     }
 
+    let embedder = state.embedder.as_deref().ok_or_else(|| {
+        tracing::error!("Advanced features (embeddings) not available");
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
+
     let ollama = state.ollama.as_ref().ok_or_else(|| {
         tracing::error!("Ollama client not configured");
         StatusCode::SERVICE_UNAVAILABLE
@@ -629,14 +640,10 @@ pub async fn ask(
 
     let model_name = body.model.clone();
 
-    // Route through the agentic pipeline scoped to hadith: classify the
-    // question (e.g. "how many hadiths did Abu Huraira narrate?" →
-    // NarratorCount, answered from pre-computed narrator.hadith_count).
-    // Fall back to hadith-only semantic RAG for content questions.
     let result = ollama
         .ask_agentic(
             &state.db,
-            &state.embedder,
+            embedder,
             &question,
             model_name.as_deref(),
             crate::agentic_rag::AskScope::Hadith,
@@ -1234,11 +1241,32 @@ pub async fn unified_search(
         None
     };
 
+    let effective_type =
+        if state.embedder.is_none() && (search_type == "semantic" || search_type == "hybrid") {
+            "text".to_string()
+        } else {
+            search_type.clone()
+        };
+
+    let Some(ref embedder) = state.embedder else {
+        // Advanced disabled — text-only unified search inlined
+        match crate::unified::search_unified_text_only(&state.db, &query, limit, page).await {
+            Ok(response) => return Json(serde_json::to_value(response).unwrap()),
+            Err(e) => {
+                tracing::error!("Unified text search failed: {e}");
+                return Json(serde_json::json!({
+                    "query": query, "search_type": "text", "results": [],
+                    "quran_count": 0, "hadith_count": 0
+                }));
+            }
+        }
+    };
+
     match crate::unified::search_unified(
         &state.db,
-        &state.embedder,
+        embedder,
         &query,
-        &search_type,
+        &effective_type,
         limit,
         page,
         reranker,
@@ -1268,6 +1296,11 @@ pub async fn unified_ask(
         return Err(StatusCode::BAD_REQUEST);
     }
 
+    let embedder = state.embedder.as_deref().ok_or_else(|| {
+        tracing::error!("Advanced features (embeddings) not available");
+        StatusCode::SERVICE_UNAVAILABLE
+    })?;
+
     let ollama = state.ollama.as_ref().ok_or_else(|| {
         tracing::error!("Ollama client not configured");
         StatusCode::SERVICE_UNAVAILABLE
@@ -1275,11 +1308,10 @@ pub async fn unified_ask(
 
     let model_name = body.model.clone();
 
-    // Use agentic RAG: classify intent, run structured queries or fallback to semantic
     let result = ollama
         .ask_agentic(
             &state.db,
-            &state.embedder,
+            embedder,
             &question,
             model_name.as_deref(),
             crate::agentic_rag::AskScope::Both,

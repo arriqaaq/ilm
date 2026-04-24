@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ApiAyahSearchResult } from '$lib/types';
   import { truncate } from '$lib/utils';
+  import { appConfig } from '$lib/stores/config';
   import { marked } from 'marked';
 
   marked.setOptions({ breaks: true, gfm: true });
@@ -89,6 +90,12 @@
   }
 </script>
 
+{#if !$appConfig.advanced_enabled}
+<div class="ask-page" style="padding: 24px;">
+  <h1>Ask about the Quran</h1>
+  <p style="color: var(--text-secondary); font-size: 0.9rem;">Advanced features are not available in this build.</p>
+</div>
+{:else}
 <div class="ask-page">
   <div class="chat-container" bind:this={chatContainer}>
     {#if messages.length === 0}
@@ -139,6 +146,7 @@
     <button type="submit" class="send-btn" disabled={loading || !input.trim()}>{loading ? '...' : 'Send'}</button>
   </form>
 </div>
+{/if}
 
 <style>
   .ask-page { display: flex; flex-direction: column; height: 100%; }

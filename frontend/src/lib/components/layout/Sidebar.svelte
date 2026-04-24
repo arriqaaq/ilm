@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { appConfig } from '$lib/stores/config';
 
   let { collapsed = false, onToggle }: {
     collapsed?: boolean;
@@ -10,19 +11,22 @@
     path: string;
     label: string;
     icon: string;
+    advanced?: boolean;
   }
 
   interface NavGroup {
     label: string;
     items: NavItem[];
+    advanced?: boolean;
   }
 
   const groups: NavGroup[] = [
     {
       label: 'Browse',
+      advanced: true,
       items: [
-        { path: '/explore', label: 'Explore', icon: '◈' },
-        { path: '/ask', label: 'Ask', icon: '◇' },
+        { path: '/explore', label: 'Explore', icon: '◈', advanced: true },
+        { path: '/ask', label: 'Ask', icon: '◇', advanced: true },
       ],
     },
     {
@@ -45,13 +49,23 @@
         { path: '/hadiths', label: 'Hadiths', icon: '☰' },
         { path: '/narrators', label: 'Narrators', icon: '◎' },
         { path: '/books', label: 'Books', icon: '▤' },
-        { path: '/families', label: 'Families', icon: '⬡' },
+        { path: '/families', label: 'Families', icon: '⬡', advanced: true },
         { path: '/diff', label: 'Diff', icon: '⇄' },
         { path: '/search', label: 'Search', icon: '⌕' },
-        { path: '/analysis', label: 'Analysis', icon: '△' },
+        { path: '/analysis', label: 'Analysis', icon: '△', advanced: true },
       ],
     },
   ];
+
+  let filteredGroups = $derived(
+    groups
+      .filter(g => !g.advanced || $appConfig.advanced_enabled)
+      .map(g => ({
+        ...g,
+        items: g.items.filter(i => !i.advanced || $appConfig.advanced_enabled),
+      }))
+      .filter(g => g.items.length > 0)
+  );
 
   function isActive(path: string): boolean {
     const current = page.url.pathname;
@@ -74,7 +88,7 @@
   </div>
 
   <div class="nav-items">
-    {#each groups as group}
+    {#each filteredGroups as group}
       <div class="nav-group">
         {#if !collapsed}
           <span class="section-label">{group.label}</span>

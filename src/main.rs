@@ -248,14 +248,21 @@ async fn async_main() -> Result<()> {
 
             let db = db::connect(&db_path).await?;
             db::init_schema(&db, embed_model.dimension()).await?;
-            // Define fulltext indexes BEFORE ingesting data — on an empty table
-            // this is instant, and subsequent inserts incrementally update the
-            // index. This avoids the "memtable history insufficient" error that
-            // occurs when building a fulltext index over thousands of rows.
             db::init_fulltext_indexes(&db).await?;
-            let embedder = embed::Embedder::new(embed_model)?;
-            embed::check_embedding_dimension(&db, embed_model.dimension()).await?;
-            ingest::semantic::ingest(&db, &file, limit, &embedder).await?;
+
+            #[cfg(feature = "advanced")]
+            let embedder = {
+                let e = embed::Embedder::new(embed_model)?;
+                embed::check_embedding_dimension(&db, embed_model.dimension()).await?;
+                Some(e)
+            };
+            #[cfg(not(feature = "advanced"))]
+            let embedder: Option<embed::Embedder> = {
+                println!("Advanced features disabled — skipping embeddings");
+                None
+            };
+
+            ingest::semantic::ingest(&db, &file, limit, embedder.as_ref()).await?;
 
             // Merge human English translations from sunnah.com (better quality)
             println!("🌐 Merging human English translations from sunnah.com...");
@@ -282,92 +289,110 @@ async fn async_main() -> Result<()> {
             let mut did_something = false;
 
             if families {
-                let embedder = embed::Embedder::new(embed_model)?;
-                let count = analysis::family::compute_families(&db, &embedder).await?;
-                tracing::info!("Created {count} hadith families");
-                did_something = true;
+                #[cfg(feature = "advanced")]
+                {
+                    let embedder = embed::Embedder::new(embed_model)?;
+                    let count = analysis::family::compute_families(&db, &embedder).await?;
+                    tracing::info!("Created {count} hadith families");
+                    did_something = true;
+                }
+                #[cfg(not(feature = "advanced"))]
+                {
+                    tracing::warn!(
+                        "Family analysis requires advanced features (embeddings). Build with `advanced` feature enabled."
+                    );
+                }
             }
 
             if mustalah {
-                println!("📖 Running mustalah al-hadith analysis...");
-                use surrealdb::types::{RecordId, SurrealValue};
+                #[cfg(feature = "advanced")]
+                {
+                    println!("📖 Running mustalah al-hadith analysis...");
+                    use surrealdb::types::{RecordId, SurrealValue};
 
-                #[derive(Debug, SurrealValue)]
-                struct MFamilyRow {
-                    id: Option<RecordId>,
-                    variant_count: Option<i64>,
-                }
-                let mut res = db
+                    #[derive(Debug, SurrealValue)]
+                    struct MFamilyRow {
+                        id: Option<RecordId>,
+                        variant_count: Option<i64>,
+                    }
+                    let mut res = db
                     .query(
                         "SELECT id, variant_count FROM hadith_family ORDER BY variant_count DESC",
                     )
                     .await?;
-                let family_rows: Vec<MFamilyRow> = res.take(0)?;
+                    let family_rows: Vec<MFamilyRow> = res.take(0)?;
 
-                // Resume support: check already-analyzed families
-                #[derive(Debug, SurrealValue)]
-                struct MFamilyRef {
-                    family: RecordId,
+                    // Resume support: check already-analyzed families
+                    #[derive(Debug, SurrealValue)]
+                    struct MFamilyRef {
+                        family: RecordId,
+                    }
+                    let mut done_res = db.query("SELECT family FROM isnad_analysis").await?;
+                    let done_rows: Vec<MFamilyRef> = done_res.take(0)?;
+                    let already_done: std::collections::HashSet<String> = done_rows
+                        .iter()
+                        .map(|r| hadith::models::record_id_key_string(&r.family))
+                        .collect();
+                    let remaining = family_rows.len() - already_done.len().min(family_rows.len());
+                    if !already_done.is_empty() {
+                        println!(
+                            "   Resuming: {remaining} families remaining ({} already done)",
+                            already_done.len()
+                        );
+                    }
+
+                    let pb = indicatif::ProgressBar::new(remaining as u64);
+                    pb.set_style(
+                        indicatif::ProgressStyle::default_bar()
+                            .template("   {bar:40.green/black} {pos}/{len} families ({eta})")
+                            .unwrap(),
+                    );
+
+                    let mut breadth_counts: std::collections::HashMap<String, usize> =
+                        std::collections::HashMap::new();
+                    let mut analyzed = 0usize;
+
+                    for row in &family_rows {
+                        let fid = row
+                            .id
+                            .as_ref()
+                            .map(hadith::models::record_id_key_string)
+                            .unwrap_or_default();
+                        if fid.is_empty() || already_done.contains(&fid) {
+                            continue;
+                        }
+                        let vcount = row.variant_count.unwrap_or(0) as usize;
+                        if vcount > max_family_size {
+                            pb.inc(1);
+                            continue;
+                        }
+
+                        if let Some(result) =
+                            analysis::mustalah::analyze_family_mustalah(&db, &fid).await?
+                        {
+                            let breadth_key =
+                                format!("{:?}", result.breadth.classification).to_lowercase();
+                            *breadth_counts.entry(breadth_key).or_default() += 1;
+                            analysis::mustalah::store_mustalah_results(&db, &result).await?;
+                            analyzed += 1;
+                        }
+                        pb.inc(1);
+                    }
+                    pb.finish_and_clear();
+
+                    println!("   Mustalah analysis: {analyzed} families analyzed");
+                    for (breadth, count) in &breadth_counts {
+                        println!("     {breadth}: {count}");
+                    }
+                    tracing::info!("Mustalah analysis complete");
+                    did_something = true;
                 }
-                let mut done_res = db.query("SELECT family FROM isnad_analysis").await?;
-                let done_rows: Vec<MFamilyRef> = done_res.take(0)?;
-                let already_done: std::collections::HashSet<String> = done_rows
-                    .iter()
-                    .map(|r| hadith::models::record_id_key_string(&r.family))
-                    .collect();
-                let remaining = family_rows.len() - already_done.len().min(family_rows.len());
-                if !already_done.is_empty() {
-                    println!(
-                        "   Resuming: {remaining} families remaining ({} already done)",
-                        already_done.len()
+                #[cfg(not(feature = "advanced"))]
+                {
+                    tracing::warn!(
+                        "Mustalah analysis requires advanced features. Build with `advanced` feature enabled."
                     );
                 }
-
-                let pb = indicatif::ProgressBar::new(remaining as u64);
-                pb.set_style(
-                    indicatif::ProgressStyle::default_bar()
-                        .template("   {bar:40.green/black} {pos}/{len} families ({eta})")
-                        .unwrap(),
-                );
-
-                let mut breadth_counts: std::collections::HashMap<String, usize> =
-                    std::collections::HashMap::new();
-                let mut analyzed = 0usize;
-
-                for row in &family_rows {
-                    let fid = row
-                        .id
-                        .as_ref()
-                        .map(hadith::models::record_id_key_string)
-                        .unwrap_or_default();
-                    if fid.is_empty() || already_done.contains(&fid) {
-                        continue;
-                    }
-                    let vcount = row.variant_count.unwrap_or(0) as usize;
-                    if vcount > max_family_size {
-                        pb.inc(1);
-                        continue;
-                    }
-
-                    if let Some(result) =
-                        analysis::mustalah::analyze_family_mustalah(&db, &fid).await?
-                    {
-                        let breadth_key =
-                            format!("{:?}", result.breadth.classification).to_lowercase();
-                        *breadth_counts.entry(breadth_key).or_default() += 1;
-                        analysis::mustalah::store_mustalah_results(&db, &result).await?;
-                        analyzed += 1;
-                    }
-                    pb.inc(1);
-                }
-                pb.finish_and_clear();
-
-                println!("   Mustalah analysis: {analyzed} families analyzed");
-                for (breadth, count) in &breadth_counts {
-                    println!("     {breadth}: {count}");
-                }
-                tracing::info!("Mustalah analysis complete");
-                did_something = true;
             }
 
             if !did_something {
@@ -395,9 +420,19 @@ async fn async_main() -> Result<()> {
             // occurs when building a fulltext index over thousands of rows in a
             // single long-running transaction after ingestion.
             db::init_quran_fulltext_indexes(&db).await?;
-            let embedder = embed::Embedder::new(embed_model)?;
-            embed::check_embedding_dimension(&db, embed_model.dimension()).await?;
-            quran::ingest::ingest(&db, &file, &embedder).await?;
+            #[cfg(feature = "advanced")]
+            let embedder = {
+                let e = embed::Embedder::new(embed_model)?;
+                embed::check_embedding_dimension(&db, embed_model.dimension()).await?;
+                Some(e)
+            };
+            #[cfg(not(feature = "advanced"))]
+            let embedder: Option<embed::Embedder> = {
+                println!("Advanced features disabled — skipping ayah embeddings");
+                None
+            };
+
+            quran::ingest::ingest(&db, &file, embedder.as_ref()).await?;
 
             tracing::info!("Quran ingestion complete");
         }
@@ -527,6 +562,7 @@ async fn async_main() -> Result<()> {
             db::init_user_note_schema(&db).await?;
             db::init_link_preview_schema(&db).await?;
             quran::audio::init_reciters(&db).await?;
+            #[cfg(feature = "advanced")]
             embed::check_embedding_dimension(&db, embed_model.dimension()).await?;
             web::serve(
                 db,

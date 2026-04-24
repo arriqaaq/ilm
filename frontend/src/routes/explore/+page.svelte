@@ -8,6 +8,7 @@
   import Badge from '$lib/components/common/Badge.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import Pagination from '$lib/components/common/Pagination.svelte';
+  import { appConfig } from '$lib/stores/config';
 
   let result: UnifiedSearchResponse | null = $state(null);
   let loading = $state(false);
@@ -74,6 +75,14 @@
   }
 </script>
 
+{#if !$appConfig.advanced_enabled}
+<div class="explore-page">
+  <div class="explore-header">
+    <h1>Explore</h1>
+    <p class="unavailable-msg">Advanced search features are not available in this build. Use <a href="/search">Search</a> for text search.</p>
+  </div>
+</div>
+{:else}
 <div class="explore-page">
   <div class="explore-header">
     <h1>Quran & Sunnah</h1>
@@ -157,9 +166,12 @@
     </div>
   {/if}
 </div>
+{/if}
 
 <style>
   .explore-page { padding: 24px; }
+  .unavailable-msg { color: var(--text-secondary); font-size: 0.9rem; }
+  .unavailable-msg a { color: var(--accent); text-decoration: none; font-weight: 600; }
 
   .explore-header { margin-bottom: 24px; }
   .explore-header h1 {

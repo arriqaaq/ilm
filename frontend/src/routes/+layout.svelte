@@ -5,6 +5,7 @@
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import TopBar from '$lib/components/layout/TopBar.svelte';
   import { preferences } from '$lib/stores/preferences';
+  import { loadAppConfig } from '$lib/stores/config';
 
   let { children } = $props();
 
@@ -32,6 +33,7 @@
   });
 
   onMount(() => {
+    loadAppConfig();
     // Sync theme + restore sidebar collapsed state
     const unsub = preferences.subscribe(p => {
       document.documentElement.dataset.theme = p.theme;

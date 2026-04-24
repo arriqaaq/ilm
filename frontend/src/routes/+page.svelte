@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { inview } from '$lib/actions/inview';
+  import { appConfig } from '$lib/stores/config';
   import { getStats, getQuranStats } from '$lib/api';
   import type { StatsResponse, QuranStatsResponse } from '$lib/types';
 
@@ -20,7 +21,12 @@
   function handleSearch(e: Event) {
     e.preventDefault();
     if (searchQuery.trim()) {
-      goto(`/explore?q=${encodeURIComponent(searchQuery.trim())}&type=semantic`);
+      const q = encodeURIComponent(searchQuery.trim());
+      if ($appConfig.advanced_enabled) {
+        goto(`/explore?q=${q}&type=semantic`);
+      } else {
+        goto(`/search?q=${q}&type=text`);
+      }
     }
   }
 </script>
@@ -41,17 +47,26 @@
     </div>
 
     <p class="hero-desc">
-      A complete semantic search platform for Islamic scholarship — explore the Quran with tafsir,
-      34K+ hadiths with narrator chains, and interactive isnad graphs.
-      Powered by meaning, not just keywords.
+      {#if $appConfig.advanced_enabled}
+        A complete semantic search platform for Islamic scholarship — explore the Quran with tafsir,
+        34K+ hadiths with narrator chains, and interactive isnad graphs.
+        Powered by meaning, not just keywords.
+      {:else}
+        A complete platform for Islamic scholarship — explore the Quran with tafsir,
+        34K+ hadiths with narrator chains, and interactive isnad graphs.
+      {/if}
     </p>
 
     <div class="hero-pills">
       <span class="pill">Free & Open Source</span>
-      <span class="pill">Semantic Search</span>
+      {#if $appConfig.advanced_enabled}
+        <span class="pill">Semantic Search</span>
+      {/if}
       <span class="pill">Bilingual</span>
       <span class="pill">Open Data</span>
-      <span class="pill">AI-Powered</span>
+      {#if $appConfig.advanced_enabled}
+        <span class="pill">AI-Powered</span>
+      {/if}
     </div>
 
     <form class="hero-search" onsubmit={handleSearch}>
@@ -70,7 +85,7 @@
     </form>
 
     <div class="hero-ctas">
-      <a href="/explore" class="cta cta-filled">Start Exploring</a>
+      <a href={$appConfig.advanced_enabled ? '/explore' : '/search'} class="cta cta-filled">Start Exploring</a>
       <a href="/quran" class="cta cta-outline">Browse Quran</a>
       <a href="/hadiths" class="cta cta-outline">Browse Hadith</a>
     </div>
@@ -121,8 +136,13 @@
       </div>
       <div class="feat-text">
         <h3>Intelligent Search</h3>
-        <p>Find verses and hadiths by what they mean, not just keywords. Hybrid search fuses BM25 full-text with 1024-dimension semantic vectors across the entire corpus.</p>
-        <a href="/explore" class="feat-link">Try Search &rarr;</a>
+        {#if $appConfig.advanced_enabled}
+          <p>Find verses and hadiths by what they mean, not just keywords. Hybrid search fuses BM25 full-text with 1024-dimension semantic vectors across the entire corpus.</p>
+          <a href="/explore" class="feat-link">Try Search &rarr;</a>
+        {:else}
+          <p>Find verses and hadiths across the entire corpus with full-text BM25 search in Arabic and English.</p>
+          <a href="/search" class="feat-link">Try Search &rarr;</a>
+        {/if}
       </div>
     </div>
 
@@ -295,39 +315,43 @@
             <div class="arch-line animate-on-scroll stagger-3" use:inview>
               <div class="line-pulse"></div>
             </div>
-            <div class="glass-card animate-on-scroll stagger-4" use:inview>
-              <div class="layer-label">Embeddings</div>
-              <strong>FastEmbed</strong>
-              <p>bge-m3 · 1024-dim</p>
-            </div>
+            {#if $appConfig.advanced_enabled}
+              <div class="glass-card animate-on-scroll stagger-4" use:inview>
+                <div class="layer-label">Embeddings</div>
+                <strong>FastEmbed</strong>
+                <p>bge-m3 · 1024-dim</p>
+              </div>
+            {/if}
           </div>
         </div>
 
-        <div class="hood-col">
-          <h3 class="hood-subtitle animate-on-scroll" use:inview>Training Pipeline</h3>
-          <div class="pipeline-grid">
-            {#each [
-              { n: '1', title: 'Raw Data', desc: 'SemanticHadith 34K · QUL · Sunnah.com' },
-              { n: '2', title: 'Parse & Enrich', desc: 'Join translations + narrator bios + tafsir' },
-              { n: '3', title: 'Generate QA', desc: 'ChatML pairs matching RAG prompt pattern' },
-              { n: '4', title: 'LoRA Fine-tune', desc: 'MLX on Phi-4-mini / Command-R' },
-              { n: '5', title: 'GGUF → Ollama', desc: 'Quantize Q4_K_M · ollama create · serve' },
-            ] as step, i}
-              <div class="pipe-card animate-on-scroll stagger-{Math.min(i + 1, 4)}" use:inview>
-                <div class="pipe-num">{step.n}</div>
-                <div class="pipe-text">
-                  <strong>{step.title}</strong>
-                  <span>{step.desc}</span>
+        {#if $appConfig.advanced_enabled}
+          <div class="hood-col">
+            <h3 class="hood-subtitle animate-on-scroll" use:inview>Training Pipeline</h3>
+            <div class="pipeline-grid">
+              {#each [
+                { n: '1', title: 'Raw Data', desc: 'SemanticHadith 34K · QUL · Sunnah.com' },
+                { n: '2', title: 'Parse & Enrich', desc: 'Join translations + narrator bios + tafsir' },
+                { n: '3', title: 'Generate QA', desc: 'ChatML pairs matching RAG prompt pattern' },
+                { n: '4', title: 'LoRA Fine-tune', desc: 'MLX on Phi-4-mini / Command-R' },
+                { n: '5', title: 'GGUF → Ollama', desc: 'Quantize Q4_K_M · ollama create · serve' },
+              ] as step, i}
+                <div class="pipe-card animate-on-scroll stagger-{Math.min(i + 1, 4)}" use:inview>
+                  <div class="pipe-num">{step.n}</div>
+                  <div class="pipe-text">
+                    <strong>{step.title}</strong>
+                    <span>{step.desc}</span>
+                  </div>
                 </div>
-              </div>
-              {#if i < 4}
-                <div class="pipe-line animate-on-scroll stagger-{Math.min(i + 1, 4)}" use:inview>
-                  <div class="line-pulse"></div>
-                </div>
-              {/if}
-            {/each}
+                {#if i < 4}
+                  <div class="pipe-line animate-on-scroll stagger-{Math.min(i + 1, 4)}" use:inview>
+                    <div class="line-pulse"></div>
+                  </div>
+                {/if}
+              {/each}
+            </div>
           </div>
-        </div>
+        {/if}
       </div>
     </div>
   </section>
@@ -343,8 +367,12 @@
       <div class="footer-links">
         <div class="footer-col">
           <h4>Explore</h4>
-          <a href="/explore">Unified Search</a>
-          <a href="/ask">Ask AI</a>
+          {#if $appConfig.advanced_enabled}
+            <a href="/explore">Unified Search</a>
+            <a href="/ask">Ask AI</a>
+          {:else}
+            <a href="/search">Text Search</a>
+          {/if}
         </div>
         <div class="footer-col">
           <h4>Quran</h4>

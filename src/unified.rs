@@ -136,3 +136,66 @@ pub async fn search_unified(
         has_more,
     })
 }
+
+/// Text-only unified search (no embedder required). Used when advanced features are disabled.
+pub async fn search_unified_text_only(
+    db: &Surreal<Db>,
+    query: &str,
+    limit: usize,
+    page: usize,
+) -> Result<UnifiedSearchResponse> {
+    let fetch_per_source = page * limit + 1;
+
+    let hadiths = crate::search::search_hadiths_text(db, query, fetch_per_source, 0)
+        .await
+        .unwrap_or_default();
+
+    let ayahs = crate::quran::search::search_ayahs_text(db, query, fetch_per_source, 0)
+        .await
+        .unwrap_or_default();
+
+    let quran_count = ayahs.len();
+    let hadith_count = hadiths.len();
+
+    let mut items: Vec<UnifiedSearchItem> = Vec::with_capacity(quran_count + hadith_count);
+
+    for (rank, ayah) in ayahs.into_iter().enumerate() {
+        items.push(UnifiedSearchItem::Quran {
+            ayah: ApiAyahSearchResult::from(ayah),
+            unified_score: rrf_score(rank + 1),
+        });
+    }
+
+    for (rank, hadith) in hadiths.into_iter().enumerate() {
+        items.push(UnifiedSearchItem::Hadith {
+            hadith: ApiHadithSearchResult::from(hadith),
+            unified_score: rrf_score(rank + 1),
+        });
+    }
+
+    items.sort_by(|a, b| {
+        let sa = match a {
+            UnifiedSearchItem::Quran { unified_score, .. } => *unified_score,
+            UnifiedSearchItem::Hadith { unified_score, .. } => *unified_score,
+        };
+        let sb = match b {
+            UnifiedSearchItem::Quran { unified_score, .. } => *unified_score,
+            UnifiedSearchItem::Hadith { unified_score, .. } => *unified_score,
+        };
+        sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let offset = (page - 1) * limit;
+    let has_more = items.len() > offset + limit;
+    let results: Vec<UnifiedSearchItem> = items.into_iter().skip(offset).take(limit).collect();
+
+    Ok(UnifiedSearchResponse {
+        query: query.to_string(),
+        search_type: "text".to_string(),
+        results,
+        quran_count,
+        hadith_count,
+        page,
+        has_more,
+    })
+}

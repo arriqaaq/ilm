@@ -8,6 +8,7 @@
   import TafsirAccordion from '$lib/components/tafsir/TafsirAccordion.svelte';
   import TafsirAskDrawer from '$lib/components/tafsir/TafsirAskDrawer.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import { appConfig } from '$lib/stores/config';
 
   let current = $derived.by(() => {
     const raw = page.url.searchParams.get('verse') ?? '1:1';
@@ -82,15 +83,17 @@
   <header class="page-header">
     <div class="title-row">
       <h1 class="page-title">Tafsir</h1>
-      <button
-        class="ask-btn"
-        type="button"
-        onclick={() => (askOpen = true)}
-        title="Ask AI (⌘K)"
-      >
-        <span>Ask AI</span>
-        <kbd>⌘K</kbd>
-      </button>
+      {#if $appConfig.advanced_enabled}
+        <button
+          class="ask-btn"
+          type="button"
+          onclick={() => (askOpen = true)}
+          title="Ask AI (⌘K)"
+        >
+          <span>Ask AI</span>
+          <kbd>⌘K</kbd>
+        </button>
+      {/if}
     </div>
     <p class="page-subtitle">
       Pick a verse to read every tafsir for it, or ask a free-form question across the whole tafsir corpus.
@@ -127,11 +130,13 @@
   </section>
 </div>
 
-<TafsirAskDrawer
-  open={askOpen}
-  verse={{ surah, ayah }}
-  onclose={() => (askOpen = false)}
-/>
+{#if $appConfig.advanced_enabled}
+  <TafsirAskDrawer
+    open={askOpen}
+    verse={{ surah, ayah }}
+    onclose={() => (askOpen = false)}
+  />
+{/if}
 
 <style>
   .tafsir-page {

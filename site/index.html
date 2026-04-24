@@ -425,6 +425,99 @@
       color: #fff;
     }
 
+    /* ════════ LITE MODE CALLOUT ════════ */
+    .lite-callout {
+      background: var(--bg-warm);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius);
+      padding: 40px 36px;
+    }
+
+    .lite-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .lite-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      background: var(--accent-muted);
+      border: 1px solid var(--accent-border);
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+
+    .lite-header h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .lite-header p {
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.7;
+      font-size: 0.92rem;
+    }
+
+    .lite-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 36px;
+      align-items: start;
+    }
+
+    .lite-col h4 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .lite-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .lite-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+    }
+
+    .lite-list li::before {
+      content: '\2713';
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-muted);
+      border: 1px solid var(--accent-border);
+      color: var(--accent);
+      font-size: 0.65rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+      .lite-grid { grid-template-columns: 1fr; }
+      .lite-callout { padding: 28px 20px; }
+    }
+
     /* ════════ UNDER THE HOOD ════════ */
     .hood-section {
       position: relative;
@@ -695,6 +788,64 @@
       font-style: italic;
     }
 
+    /* ════════ FEATURE CARDS (TIER 2) ════════ */
+    .feat-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 56px;
+    }
+
+    .feat-group-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .feat-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .feat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+      border-color: var(--accent-border);
+    }
+    .feat-card .app-frame { border-radius: 0; border: none; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .feat-card .app-frame img { height: 280px; object-fit: cover; object-position: top left; }
+    .feat-card .feat-text { padding: 20px 24px; border-left: none; flex: 1; }
+    .feat-card .feat-text h3 { font-size: 1.1rem; margin-bottom: 6px; }
+    .feat-card .feat-text p { font-size: 0.88rem; line-height: 1.6; }
+
+    /* ════════ COMPACT FEATURE ROW (TIER 3) ════════ */
+    .feat-compact-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      padding: 28px 32px;
+      background: var(--bg-warm);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius);
+      margin-top: 8px;
+    }
+    .feat-compact { display: flex; align-items: flex-start; gap: 14px; }
+    .feat-compact-icon {
+      width: 48px; height: 48px; flex-shrink: 0;
+      background: var(--accent-muted); border: 1px solid var(--accent-border);
+      border-radius: 10px; padding: 8px; display: flex; align-items: center; justify-content: center;
+    }
+    .feat-compact-icon svg { width: 24px; height: 24px; color: var(--accent); }
+    .feat-compact h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .feat-compact p { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; }
+
     /* ════════ SCROLL ANIMATIONS ════════ */
     @keyframes fade-up {
       from { opacity: 0; transform: translateY(24px); }
@@ -753,6 +904,8 @@
       .hero-stats { gap: 16px; padding: 12px 24px; }
       .feat { grid-template-columns: 1fr; gap: 24px; }
       .feat-reverse { direction: ltr; }
+      .feat-cards { grid-template-columns: 1fr; }
+      .feat-compact-row { grid-template-columns: 1fr; }
       .source-grid { grid-template-columns: 1fr 1fr; }
       .start-grid { grid-template-columns: 1fr; }
       .hood-columns { grid-template-columns: 1fr; gap: 48px; }
@@ -834,93 +987,174 @@
         <h2>Everything you need to study</h2>
       </div>
 
-      <!-- Intelligent Search -->
-      <div class="feat">
-        <div class="feat-visual reveal-left">
+      <!-- Search & Reading -->
+      <p class="feat-group-label reveal">Search & Reading</p>
+      <div class="feat-cards stagger-children">
+        <div class="feat-card reveal">
           <div class="app-frame">
             <div class="frame-dots"><span></span><span></span><span></span></div>
             <img src="img/feature-search.svg" alt="Unified search across Quran and Hadith" loading="lazy">
           </div>
+          <div class="feat-text">
+            <h3>Intelligent Search</h3>
+            <p>Find verses and hadiths by what they mean, not just keywords. Hybrid search fuses BM25 full-text with 1024-dimension semantic vectors.</p>
+          </div>
         </div>
-        <div class="feat-text reveal-right">
-          <h3>Intelligent Search</h3>
-          <p>Find verses and hadiths by what they mean, not just keywords. Hybrid search fuses BM25 full-text with 1024-dimension semantic vectors across the entire corpus.</p>
-        </div>
-      </div>
-
-      <!-- Quran Reader -->
-      <div class="feat feat-reverse">
-        <div class="feat-visual reveal-right">
+        <div class="feat-card reveal">
           <div class="app-frame">
             <div class="frame-dots"><span></span><span></span><span></span></div>
             <img src="img/feature-quran.svg" alt="Quran reader with tajweed and tafsir" loading="lazy">
           </div>
-        </div>
-        <div class="feat-text reveal-left">
-          <h3>Quran Reader</h3>
-          <p>114 Surahs with Tajweed-colored Arabic, Sahih International translation, and expandable Tafsir Ibn Kathir commentary — per ayah.</p>
+          <div class="feat-text">
+            <h3>Quran Reader</h3>
+            <p>114 Surahs with Tajweed-colored Arabic, Sahih International translation, and expandable Tafsir Ibn Kathir commentary — per ayah.</p>
+          </div>
         </div>
       </div>
 
-      <!-- Hadith Explorer -->
-      <div class="feat">
-        <div class="feat-visual reveal-left">
+      <!-- Hadith & Isnad -->
+      <p class="feat-group-label reveal">Hadith & Isnad</p>
+      <div class="feat-cards stagger-children">
+        <div class="feat-card reveal">
           <div class="app-frame">
             <div class="frame-dots"><span></span><span></span><span></span></div>
             <img src="img/feature-hadith.svg" alt="Hadith browsing with narrator chains" loading="lazy">
           </div>
+          <div class="feat-text">
+            <h3>Hadith Explorer</h3>
+            <p>Browse 34K+ hadiths from 926 books across 6 canonical collections, each with full narrator chains and source attribution.</p>
+          </div>
         </div>
-        <div class="feat-text reveal-right">
-          <h3>Hadith Explorer</h3>
-          <p>Browse 34K+ hadiths from 926 books across 6 canonical collections, each with full narrator chains and source attribution.</p>
+        <div class="feat-card reveal">
+          <div class="app-frame">
+            <div class="frame-dots"><span></span><span></span><span></span></div>
+            <img src="img/hadith-diff.svg" alt="Hadith text diff comparison" loading="lazy">
+          </div>
+          <div class="feat-text">
+            <h3>Hadith Diff</h3>
+            <p>Compare wording across transmission chains with word-level highlighting. See exactly where narrators diverge.</p>
+          </div>
         </div>
       </div>
 
-      <!-- Narrator Networks -->
-      <div class="feat feat-reverse">
-        <div class="feat-visual reveal-right">
+      <!-- Quran & Tafsir -->
+      <p class="feat-group-label reveal">Quran & Tafsir</p>
+      <div class="feat-cards stagger-children">
+        <div class="feat-card reveal">
           <div class="app-frame">
             <div class="frame-dots"><span></span><span></span><span></span></div>
-            <img src="img/feature-narrators.svg" alt="Interactive narrator graph visualization" loading="lazy">
+            <img src="img/multi-tafsir-accordion.svg" alt="Multi-tafsir comparison view" loading="lazy">
+          </div>
+          <div class="feat-text">
+            <h3>Multi-Tafsir Comparison</h3>
+            <p>Compare Ibn Kathir, al-Tabari, and more side-by-side for any ayah. Switch between classical exegeses in one view.</p>
           </div>
         </div>
-        <div class="feat-text reveal-left">
-          <h3>Narrator Networks</h3>
-          <p>Interactive graph visualization of 18K+ narrators. Trace isnad chains, explore teacher-student relationships, and check Ibn Hajar reliability grades.</p>
+        <div class="feat-card reveal">
+          <div class="app-frame">
+            <div class="frame-dots"><span></span><span></span><span></span></div>
+            <img src="img/manuscript-sample.jpg" alt="Early Quranic manuscript" class="manuscript-img" loading="lazy">
+          </div>
+          <div class="feat-text">
+            <h3>Early Manuscripts</h3>
+            <p>View early Quranic manuscripts per ayah from the Corpus Coranicum archive — Berlin-Brandenburg Academy of Sciences.</p>
+          </div>
         </div>
       </div>
 
-      <!-- Early Manuscripts -->
-      <div class="feat">
-        <div class="feat-visual reveal-left">
+      <!-- Narrator Science -->
+      <p class="feat-group-label reveal">Narrator Science</p>
+      <div class="feat-cards stagger-children">
+        <div class="feat-card reveal">
           <div class="app-frame">
             <div class="frame-dots"><span></span><span></span><span></span></div>
-            <img src="img/manuscript-sample.jpg" alt="Early Quranic manuscript — Berlin, Wetzstein II 1913" class="manuscript-img" loading="lazy">
+            <img src="img/feature-narrators.svg" alt="Interactive narrator graph" loading="lazy">
+          </div>
+          <div class="feat-text">
+            <h3>Narrator Networks</h3>
+            <p>Interactive graph of 18K+ narrators with isnad chains, teacher-student relationships, and Ibn Hajar reliability grades.</p>
           </div>
         </div>
-        <div class="feat-text reveal-right">
-          <h3>Early Manuscripts</h3>
-          <p>View high-resolution images of early Quranic manuscripts per ayah from the Corpus Coranicum archive — Berlin-Brandenburg Academy of Sciences.</p>
+        <div class="feat-card reveal">
+          <div class="app-frame">
+            <div class="frame-dots"><span></span><span></span><span></span></div>
+            <img src="img/feature-narrator-bio.svg" alt="Narrator biography from Tahdhib al-Tahdhib" loading="lazy">
+          </div>
+          <div class="feat-text">
+            <h3>Narrator Biographies</h3>
+            <p>Read Ibn Hajar's Tahdhib al-Tahdhib entries for 7,800+ narrators. Full Arabic text with structured metadata.</p>
+          </div>
         </div>
       </div>
 
-      <!-- Personal Study Notes -->
-      <div class="feat feat-reverse">
-        <div class="feat-visual reveal-right">
+      <!-- Classical Library -->
+      <p class="feat-group-label reveal">Classical Library</p>
+      <div class="feat-cards stagger-children">
+        <div class="feat-card reveal">
           <div class="app-frame">
             <div class="frame-dots"><span></span><span></span><span></span></div>
-            <img src="img/feature-notes.svg" alt="Personal Study Notes" loading="lazy" style="background: #f9fafb; padding: 8px;">
+            <img src="img/feature-book-reader.svg" alt="Book reader with PageIndex navigation" loading="lazy">
+          </div>
+          <div class="feat-text">
+            <h3>Book Reader</h3>
+            <p>Browse 9 classical texts from Turath with hierarchical PageIndex navigation. Fath al-Bari, Tahdhib al-Tahdhib, and more.</p>
           </div>
         </div>
-        <div class="feat-text reveal-left">
-          <h3>Personal Study Notes</h3>
-          <p>Capture your thoughts while studying. Annotate any ayah or hadith, collect evidence by topic, and embed Quran verses and hadiths inline with @mentions.</p>
-          <div class="feat-pills">
-            <span class="feat-pill">@Mentions</span>
-            <span class="feat-pill">Topic Collections</span>
-            <span class="feat-pill">Tags</span>
-            <span class="feat-pill">Color Highlights</span>
-            <span class="feat-pill">Rich Embeds</span>
+        <div class="feat-card reveal">
+          <div class="app-frame">
+            <div class="frame-dots"><span></span><span></span><span></span></div>
+            <img src="img/feature-sharh.svg" alt="Sharh commentary linked to hadith" loading="lazy">
+          </div>
+          <div class="feat-text">
+            <h3>Sharh & Commentary</h3>
+            <p>Every hadith links to its sharh passage — Fath al-Bari, Nawawi, Tuhfat al-Ahwadhi, and more.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Study Tools -->
+      <p class="feat-group-label reveal">Study Tools</p>
+      <div class="feat-cards stagger-children">
+        <div class="feat-card reveal">
+          <div class="app-frame">
+            <div class="frame-dots"><span></span><span></span><span></span></div>
+            <img src="img/feature-notes.svg" alt="Personal study notes" loading="lazy" style="background: #f9fafb; padding: 8px;">
+          </div>
+          <div class="feat-text">
+            <h3>Personal Study Notes</h3>
+            <p>Annotate any ayah or hadith with @mentions, tags, color highlights, and rich embeds. Collect evidence by topic.</p>
+          </div>
+        </div>
+        <div class="feat-card reveal">
+          <div class="app-frame">
+            <div class="frame-dots"><span></span><span></span><span></span></div>
+            <img src="img/book-chat-flow.svg" alt="Book chat with page citations" loading="lazy">
+          </div>
+          <div class="feat-text">
+            <h3>Book Chat</h3>
+            <p>Ask questions about any classical text. Answers cite specific pages with one-click navigation back to the source.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Compact Callout ═══ -->
+      <div class="feat-compact-row reveal">
+        <div class="feat-compact">
+          <div class="feat-compact-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="5" rx="1"/><rect x="4" y="12" width="16" height="5" rx="1"/><rect x="6" y="20" width="12" height="3" rx="1"/></svg>
+          </div>
+          <div>
+            <h4>Cross-Encoder Reranking</h4>
+            <p>Neural reranking pass that reorders search results by deep semantic relevance — not just keyword overlap.</p>
+          </div>
+        </div>
+        <div class="feat-compact">
+          <div class="feat-compact-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/></svg>
+          </div>
+          <div>
+            <h4>PageIndex Navigation</h4>
+            <p>Hierarchical table-of-contents trees built from Turath metadata for instant navigation within classical texts.</p>
           </div>
         </div>
       </div>
@@ -1003,6 +1237,39 @@
             <span class="cmd">make</span> pipeline-full<br><br>
             <span class="comment"># Build & run</span><br>
             <span class="cmd">make</span> dev
+          </div>
+        </div>
+      </div>
+
+      <!-- Lite mode callout -->
+      <div class="lite-callout reveal" style="margin-top: 56px;">
+        <div class="lite-header">
+          <span class="lite-badge">Lite Mode</span>
+          <h3>No GPU? No problem.</h3>
+          <p>Don't have a high-end laptop for running ONNX embeddings or Ollama? Lite mode skips all AI features and builds without fastembed — no large model downloads, no GPU needed. You still get everything that matters for study.</p>
+        </div>
+        <div class="lite-grid">
+          <div class="lite-col">
+            <h4>What you keep</h4>
+            <ul class="lite-list lite-yes">
+              <li>Quran reading with tafsir & tajweed</li>
+              <li>34K+ hadiths with narrator chains</li>
+              <li>Full-text search (Arabic & English)</li>
+              <li>Narrator graphs & isnad chains</li>
+              <li>Book viewer (sharh, tafsir, bios)</li>
+              <li>Hadith diff & personal notes</li>
+              <li>Early manuscript images</li>
+            </ul>
+          </div>
+          <div class="lite-col">
+            <h4>Run it</h4>
+            <div class="code-block" style="font-size: 0.82rem;">
+              <span class="comment"># Ingest without embeddings</span><br>
+              <span class="cmd">make</span> pipeline-lite<br><br>
+              <span class="comment"># Build & serve (no ONNX, no Ollama)</span><br>
+              <span class="cmd">make</span> dev-lite
+            </div>
+            <p style="margin-top: 12px; font-size: 0.82rem; color: var(--text-muted);">Upgrade to full mode anytime by re-running <code style="background: var(--accent-muted); padding: 2px 6px; border-radius: 4px; font-size: 0.78rem;">make pipeline-full && make dev</code></p>
           </div>
         </div>
       </div>

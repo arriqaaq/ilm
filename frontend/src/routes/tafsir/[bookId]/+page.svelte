@@ -10,6 +10,7 @@
   import ResizeHandle from '$lib/components/layout/ResizeHandle.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { loadBooksConfig, getBookConfig } from '$lib/stores/books';
+  import { appConfig } from '$lib/stores/config';
   import type { BooksConfig } from '$lib/types';
 
   let bookId = $derived(Number((page.params as Record<string, string>).bookId));
@@ -189,13 +190,17 @@
                 />
               {/snippet}
               {#snippet chat()}
-                <BookChat
-                  {bookId}
-                  bookName={b.name_en}
-                  {currentPageIndex}
-                  onNavigate={handleSidebarNavigate}
-                  defaultQuestions={chatDefaultQuestions}
-                />
+                {#if $appConfig.advanced_enabled}
+                  <BookChat
+                    {bookId}
+                    bookName={b.name_en}
+                    {currentPageIndex}
+                    onNavigate={handleSidebarNavigate}
+                    defaultQuestions={chatDefaultQuestions}
+                  />
+                {:else}
+                  <p style="padding: 16px; color: var(--text-muted); font-size: 0.85rem;">Chat is not available in this build.</p>
+                {/if}
               {/snippet}
             </SidebarTabs>
           {/if}
@@ -223,12 +228,16 @@
             />
           {/snippet}
           {#snippet chat()}
-            <BookChat
-              {bookId}
-              bookName={b.name_en}
-              {currentPageIndex}
-              onNavigate={(idx) => { mobileDrawerOpen = false; handleSidebarNavigate(idx); }}
-            />
+            {#if $appConfig.advanced_enabled}
+              <BookChat
+                {bookId}
+                bookName={b.name_en}
+                {currentPageIndex}
+                onNavigate={(idx) => { mobileDrawerOpen = false; handleSidebarNavigate(idx); }}
+              />
+            {:else}
+              <p style="padding: 16px; color: var(--text-muted); font-size: 0.85rem;">Chat is not available in this build.</p>
+            {/if}
           {/snippet}
         </SidebarTabs>
       </div>
