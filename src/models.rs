@@ -356,6 +356,7 @@ pub struct UserNote {
     pub color: String,
     pub tags: Option<Vec<String>>,
     pub refs: Option<String>,
+    pub notebook_id: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }
@@ -370,6 +371,7 @@ pub struct ApiUserNote {
     pub color: String,
     pub tags: Vec<String>,
     pub refs: Vec<NoteRef>,
+    pub notebook_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -388,8 +390,45 @@ impl From<UserNote> for ApiUserNote {
                 .refs
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default(),
+            notebook_id: n.notebook_id,
             created_at: n.created_at.unwrap_or_default(),
             updated_at: n.updated_at.unwrap_or_default(),
+        }
+    }
+}
+
+// ── Notebooks ──
+
+#[derive(Debug, SurrealValue, Serialize, Clone)]
+pub struct Notebook {
+    pub id: Option<RecordId>,
+    pub device_id: String,
+    pub name: String,
+    pub emoji: Option<String>,
+    pub parent_id: Option<String>,
+    pub sort_order: Option<i32>,
+    pub created_at: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ApiNotebook {
+    pub id: String,
+    pub name: String,
+    pub emoji: Option<String>,
+    pub parent_id: Option<String>,
+    pub sort_order: i32,
+    pub created_at: String,
+}
+
+impl From<Notebook> for ApiNotebook {
+    fn from(n: Notebook) -> Self {
+        Self {
+            id: n.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+            name: n.name,
+            emoji: n.emoji,
+            parent_id: n.parent_id,
+            sort_order: n.sort_order.unwrap_or(0),
+            created_at: n.created_at.unwrap_or_default(),
         }
     }
 }

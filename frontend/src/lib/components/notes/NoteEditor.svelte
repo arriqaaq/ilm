@@ -110,17 +110,15 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 14px 20px;
-    background: var(--note-editor-bg);
-    border: 1px solid transparent;
+    padding: 14px 22px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-card);
     cursor: text;
-    transition: all var(--transition);
+    transition: border-color var(--transition);
   }
   .editor-collapsed:hover {
     border-color: var(--accent-muted);
-    box-shadow: var(--shadow-card), 0 0 0 3px var(--accent-muted);
   }
   .placeholder-text {
     font-family: var(--font-serif);
@@ -152,11 +150,10 @@
   .editor-expanded {
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-editor);
     overflow: hidden;
   }
   .editor-toolbar {
-    padding: 10px 16px;
+    padding: 12px 20px;
     background: var(--bg-primary);
     border-top: 1px solid var(--border-subtle);
     display: flex;
@@ -175,9 +172,11 @@
     margin-left: auto;
   }
   .btn-save {
-    padding: 5px 20px;
-    font-size: 0.8rem;
+    padding: 8px 24px;
+    font-size: 0.75rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: #fff;
     background: var(--accent);
     border: none;
@@ -189,8 +188,11 @@
     background: var(--accent-hover);
   }
   .btn-cancel {
-    padding: 5px 14px;
-    font-size: 0.8rem;
+    padding: 8px 18px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: var(--text-muted);
     background: none;
     border: 1px solid var(--border);

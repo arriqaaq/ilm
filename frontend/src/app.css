@@ -61,16 +61,23 @@
   --note-blue-bg: #dbeafe;   --note-blue: #3b82f6;
   --note-pink-bg: #fce7f3;   --note-pink: #ec4899;
   --note-purple-bg: #ede9fe; --note-purple: #8b5cf6;
+  --note-yellow-rgb: 245, 158, 11;
+  --note-green-rgb: 16, 185, 129;
+  --note-blue-rgb: 59, 130, 246;
+  --note-pink-rgb: 236, 72, 153;
+  --note-purple-rgb: 139, 92, 246;
+  --hadith-embed-rgb: 16, 185, 129;
+  --hadith-narrator: #b45309;
 
   /* Scholarly UI tokens */
   --font-serif: 'EB Garamond', Georgia, serif;
-  --radius-xl: 16px;
-  --radius-2xl: 20px;
-  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
-  --shadow-card-hover: 0 8px 28px rgba(0, 0, 0, 0.1);
-  --shadow-editor: 0 4px 24px rgba(0, 0, 0, 0.08);
-  --note-editor-bg: #faf8f5;
-  --note-card-bg: #fffdfb;
+  --radius-xl: 14px;
+  --radius-2xl: 16px;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.03);
+  --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-editor: 0 0 0 1px var(--border-subtle);
+  --note-editor-bg: #ffffff;
+  --note-card-bg: #ffffff;
 }
 
 *, *::before, *::after {
@@ -229,10 +236,17 @@ input::placeholder {
   --note-blue-bg: rgba(59,130,246,0.2);   --note-blue: #60a5fa;
   --note-pink-bg: rgba(236,72,153,0.2);   --note-pink: #f472b6;
   --note-purple-bg: rgba(139,92,246,0.2); --note-purple: #a78bfa;
+  --note-yellow-rgb: 251, 191, 36;
+  --note-green-rgb: 52, 211, 153;
+  --note-blue-rgb: 96, 165, 250;
+  --note-pink-rgb: 244, 114, 182;
+  --note-purple-rgb: 167, 139, 250;
+  --hadith-embed-rgb: 52, 211, 153;
+  --hadith-narrator: #fbbf24;
 
   /* Notes UI — warm dark overrides */
-  --note-editor-bg: #1a1e2a;
-  --note-card-bg: #1c2030;
+  --note-editor-bg: #0d1117;
+  --note-card-bg: #161b22;
 }
 
 /* ── Theme: Brown (Sepia) ── */
@@ -276,10 +290,17 @@ input::placeholder {
   --note-blue-bg: rgba(59,130,246,0.15);  --note-blue: #2563eb;
   --note-pink-bg: rgba(236,72,153,0.15);  --note-pink: #db2777;
   --note-purple-bg: rgba(139,92,246,0.15);--note-purple: #7c3aed;
+  --note-yellow-rgb: 217, 119, 6;
+  --note-green-rgb: 5, 150, 105;
+  --note-blue-rgb: 37, 99, 235;
+  --note-pink-rgb: 219, 39, 119;
+  --note-purple-rgb: 124, 58, 237;
+  --hadith-embed-rgb: 5, 150, 105;
+  --hadith-narrator: #92400e;
 
   /* Notes UI — brown theme naturally matches parchment */
-  --note-editor-bg: #faf3e3;
-  --note-card-bg: #faf3e3;
+  --note-editor-bg: #f5ecd7;
+  --note-card-bg: #f5ecd7;
 }
 
 /* ── Mobile Responsive ── */

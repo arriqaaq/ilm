@@ -561,6 +561,7 @@ async fn async_main() -> Result<()> {
             db::init_book_schema(&db).await?;
             db::init_user_note_schema(&db).await?;
             db::init_link_preview_schema(&db).await?;
+            db::init_notebook_schema(&db).await?;
             quran::audio::init_reciters(&db).await?;
             #[cfg(feature = "advanced")]
             embed::check_embedding_dimension(&db, embed_model.dimension()).await?;

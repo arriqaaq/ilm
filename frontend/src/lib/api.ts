@@ -28,6 +28,7 @@ import type {
   NoteRef,
   LinkPreview,
   NoteRefsIndicator,
+  Notebook,
   Book,
   BooksConfig,
   BookDetail,
@@ -301,6 +302,7 @@ export async function fetchAllNotes(params?: {
   tag?: string;
   color?: string;
   q?: string;
+  notebook_id?: string;
   page?: number;
   limit?: number;
 }): Promise<PaginatedResponse<UserNote>> {
@@ -309,6 +311,7 @@ export async function fetchAllNotes(params?: {
   if (params?.tag) sp.set('tag', params.tag);
   if (params?.color) sp.set('color', params.color);
   if (params?.q) sp.set('q', params.q);
+  if (params?.notebook_id) sp.set('notebook_id', params.notebook_id);
   if (params?.page) sp.set('page', String(params.page));
   if (params?.limit) sp.set('limit', String(params.limit));
   return getWithDevice(`/notes?${sp}`);
@@ -362,6 +365,24 @@ export async function updateRefAnnotation(
 
 export async function exportNotes(): Promise<UserNote[]> {
   return getWithDevice('/notes/export');
+}
+
+// ── Notebooks ──
+
+export async function fetchNotebooks(): Promise<Notebook[]> {
+  return getWithDevice('/notebooks');
+}
+
+export async function createNotebook(data: { name: string; emoji?: string; parent_id?: string }): Promise<Notebook> {
+  return mutateWithDevice('POST', '/notebooks', data);
+}
+
+export async function updateNotebook(id: string, data: { name?: string; emoji?: string; parent_id?: string; sort_order?: number }): Promise<Notebook> {
+  return mutateWithDevice('PUT', `/notebooks/${encodeURIComponent(id)}`, data);
+}
+
+export async function deleteNotebook(id: string): Promise<void> {
+  return mutateWithDevice('DELETE', `/notebooks/${encodeURIComponent(id)}`);
 }
 
 export async function fetchLinkPreview(url: string): Promise<LinkPreview> {

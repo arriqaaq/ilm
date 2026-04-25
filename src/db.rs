@@ -396,9 +396,11 @@ DEFINE FIELD IF NOT EXISTS content     ON user_note TYPE string;
 DEFINE FIELD IF NOT EXISTS color       ON user_note TYPE string;
 DEFINE FIELD IF NOT EXISTS tags        ON user_note TYPE option<array<string>>;
 DEFINE FIELD IF NOT EXISTS refs        ON user_note TYPE option<string>;
+DEFINE FIELD IF NOT EXISTS notebook_id ON user_note TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS created_at  ON user_note TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS updated_at  ON user_note TYPE option<string>;
-DEFINE INDEX IF NOT EXISTS note_device_ref ON TABLE user_note FIELDS device_id, ref_type, ref_id
+DEFINE INDEX IF NOT EXISTS note_device_ref ON TABLE user_note FIELDS device_id, ref_type, ref_id;
+DEFINE INDEX IF NOT EXISTS note_notebook_idx ON TABLE user_note FIELDS device_id, notebook_id
 "#;
 
 // ── Link Preview Cache Schema ──
@@ -451,6 +453,39 @@ pub async fn init_link_preview_schema(db: &Surreal<Db>) -> Result<()> {
         }
     }
     tracing::info!("Link preview schema initialized");
+    Ok(())
+}
+
+// ── Notebook Schema ──
+
+const NOTEBOOK_SCHEMA: &str = r#"
+DEFINE TABLE IF NOT EXISTS notebook SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS device_id   ON notebook TYPE string;
+DEFINE FIELD IF NOT EXISTS name        ON notebook TYPE string;
+DEFINE FIELD IF NOT EXISTS emoji       ON notebook TYPE option<string>;
+DEFINE FIELD IF NOT EXISTS parent_id   ON notebook TYPE option<string>;
+DEFINE FIELD IF NOT EXISTS sort_order  ON notebook TYPE option<int>;
+DEFINE FIELD IF NOT EXISTS created_at  ON notebook TYPE option<string>;
+DEFINE INDEX IF NOT EXISTS notebook_device_idx ON TABLE notebook FIELDS device_id
+"#;
+
+pub async fn init_notebook_schema(db: &Surreal<Db>) -> Result<()> {
+    for (i, stmt) in NOTEBOOK_SCHEMA
+        .split(';')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty() && !s.starts_with("--"))
+        .enumerate()
+    {
+        let sql = format!("{stmt};");
+        if let Err(e) = db.query(&sql).await.and_then(|r| r.check()) {
+            tracing::error!(
+                "Notebook schema statement {i} failed: {e}\n  SQL: {}",
+                stmt.chars().take(120).collect::<String>()
+            );
+            return Err(e.into());
+        }
+    }
+    tracing::info!("Notebook schema initialized");
     Ok(())
 }
 

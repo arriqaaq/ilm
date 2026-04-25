@@ -6,6 +6,7 @@
   import RefCard from '$lib/components/notes/RefCard.svelte';
   import TagInput from '$lib/components/notes/TagInput.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
+  import NotebookPicker from '$lib/components/notes/NotebookPicker.svelte';
 
   let note: UserNote | null = $state(null);
   let loading = $state(true);
@@ -61,6 +62,18 @@
     note = updated;
   }
 
+  let selectedNotebookId: string | null = $state(null);
+
+  $effect(() => {
+    if (note) selectedNotebookId = note.notebook_id ?? null;
+  });
+
+  async function handleNotebookChange() {
+    if (!note || selectedNotebookId === (note.notebook_id ?? null)) return;
+    const updated = await updateNote(note.id, { notebook_id: selectedNotebookId ?? undefined });
+    note = updated;
+  }
+
   let sourceLabel = $derived.by(() => {
     if (!note) return '';
     const hasAyah = note.refs.some(r => r.ref_type === 'ayah');
@@ -98,6 +111,7 @@
       <div class="title-meta">
         <Badge text={sourceLabel} variant="default" />
         <span class="ref-count">{note.refs.length} references</span>
+        <NotebookPicker bind:value={selectedNotebookId} onchange={handleNotebookChange} />
       </div>
     </div>
 
@@ -137,17 +151,17 @@
 
 <style>
   .note-detail {
-    padding: 32px;
+    padding: 40px 40px 60px;
     max-width: 800px;
   }
   .title-area {
-    margin-bottom: 20px;
+    margin-bottom: 28px;
   }
   .title {
-    font-family: var(--font-serif);
-    font-size: 2rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-family: var(--font-sans);
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     line-height: 1.3;
   }
   .title-btn {
@@ -168,9 +182,9 @@
   }
   .title:hover .edit-hint { opacity: 1; }
   .title-input {
-    font-family: var(--font-serif);
-    font-size: 2rem;
-    font-weight: 600;
+    font-family: var(--font-sans);
+    font-size: 2.2rem;
+    font-weight: 800;
     border: none;
     border-bottom: 2px solid var(--accent);
     background: transparent;
@@ -192,10 +206,10 @@
     font-family: var(--font-mono);
   }
   .tags-area {
-    margin-bottom: 24px;
+    margin-bottom: 28px;
   }
   .section {
-    margin-bottom: 32px;
+    margin-bottom: 36px;
   }
   .section-label {
     font-size: 0.7rem;
@@ -231,11 +245,14 @@
   .back-link {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    margin-top: 24px;
-    padding: 6px 14px;
-    font-size: 0.85rem;
-    font-family: var(--font-serif);
+    gap: 8px;
+    margin-top: 32px;
+    padding: 10px 20px;
+    font-size: 0.8rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: var(--accent);
     text-decoration: none;
     border: 1px solid var(--accent-muted);

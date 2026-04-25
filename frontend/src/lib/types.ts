@@ -409,6 +409,7 @@ export interface UserNote {
   color: 'yellow' | 'green' | 'blue' | 'pink' | 'purple';
   tags: string[];
   refs: NoteRef[];
+  notebook_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -421,6 +422,7 @@ export interface CreateNoteRequest {
   color?: string;
   tags?: string[];
   refs?: NoteRef[];
+  notebook_id?: string;
 }
 
 export interface UpdateNoteRequest {
@@ -429,6 +431,16 @@ export interface UpdateNoteRequest {
   color?: string;
   tags?: string[];
   refs?: NoteRef[];
+  notebook_id?: string;
+}
+
+export interface Notebook {
+  id: string;
+  name: string;
+  emoji: string | null;
+  parent_id: string | null;
+  sort_order: number;
+  created_at: string;
 }
 
 export interface LinkPreview {

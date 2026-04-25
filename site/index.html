@@ -518,6 +518,71 @@
       .lite-callout { padding: 28px 20px; }
     }
 
+    /* ════════ PLATFORM TABS ════════ */
+    .platform-tabs {
+      position: relative;
+    }
+
+    .platform-tabs input[type="radio"] {
+      display: none;
+    }
+
+    .tab-labels {
+      display: flex;
+      gap: 0;
+      margin-bottom: 0;
+    }
+
+    .tab-labels label {
+      padding: 8px 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: #252540;
+      border: 1px solid #333;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      user-select: none;
+    }
+
+    .tab-labels label:hover {
+      color: var(--text-secondary);
+      background: #2a2a48;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    #tab-unix:checked ~ .tab-labels label[for="tab-unix"],
+    #tab-win:checked ~ .tab-labels label[for="tab-win"],
+    #tab-lite-unix:checked ~ .tab-labels label[for="tab-lite-unix"],
+    #tab-lite-win:checked ~ .tab-labels label[for="tab-lite-win"] {
+      color: var(--accent);
+      background: #1a1a2e;
+      border-color: var(--accent);
+      border-bottom-color: #1a1a2e;
+      position: relative;
+      z-index: 1;
+    }
+
+    #tab-unix:checked ~ .tab-panel-unix,
+    #tab-win:checked ~ .tab-panel-win,
+    #tab-lite-unix:checked ~ .tab-panel-unix,
+    #tab-lite-win:checked ~ .tab-panel-win {
+      display: block;
+    }
+
+    .platform-tabs .code-block {
+      border-radius: 0 var(--radius) var(--radius) var(--radius);
+      margin-top: -1px;
+      border: 1px solid #333;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
     /* ════════ UNDER THE HOOD ════════ */
     .hood-section {
       position: relative;
@@ -1215,28 +1280,103 @@
 
       <div class="start-grid">
         <div class="reveal-left">
-          <h3 style="font-size:1.1rem; margin-bottom:16px;">Prerequisites</h3>
+          <h3 style="font-size:1.1rem; margin-bottom:16px;">What gets installed</h3>
           <ul class="prereq-list">
-            <li><span class="check">&#10003;</span> Rust (latest stable)</li>
-            <li><span class="check">&#10003;</span> Node.js v20+</li>
-            <li><span class="check">&#10003;</span> Python 3 (for data download)</li>
-            <li><span class="check">&#10003;</span> SurrealDB</li>
-            <li><span class="check">&#10003;</span> Ollama (for Ask AI)</li>
+            <li><span class="check">&#10003;</span> Rust 1.85+ (backend)</li>
+            <li><span class="check">&#10003;</span> Node.js v20+ (frontend)</li>
+            <li><span class="check">&#10003;</span> Python 3 + uv (data scripts)</li>
+            <li><span class="check">&#10003;</span> Ollama (optional, for Ask AI)</li>
           </ul>
+          <p style="margin-top: 16px; font-size: 0.82rem; color: var(--text-muted); line-height: 1.6;">
+            <strong style="color: var(--text-secondary);">macOS &amp; Linux</strong> — <code style="background: var(--accent-muted); padding: 2px 6px; border-radius: 4px; font-size: 0.78rem;">make setup</code> handles everything automatically.<br>
+            <strong style="color: var(--text-secondary);">Windows</strong> — install the prerequisites manually, then switch to the Windows tab for cargo commands.
+          </p>
           <a href="https://github.com/arriqaaq/ilm" target="_blank" rel="noopener noreferrer" class="start-cta">
             <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.64 7.64 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
             Get the Code
           </a>
         </div>
         <div class="reveal-right">
-          <div class="code-block">
-            <span class="comment"># Clone</span><br>
-            <span class="cmd">git clone</span> https://github.com/arriqaaq/ilm.git<br>
-            <span class="cmd">cd</span> ilm<br><br>
-            <span class="comment"># Ingest all data (hadiths, Quran, books, PageIndex trees)</span><br>
-            <span class="cmd">make</span> pipeline-full<br><br>
-            <span class="comment"># Build & run</span><br>
-            <span class="cmd">make</span> dev
+          <div class="platform-tabs">
+            <input type="radio" name="platform" id="tab-unix" checked>
+            <input type="radio" name="platform" id="tab-win">
+            <div class="tab-labels">
+              <label for="tab-unix">macOS / Linux</label>
+              <label for="tab-win">Windows</label>
+            </div>
+            <div class="tab-panel tab-panel-unix">
+              <div class="code-block">
+                <span class="comment"># Clone</span><br>
+                <span class="cmd">git clone</span> https://github.com/arriqaaq/ilm.git<br>
+                <span class="cmd">cd</span> ilm<br><br>
+                <span class="comment"># Install all prerequisites</span><br>
+                <span class="cmd">make</span> setup<br><br>
+                <span class="comment"># Check your environment</span><br>
+                <span class="cmd">make</span> doctor<br><br>
+                <span class="comment"># Ingest all data (hadiths, Quran, books)</span><br>
+                <span class="cmd">make</span> pipeline-full<br><br>
+                <span class="comment"># Build &amp; run</span><br>
+                <span class="cmd">make</span> dev
+              </div>
+            </div>
+            <div class="tab-panel tab-panel-win">
+              <div class="code-block">
+                <span class="comment"># Clone</span><br>
+                <span class="cmd">git clone</span> https://github.com/arriqaaq/ilm.git<br>
+                <span class="cmd">cd</span> ilm<br><br>
+                <span class="comment"># Required env var (SurrealDB needs extra stack)</span><br>
+                <span class="cmd">set</span> RUST_MIN_STACK=8388608<br><br>
+                <span class="comment"># Build frontend</span><br>
+                <span class="cmd">cd</span> frontend &amp;&amp; <span class="cmd">npm install</span> &amp;&amp; <span class="cmd">npm run</span> build &amp;&amp; <span class="cmd">cd</span> ..<br><br>
+                <span class="comment"># Prepare data</span><br>
+                <span class="cmd">uv run</span> --with rdflib python3 scripts/build_semantic_data.py<br>
+                <span class="cmd">python3</span> scripts/prepare_quran_data.py<br><br>
+                <span class="comment"># Ingest hadiths</span><br>
+                <span class="cmd">cargo run</span> -- ingest<br><br>
+                <span class="comment"># Ingest Quran</span><br>
+                <span class="cmd">cargo run</span> -- ingest-quran<br>
+                <span class="cmd">cargo run</span> -- ingest-quran-hadith-refs<br>
+                <span class="cmd">cargo run</span> -- ingest-morphology<br>
+                <span class="cmd">cargo run</span> -- ingest-quran-similar --qul-dir qul<br><br>
+                <span class="comment"># Hadith analysis</span><br>
+                <span class="cmd">cargo run</span> -- analyze --families<br>
+                <span class="cmd">cargo run</span> -- analyze --mustalah<br><br>
+                <span class="comment"># Fetch books from turath.io</span><br>
+                <span class="cmd">python3</span> scripts/fetch_tafsir.py --pages<br>
+                <span class="cmd">python3</span> scripts/fetch_tabari.py --pages<br>
+                <span class="cmd">python3</span> scripts/fetch_fathulbari.py --pages<br>
+                <span class="cmd">python3</span> scripts/fetch_nawawi.py --pages<br>
+                <span class="cmd">python3</span> scripts/fetch_tuhfat_ahwadhi.py --pages<br>
+                <span class="cmd">python3</span> scripts/fetch_sahih_nasai.py --pages<br>
+                <span class="cmd">python3</span> scripts/fetch_awn_mabud.py --pages<br>
+                <span class="cmd">python3</span> scripts/fetch_ibn_majah.py --pages<br>
+                <span class="cmd">python3</span> scripts/fetch_tahdhib.py --pages<br><br>
+                <span class="comment"># Build book mappings</span><br>
+                <span class="cmd">python3</span> scripts/build_hadith_mapping.py<br>
+                <span class="cmd">python3</span> scripts/build_muslim_mapping.py<br>
+                <span class="cmd">python3</span> scripts/build_tirmidhi_mapping.py<br>
+                <span class="cmd">python3</span> scripts/build_nasai_mapping.py<br>
+                <span class="cmd">python3</span> scripts/build_abu_dawud_mapping.py<br>
+                <span class="cmd">python3</span> scripts/build_ibn_majah_mapping.py<br>
+                <span class="cmd">python3</span> scripts/build_narrator_book_mapping.py<br><br>
+                <span class="comment"># Ingest books</span><br>
+                <span class="cmd">cargo run</span> -- ingest-turath --pages-file data/tafsir_ibn_kathir_pages.json --headings-file data/tafsir_ibn_kathir_headings.json --book-id 23604 --name-ar "تفسير القرآن العظيم" --name-en "Tafsir Ibn Kathir" --author-ar "ابن كثير" --tafsir-mapping data/tafsir_verse_mapping.json --category quran --book-type tafsir<br>
+                <span class="cmd">cargo run</span> -- ingest-turath --pages-file data/tafsir_tabari_pages.json --headings-file data/tafsir_tabari_headings.json --book-id 7798 --name-ar "تفسير الطبري جامع البيان" --name-en "Tafsir al-Tabari" --author-ar "الطبري" --tafsir-mapping data/tafsir_tabari_verse_mapping.json --category quran --book-type tafsir<br>
+                <span class="cmd">cargo run</span> -- ingest-turath --pages-file data/fath_al_bari_pages.json --headings-file data/fath_al_bari_headings.json --book-id 1673 --name-ar "فتح الباري بشرح البخاري" --name-en "Fath al-Bari" --author-ar "ابن حجر العسقلاني" --sharh-mapping data/fath_al_bari_hadith_mapping.json --sharh-collection-id 1 --category hadith --book-type sharh<br>
+                <span class="cmd">cargo run</span> -- ingest-turath --pages-file data/nawawi_on_muslim_pages.json --headings-file data/nawawi_on_muslim_headings.json --book-id 1711 --name-ar "شرح النووي على مسلم" --name-en "Sharh Nawawi on Muslim" --author-ar "النووي" --sharh-mapping data/nawawi_on_muslim_hadith_mapping.json --sharh-collection-id 2 --category hadith --book-type sharh<br>
+                <span class="cmd">cargo run</span> -- ingest-turath --pages-file data/tuhfat_ahwadhi_pages.json --headings-file data/tuhfat_ahwadhi_headings.json --book-id 21662 --name-ar "تحفة الأحوذي" --name-en "Tuhfat al-Ahwadhi" --author-ar "المباركفوري" --sharh-mapping data/tuhfat_ahwadhi_hadith_mapping.json --sharh-collection-id 4 --category hadith --book-type sharh<br>
+                <span class="cmd">cargo run</span> -- ingest-turath --pages-file data/sahih_nasai_pages.json --headings-file data/sahih_nasai_headings.json --book-id 1147 --name-ar "صحيح سنن النسائي" --name-en "Sahih Sunan al-Nasai" --author-ar "الألباني" --sharh-mapping data/sahih_nasai_hadith_mapping.json --sharh-collection-id 5 --category hadith --book-type collection<br>
+                <span class="cmd">cargo run</span> -- ingest-turath --pages-file data/awn_mabud_pages.json --headings-file data/awn_mabud_headings.json --book-id 5760 --name-ar "عون المعبود شرح سنن أبي داود" --name-en "Awn al-Mabud" --author-ar "العظيم آبادي" --sharh-mapping data/awn_mabud_hadith_mapping.json --sharh-collection-id 3 --category hadith --book-type sharh<br>
+                <span class="cmd">cargo run</span> -- ingest-turath --pages-file data/ibn_majah_pages.json --headings-file data/ibn_majah_headings.json --book-id 98138 --name-ar "سنن ابن ماجه" --name-en "Sunan Ibn Majah" --author-ar "ابن ماجه" --sharh-mapping data/ibn_majah_hadith_mapping.json --sharh-collection-id 6 --category hadith --book-type collection<br>
+                <span class="cmd">cargo run</span> -- ingest-turath --pages-file data/tahdhib_pages.json --headings-file data/tahdhib_headings.json --book-id 1278 --name-ar "تهذيب التهذيب" --name-en "Tahdhib al-Tahdhib" --author-ar "ابن حجر العسقلاني" --narrator-mapping data/tahdhib_narrator_mapping.json --category narrator --book-type biography<br><br>
+                <span class="comment"># PageIndex (book chat navigation)</span><br>
+                <span class="cmd">git clone</span> https://github.com/VectifyAI/PageIndex.git ../PageIndex<br>
+                <span class="cmd">pip install</span> -r ../PageIndex/requirements.txt<br>
+                <span class="cmd">python3</span> scripts/index_books.py<br><br>
+                <span class="comment"># Start server</span><br>
+                <span class="cmd">cargo run</span> -- serve --port 3000
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1263,13 +1403,75 @@
           </div>
           <div class="lite-col">
             <h4>Run it</h4>
-            <div class="code-block" style="font-size: 0.82rem;">
-              <span class="comment"># Ingest without embeddings</span><br>
-              <span class="cmd">make</span> pipeline-lite<br><br>
-              <span class="comment"># Build & serve (no ONNX, no Ollama)</span><br>
-              <span class="cmd">make</span> dev-lite
+            <div class="platform-tabs">
+              <input type="radio" name="platform-lite" id="tab-lite-unix" checked>
+              <input type="radio" name="platform-lite" id="tab-lite-win">
+              <div class="tab-labels">
+                <label for="tab-lite-unix">macOS / Linux</label>
+                <label for="tab-lite-win">Windows</label>
+              </div>
+              <div class="tab-panel tab-panel-unix">
+                <div class="code-block" style="font-size: 0.82rem;">
+                  <span class="comment"># Ingest without embeddings</span><br>
+                  <span class="cmd">make</span> pipeline-lite<br><br>
+                  <span class="comment"># Build &amp; serve (no ONNX, no Ollama)</span><br>
+                  <span class="cmd">make</span> dev-lite
+                </div>
+              </div>
+              <div class="tab-panel tab-panel-win">
+                <div class="code-block" style="font-size: 0.82rem;">
+                  <span class="comment"># Required env var</span><br>
+                  <span class="cmd">set</span> RUST_MIN_STACK=8388608<br><br>
+                  <span class="comment"># Build frontend</span><br>
+                  <span class="cmd">cd</span> frontend &amp;&amp; <span class="cmd">npm install</span> &amp;&amp; <span class="cmd">npm run</span> build &amp;&amp; <span class="cmd">cd</span> ..<br><br>
+                  <span class="comment"># Prepare data</span><br>
+                  <span class="cmd">uv run</span> --with rdflib python3 scripts/build_semantic_data.py<br>
+                  <span class="cmd">python3</span> scripts/prepare_quran_data.py<br><br>
+                  <span class="comment"># Ingest hadiths (no embeddings)</span><br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest<br><br>
+                  <span class="comment"># Ingest Quran</span><br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-quran<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-quran-hadith-refs<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-morphology<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-quran-similar --qul-dir qul<br><br>
+                  <span class="comment"># Fetch books from turath.io</span><br>
+                  <span class="cmd">python3</span> scripts/fetch_tafsir.py --pages<br>
+                  <span class="cmd">python3</span> scripts/fetch_tabari.py --pages<br>
+                  <span class="cmd">python3</span> scripts/fetch_fathulbari.py --pages<br>
+                  <span class="cmd">python3</span> scripts/fetch_nawawi.py --pages<br>
+                  <span class="cmd">python3</span> scripts/fetch_tuhfat_ahwadhi.py --pages<br>
+                  <span class="cmd">python3</span> scripts/fetch_sahih_nasai.py --pages<br>
+                  <span class="cmd">python3</span> scripts/fetch_awn_mabud.py --pages<br>
+                  <span class="cmd">python3</span> scripts/fetch_ibn_majah.py --pages<br>
+                  <span class="cmd">python3</span> scripts/fetch_tahdhib.py --pages<br><br>
+                  <span class="comment"># Build book mappings</span><br>
+                  <span class="cmd">python3</span> scripts/build_hadith_mapping.py<br>
+                  <span class="cmd">python3</span> scripts/build_muslim_mapping.py<br>
+                  <span class="cmd">python3</span> scripts/build_tirmidhi_mapping.py<br>
+                  <span class="cmd">python3</span> scripts/build_nasai_mapping.py<br>
+                  <span class="cmd">python3</span> scripts/build_abu_dawud_mapping.py<br>
+                  <span class="cmd">python3</span> scripts/build_ibn_majah_mapping.py<br>
+                  <span class="cmd">python3</span> scripts/build_narrator_book_mapping.py<br><br>
+                  <span class="comment"># Ingest books</span><br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-turath --pages-file data/tafsir_ibn_kathir_pages.json --headings-file data/tafsir_ibn_kathir_headings.json --book-id 23604 --name-en "Tafsir Ibn Kathir" --tafsir-mapping data/tafsir_verse_mapping.json --category quran --book-type tafsir<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-turath --pages-file data/tafsir_tabari_pages.json --headings-file data/tafsir_tabari_headings.json --book-id 7798 --name-en "Tafsir al-Tabari" --tafsir-mapping data/tafsir_tabari_verse_mapping.json --category quran --book-type tafsir<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-turath --pages-file data/fath_al_bari_pages.json --headings-file data/fath_al_bari_headings.json --book-id 1673 --name-en "Fath al-Bari" --sharh-mapping data/fath_al_bari_hadith_mapping.json --sharh-collection-id 1 --category hadith --book-type sharh<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-turath --pages-file data/nawawi_on_muslim_pages.json --headings-file data/nawawi_on_muslim_headings.json --book-id 1711 --name-en "Sharh Nawawi on Muslim" --sharh-mapping data/nawawi_on_muslim_hadith_mapping.json --sharh-collection-id 2 --category hadith --book-type sharh<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-turath --pages-file data/tuhfat_ahwadhi_pages.json --headings-file data/tuhfat_ahwadhi_headings.json --book-id 21662 --name-en "Tuhfat al-Ahwadhi" --sharh-mapping data/tuhfat_ahwadhi_hadith_mapping.json --sharh-collection-id 4 --category hadith --book-type sharh<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-turath --pages-file data/sahih_nasai_pages.json --headings-file data/sahih_nasai_headings.json --book-id 1147 --name-en "Sahih Sunan al-Nasai" --sharh-mapping data/sahih_nasai_hadith_mapping.json --sharh-collection-id 5 --category hadith --book-type collection<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-turath --pages-file data/awn_mabud_pages.json --headings-file data/awn_mabud_headings.json --book-id 5760 --name-en "Awn al-Mabud" --sharh-mapping data/awn_mabud_hadith_mapping.json --sharh-collection-id 3 --category hadith --book-type sharh<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-turath --pages-file data/ibn_majah_pages.json --headings-file data/ibn_majah_headings.json --book-id 98138 --name-en "Sunan Ibn Majah" --sharh-mapping data/ibn_majah_hadith_mapping.json --sharh-collection-id 6 --category hadith --book-type collection<br>
+                  <span class="cmd">cargo run</span> --no-default-features -- ingest-turath --pages-file data/tahdhib_pages.json --headings-file data/tahdhib_headings.json --book-id 1278 --name-en "Tahdhib al-Tahdhib" --narrator-mapping data/tahdhib_narrator_mapping.json --category narrator --book-type biography<br><br>
+                  <span class="comment"># PageIndex (book chat navigation)</span><br>
+                  <span class="cmd">git clone</span> https://github.com/VectifyAI/PageIndex.git ../PageIndex<br>
+                  <span class="cmd">pip install</span> -r ../PageIndex/requirements.txt<br>
+                  <span class="cmd">python3</span> scripts/index_books.py<br><br>
+                  <span class="comment"># Start server (text search only)</span><br>
+                  <span class="cmd">cargo run</span> --no-default-features -- serve --port 3000
+                </div>
+              </div>
             </div>
-            <p style="margin-top: 12px; font-size: 0.82rem; color: var(--text-muted);">Upgrade to full mode anytime by re-running <code style="background: var(--accent-muted); padding: 2px 6px; border-radius: 4px; font-size: 0.78rem;">make pipeline-full && make dev</code></p>
+            <p style="margin-top: 12px; font-size: 0.82rem; color: var(--text-muted);">Upgrade to full mode anytime by re-running the full pipeline commands.</p>
           </div>
         </div>
       </div>

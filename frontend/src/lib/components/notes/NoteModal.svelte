@@ -3,6 +3,7 @@
   import { fetchNotesForRef, createNote, updateNote, deleteNote } from '$lib/api';
   import NoteCard from './NoteCard.svelte';
   import NoteEditor from './NoteEditor.svelte';
+  import NotebookPicker from './NotebookPicker.svelte';
   import { onMount } from 'svelte';
 
   let { refType, refId, refLabel, onclose, onsaved }: {
@@ -19,6 +20,7 @@
   let showCreateForm = $state(!refType); // If no ref, go straight to create
   let editingNote: UserNote | null = $state(null);
   let newTitle = $state('');
+  let newNotebookId: string | null = $state(null);
   let saving = $state(false);
 
   onMount(() => {
@@ -47,6 +49,7 @@
         content: data.content,
         color: data.color,
         tags: data.tags,
+        notebook_id: newNotebookId ?? undefined,
       });
       existingNotes = [note, ...existingNotes];
       showCreateForm = false;
@@ -123,6 +126,9 @@
           placeholder="Give your note a title..."
           bind:value={newTitle}
         />
+        <div class="notebook-row">
+          <NotebookPicker bind:value={newNotebookId} />
+        </div>
         <NoteEditor
           startExpanded={true}
           initialContent={initialContent}
@@ -179,8 +185,8 @@
   .note-modal {
     background: var(--bg-primary);
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-2xl);
-    box-shadow: 0 16px 64px rgba(0, 0, 0, 0.18);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
     width: 90%;
     max-width: 660px;
     max-height: 85vh;
@@ -192,29 +198,33 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px;
+    padding: 24px 28px;
     border-bottom: 1px solid var(--border-subtle);
     flex-shrink: 0;
   }
   .modal-header h2 {
-    font-family: var(--font-serif);
-    font-size: 1.15rem;
+    font-family: var(--font-sans);
+    font-size: 1.1rem;
     font-weight: 600;
   }
   .modal-close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: none;
-    border: none;
-    font-size: 1.4rem;
+    border: 1px solid var(--border-subtle);
+    font-size: 1.2rem;
     color: var(--text-muted);
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
+    border-radius: 50%;
     line-height: 1;
     transition: all var(--transition);
   }
-  .modal-close:hover { color: var(--text-primary); background: var(--bg-hover); }
+  .modal-close:hover { color: var(--text-primary); background: var(--bg-hover); border-color: var(--border); }
   .modal-body {
-    padding: 24px;
+    padding: 28px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -223,9 +233,9 @@
   }
   .title-input {
     width: 100%;
-    padding: 12px 16px;
+    padding: 14px 20px;
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     background: var(--bg-surface);
     color: var(--text-primary);
     font-family: var(--font-serif);
@@ -243,6 +253,10 @@
   .title-input:focus {
     border-color: var(--accent);
   }
+  .notebook-row {
+    display: flex;
+    align-items: center;
+  }
   .existing-notes {
     display: flex;
     flex-direction: column;
@@ -257,10 +271,12 @@
     font-style: italic;
   }
   .btn-create-new {
-    padding: 12px 20px;
-    font-size: 0.9rem;
-    font-family: var(--font-serif);
+    padding: 14px 24px;
+    font-size: 0.8rem;
+    font-family: var(--font-sans);
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: var(--accent);
     background: none;
     border: 1.5px dashed var(--accent-muted);

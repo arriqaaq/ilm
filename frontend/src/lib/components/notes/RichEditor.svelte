@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, mount, unmount } from 'svelte';
   import { deserializeToHtml, serializeEditor, getAtMentionContext, getSlashCommandContext, replaceRangeWithAtom } from '$lib/editor';
+  import { HONORIFICS } from '$lib/honorifics';
   import EmbeddedRef from './EmbeddedRef.svelte';
   import MentionChip from './MentionChip.svelte';
   import MentionDropdown from './MentionDropdown.svelte';
@@ -103,6 +104,42 @@
     onchange(text);
   }
 
+  function checkHonorific() {
+    const sel = window.getSelection();
+    if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return;
+    const node = sel.anchorNode;
+    if (node?.nodeType !== Node.TEXT_NODE) return;
+    const text = node.textContent ?? '';
+    const offset = sel.anchorOffset;
+    if (offset < 2) return;
+    const charBefore = text[offset - 1];
+    if (charBefore !== ' ' && charBefore !== ' ') return;
+    const before = text.slice(0, offset - 1);
+    const match = before.match(/(\S+)$/);
+    if (!match) return;
+    const word = match[1];
+    const replacement = HONORIFICS[word];
+    if (!replacement) return;
+    const start = offset - 1 - word.length;
+    const range = document.createRange();
+    range.setStart(node, start);
+    range.setEnd(node, offset - 1);
+    range.deleteContents();
+    const span = document.createElement('span');
+    span.className = 'honorific';
+    span.textContent = replacement;
+    range.insertNode(span);
+    const next = span.nextSibling;
+    if (next && next.nodeType === Node.TEXT_NODE && (next.textContent?.length ?? 0) > 0) {
+      sel.collapse(next, 1);
+    } else {
+      const space = document.createTextNode(' ');
+      span.after(space);
+      sel.collapse(space, 1);
+    }
+    emitChange();
+  }
+
   function handleInput() {
     // Check for @ mention trigger
     if (!editorEl) return;
@@ -133,6 +170,11 @@
         showSlashPalette = false;
         slashRange = null;
       }
+    }
+
+    // Check for honorific auto-expand (e.g. PBUH -> صلى الله عليه وسلم)
+    if (!showDropdown && !showSlashPalette) {
+      checkHonorific();
     }
 
     // Debounced emit
@@ -318,13 +360,13 @@
     position: relative;
   }
   .rich-editor {
-    min-height: 180px;
-    padding: 16px 20px;
+    min-height: 200px;
+    padding: 20px 24px;
     font-family: var(--font-serif);
     font-size: 1rem;
     line-height: 1.8;
     color: var(--text-primary);
-    background: var(--note-editor-bg);
+    background: var(--bg-primary);
     outline: none;
     white-space: pre-wrap;
     word-break: break-word;
@@ -389,6 +431,16 @@
   .rich-editor :global(i),
   .rich-editor :global(em) {
     font-style: italic;
+  }
+
+  /* Honorific styling */
+  .rich-editor :global(.honorific) {
+    font-family: var(--font-arabic-text, 'Noto Naskh Arabic', serif);
+    font-size: 0.95em;
+    color: var(--accent);
+    direction: rtl;
+    unicode-bidi: isolate;
+    padding: 0 2px;
   }
 
   /* Atom (embedded card) styling within editor */

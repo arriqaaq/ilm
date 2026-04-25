@@ -8,25 +8,50 @@ export type ContentSegment =
   | { type: 'url'; value: string }
   | { type: 'html'; value: string };
 
-const MENTION_PATTERN = /@(\d+:\d+)|@(\w+:\d+)|@(narrator:[^\s,]+)|(https?:\/\/\S+)/g;
+const MENTION_PATTERN = /@(\d+:\d+)|@(narrator:[^\s,]+)|@([a-z]{2,}_\d+)|(https?:\/\/\S+)/g;
 
 /** Allowed HTML tags for rich text (used for sanitization). */
-const ALLOWED_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 's', 'h2', 'h3', 'blockquote', 'ul', 'ol', 'li', 'hr', 'br', 'p', 'div']);
+const ALLOWED_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 's', 'h2', 'h3', 'blockquote', 'ul', 'ol', 'li', 'hr', 'br', 'p', 'div', 'span']);
 
 /** Detect whether stored content contains HTML formatting tags. */
 export function isHtmlContent(text: string): boolean {
   return /<(b|strong|i|em|u|s|h[23]|blockquote|ul|ol|li|hr|br|p|div)\b/i.test(text);
 }
 
-/** Sanitize HTML: only allow whitelisted tags, strip all attributes except on ref-atoms. */
+const SAFE_SPAN_CLASSES = new Set(['honorific']);
+const SAFE_STYLE_PROPS = new Set(['color', 'background-color']);
+
+function sanitizeStyleValue(raw: string): string {
+  return raw
+    .split(';')
+    .map(p => p.trim())
+    .filter(p => {
+      const [key] = p.split(':');
+      return key && SAFE_STYLE_PROPS.has(key.trim().toLowerCase());
+    })
+    .join('; ');
+}
+
+/** Sanitize HTML: only allow whitelisted tags, strip all attributes except on ref-atoms and honorifics. */
 function sanitizeHtml(html: string): string {
-  // Strip all tags except allowed ones (keep ref-atom spans for @mentions)
   return html.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (match, tag) => {
     const lower = tag.toLowerCase();
     if (ALLOWED_TAGS.has(lower)) {
-      // For closing tags, keep them. For opening tags, strip attributes.
       if (match.startsWith('</')) return `</${lower}>`;
       if (lower === 'hr' || lower === 'br') return `<${lower}>`;
+      if (lower === 'span') {
+        const classMatch = match.match(/class="([^"]*)"/);
+        if (classMatch) {
+          const safeClasses = classMatch[1].split(' ').filter(c => SAFE_SPAN_CLASSES.has(c)).join(' ');
+          if (safeClasses) return `<span class="${safeClasses}">`;
+        }
+        const styleMatch = match.match(/style="([^"]*)"/);
+        if (styleMatch) {
+          const safe = sanitizeStyleValue(styleMatch[1]);
+          if (safe) return `<span style="${safe}">`;
+        }
+        return `<span>`;
+      }
       return `<${lower}>`;
     }
     return '';
@@ -53,10 +78,10 @@ export function parseContent(text: string): ContentSegment[] {
     if (match[1]) {
       parts.push({ type: 'ayah', refId: match[1] });
     } else if (match[2]) {
-      parts.push({ type: 'hadith', refId: match[2] });
-    } else if (match[3]) {
-      const id = match[3].replace('narrator:', '');
+      const id = match[2].replace('narrator:', '');
       parts.push({ type: 'narrator', refId: id });
+    } else if (match[3]) {
+      parts.push({ type: 'hadith', refId: match[3] });
     } else if (match[4]) {
       parts.push({ type: 'url', value: match[4] });
     }
@@ -84,10 +109,10 @@ function parseHtmlContent(text: string): ContentSegment[] {
     if (match[1]) {
       parts.push({ type: 'ayah', refId: match[1] });
     } else if (match[2]) {
-      parts.push({ type: 'hadith', refId: match[2] });
-    } else if (match[3]) {
-      const id = match[3].replace('narrator:', '');
+      const id = match[2].replace('narrator:', '');
       parts.push({ type: 'narrator', refId: id });
+    } else if (match[3]) {
+      parts.push({ type: 'hadith', refId: match[3] });
     } else if (match[4]) {
       parts.push({ type: 'url', value: match[4] });
     }
@@ -134,8 +159,8 @@ function deserializePlainContent(text: string): string {
       parts.push({ type: 'text', value: text.slice(lastIndex, match.index) });
     }
     if (match[1]) parts.push({ type: 'ayah', refId: match[1] });
-    else if (match[2]) parts.push({ type: 'hadith', refId: match[2] });
-    else if (match[3]) parts.push({ type: 'narrator', refId: match[3].replace('narrator:', '') });
+    else if (match[2]) parts.push({ type: 'narrator', refId: match[2].replace('narrator:', '') });
+    else if (match[3]) parts.push({ type: 'hadith', refId: match[3] });
     else if (match[4]) parts.push({ type: 'url', value: match[4] });
     lastIndex = MENTION_PATTERN.lastIndex;
   }
@@ -171,14 +196,14 @@ function deserializeHtmlContent(text: string): string {
   // Replace @mentions within the HTML with ref-atom spans
   let html = text;
   MENTION_PATTERN.lastIndex = 0;
-  html = html.replace(MENTION_PATTERN, (match, ayah, hadith, narrator, url) => {
+  html = html.replace(MENTION_PATTERN, (match, ayah, narrator, hadith, url) => {
     if (ayah) {
       return `<span class="ref-atom" contenteditable="false" data-ref-type="ayah" data-ref-id="${escapeHtml(ayah)}"></span>`;
-    } else if (hadith) {
-      return `<span class="ref-atom" contenteditable="false" data-ref-type="hadith" data-ref-id="${escapeHtml(hadith)}"></span>`;
     } else if (narrator) {
       const id = narrator.replace('narrator:', '');
       return `<span class="ref-atom" contenteditable="false" data-ref-type="narrator" data-ref-id="${escapeHtml(id)}"></span>`;
+    } else if (hadith) {
+      return `<span class="ref-atom" contenteditable="false" data-ref-type="hadith" data-ref-id="${escapeHtml(hadith)}"></span>`;
     } else if (url) {
       return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" data-autolink="true">${escapeHtml(url)}</a>`;
     }
@@ -188,7 +213,7 @@ function deserializeHtmlContent(text: string): string {
 }
 
 /** Tags that should be preserved in serialized HTML output. */
-const PRESERVED_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'H2', 'H3', 'BLOCKQUOTE', 'UL', 'OL', 'LI', 'HR']);
+const PRESERVED_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'H2', 'H3', 'BLOCKQUOTE', 'UL', 'OL', 'LI', 'HR', 'FONT']);
 
 /** Block-level tags that get newlines around them. */
 const BLOCK_TAGS = new Set(['DIV', 'P', 'H2', 'H3', 'BLOCKQUOTE', 'UL', 'OL', 'LI', 'HR']);
@@ -216,12 +241,25 @@ export function serializeEditor(container: HTMLElement): string {
         } else {
           result += `@${refId}`;
         }
+      } else if (el.classList.contains('honorific')) {
+        result += `<span class="honorific">${el.textContent ?? ''}</span>`;
+      } else if (el.tagName === 'SPAN' && el.style.cssText) {
+        const inner = serializeEditor(el);
+        result += `<span style="${el.style.cssText}">${inner}</span>`;
       } else if (el.tagName === 'A' && el.dataset.autolink) {
         result += el.getAttribute('href') ?? el.textContent ?? '';
       } else if (el.tagName === 'BR') {
         result += '<br>';
       } else if (el.tagName === 'HR') {
         result += '<hr>';
+      } else if (el.tagName === 'FONT') {
+        const inner = serializeEditor(el);
+        const color = el.getAttribute('color');
+        if (color && /^(#[0-9a-f]{3,6}|[a-z]+|rgb\(\d+,\s*\d+,\s*\d+\))$/i.test(color)) {
+          result += `<span style="color: ${color}">${inner}</span>`;
+        } else {
+          result += inner;
+        }
       } else if (PRESERVED_TAGS.has(el.tagName)) {
         // Preserve formatting tags
         const tag = el.tagName.toLowerCase();

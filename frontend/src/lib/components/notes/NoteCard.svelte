@@ -47,7 +47,7 @@
   let contentParts = $derived(parseContent(note.content));
 </script>
 
-<div class="note-card" style="--card-accent: var(--note-{note.color})">
+<div class="note-card" style="--card-accent: var(--note-{note.color}); --glow-rgb: var(--note-{note.color}-rgb)">
   <div class="note-header">
     <div class="note-meta">
       {#if note.title}
@@ -105,31 +105,16 @@
 <style>
   .note-card {
     position: relative;
-    padding: 20px 24px;
+    padding: 18px 22px;
     background: var(--note-card-bg);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-card);
-    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-  }
-  .note-card::before {
-    content: '';
-    position: absolute;
-    top: 16px;
-    left: 0;
-    width: 4px;
-    height: 32px;
-    border-radius: 0 4px 4px 0;
-    background: var(--card-accent, var(--note-yellow));
-    transition: height var(--transition);
+    transition: box-shadow var(--transition), border-color var(--transition);
   }
   .note-card:hover {
-    transform: translateY(-2px);
     box-shadow: var(--shadow-card-hover);
     border-color: var(--border);
-  }
-  .note-card:hover::before {
-    height: 48px;
   }
   .note-card:hover .action-btn {
     opacity: 1;
@@ -149,10 +134,11 @@
   }
   .note-title {
     font-family: var(--font-serif);
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1.1rem;
     color: var(--text-primary);
     line-height: 1.3;
+    letter-spacing: -0.01em;
   }
   .note-ref {
     font-size: 0.75rem;

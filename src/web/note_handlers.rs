@@ -5,7 +5,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 use surrealdb::types::{RecordId, SurrealValue};
 
-use crate::models::{ApiUserNote, NoteRef, PaginatedResponse, UserNote};
+use crate::models::{ApiNotebook, ApiUserNote, NoteRef, Notebook, PaginatedResponse, UserNote};
 
 use super::AppState;
 
@@ -87,6 +87,7 @@ pub struct NoteListParams {
     pub tag: Option<String>,
     pub color: Option<String>,
     pub q: Option<String>,
+    pub notebook_id: Option<String>,
     pub page: Option<usize>,
     pub limit: Option<usize>,
 }
@@ -106,6 +107,7 @@ pub struct CreateNoteRequest {
     pub color: Option<String>,
     pub tags: Option<Vec<String>>,
     pub refs: Option<Vec<NoteRef>>,
+    pub notebook_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -115,6 +117,7 @@ pub struct UpdateNoteRequest {
     pub color: Option<String>,
     pub tags: Option<Vec<String>>,
     pub refs: Option<Vec<NoteRef>>,
+    pub notebook_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -165,6 +168,14 @@ pub async fn list_notes(
         let _ = tag;
         conditions.push("$tag IN tags".to_string());
     }
+    if let Some(ref nb) = params.notebook_id {
+        let _ = nb;
+        if nb == "__uncategorized__" {
+            conditions.push("notebook_id IS NONE".to_string());
+        } else {
+            conditions.push("notebook_id = $notebook_id".to_string());
+        }
+    }
 
     let where_clause = format!("WHERE {}", conditions.join(" AND "));
     // Cast created_at/updated_at to string to handle legacy datetime values
@@ -188,6 +199,11 @@ pub async fn list_notes(
     }
     if let Some(ref tag) = params.tag {
         query = query.bind(("tag", tag.clone()));
+    }
+    if let Some(ref nb) = params.notebook_id {
+        if nb != "__uncategorized__" {
+            query = query.bind(("notebook_id", nb.clone()));
+        }
     }
 
     let notes: Vec<UserNote> = match query.await {
@@ -259,6 +275,7 @@ pub async fn create_note(
                 color: $color,
                 tags: $tags,
                 refs: $refs,
+                notebook_id: $notebook_id,
                 created_at: $now,
                 updated_at: $now
             }",
@@ -271,6 +288,7 @@ pub async fn create_note(
         .bind(("color", color))
         .bind(("tags", body.tags))
         .bind(("refs", refs_json))
+        .bind(("notebook_id", body.notebook_id))
         .bind(("now", now))
         .await
         .map_err(|e| {
@@ -311,6 +329,12 @@ pub async fn update_note(
     if let Some(ref refs) = body.refs {
         let refs_json = serde_json::to_string(refs).unwrap_or_else(|_| "[]".to_string());
         update.insert("refs".to_string(), serde_json::json!(refs_json));
+    }
+    if body.notebook_id.is_some() {
+        update.insert(
+            "notebook_id".to_string(),
+            serde_json::json!(body.notebook_id),
+        );
     }
 
     if update.is_empty() {
@@ -602,4 +626,180 @@ pub async fn update_ref_annotation(
     let note = note.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(ApiUserNote::from(note)))
+}
+
+// ── Notebook Handlers ──
+
+#[derive(Deserialize)]
+pub struct CreateNotebookRequest {
+    pub name: String,
+    pub emoji: Option<String>,
+    pub parent_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateNotebookRequest {
+    pub name: Option<String>,
+    pub emoji: Option<String>,
+    pub parent_id: Option<String>,
+    pub sort_order: Option<i32>,
+}
+
+pub async fn list_notebooks(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, StatusCode> {
+    let did = extract_device_id(&headers)?;
+
+    let mut res = state
+        .db
+        .query(
+            "SELECT *, <string>created_at AS created_at FROM notebook \
+             WHERE device_id = $did ORDER BY sort_order ASC, created_at ASC",
+        )
+        .bind(("did", did))
+        .await
+        .map_err(|e| {
+            tracing::error!("List notebooks failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let notebooks: Vec<Notebook> = res.take(0).unwrap_or_default();
+
+    Ok(Json(
+        notebooks
+            .into_iter()
+            .map(ApiNotebook::from)
+            .collect::<Vec<_>>(),
+    ))
+}
+
+pub async fn create_notebook(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateNotebookRequest>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let did = extract_device_id(&headers)?;
+    let now = now_iso();
+
+    let mut res = state
+        .db
+        .query(
+            "CREATE notebook CONTENT {
+                device_id: $did,
+                name: $name,
+                emoji: $emoji,
+                parent_id: $parent_id,
+                sort_order: 0,
+                created_at: $now
+            }",
+        )
+        .bind(("did", did))
+        .bind(("name", body.name))
+        .bind(("emoji", body.emoji))
+        .bind(("parent_id", body.parent_id))
+        .bind(("now", now))
+        .await
+        .map_err(|e| {
+            tracing::error!("Create notebook failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let nb: Option<Notebook> = res.take(0).map_err(|e| {
+        tracing::error!("Create notebook deserialization failed: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    let nb = nb.ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(ApiNotebook::from(nb)))
+}
+
+pub async fn update_notebook(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<UpdateNotebookRequest>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let did = extract_device_id(&headers)?;
+
+    let mut update = serde_json::Map::new();
+    if let Some(ref name) = body.name {
+        update.insert("name".to_string(), serde_json::json!(name));
+    }
+    if let Some(ref emoji) = body.emoji {
+        update.insert("emoji".to_string(), serde_json::json!(emoji));
+    }
+    if let Some(ref pid) = body.parent_id {
+        if pid == &id {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+        update.insert("parent_id".to_string(), serde_json::json!(body.parent_id));
+    }
+    if let Some(sort_order) = body.sort_order {
+        update.insert("sort_order".to_string(), serde_json::json!(sort_order));
+    }
+
+    if update.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let mut res = state
+        .db
+        .query("UPDATE $rid MERGE $data WHERE device_id = $did RETURN AFTER")
+        .bind(("rid", rid("notebook", &id)))
+        .bind(("data", serde_json::Value::Object(update)))
+        .bind(("did", did))
+        .await
+        .map_err(|e| {
+            tracing::error!("Update notebook failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let nb: Option<Notebook> = res.take(0).unwrap_or(None);
+    let nb = nb.ok_or(StatusCode::NOT_FOUND)?;
+
+    Ok(Json(ApiNotebook::from(nb)))
+}
+
+pub async fn delete_notebook(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let did = extract_device_id(&headers)?;
+
+    state
+        .db
+        .query("UPDATE user_note SET notebook_id = NONE WHERE device_id = $did AND notebook_id = $nb_id")
+        .bind(("did", did.clone()))
+        .bind(("nb_id", id.clone()))
+        .await
+        .map_err(|e| {
+            tracing::error!("Clear notebook refs failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    state
+        .db
+        .query("UPDATE notebook SET parent_id = NONE WHERE device_id = $did AND parent_id = $nb_id")
+        .bind(("did", did.clone()))
+        .bind(("nb_id", id.clone()))
+        .await
+        .map_err(|e| {
+            tracing::error!("Clear child notebook refs failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    state
+        .db
+        .query("DELETE $rid WHERE device_id = $did")
+        .bind(("rid", rid("notebook", &id)))
+        .bind(("did", did))
+        .await
+        .map_err(|e| {
+            tracing::error!("Delete notebook failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

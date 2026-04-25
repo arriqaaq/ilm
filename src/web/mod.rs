@@ -309,6 +309,16 @@ pub async fn serve(
             "/api/notes/{id}/refs/{idx}/annotation",
             axum::routing::put(note_handlers::update_ref_annotation),
         )
+        // Notebooks
+        .route(
+            "/api/notebooks",
+            axum::routing::get(note_handlers::list_notebooks).post(note_handlers::create_notebook),
+        )
+        .route(
+            "/api/notebooks/{id}",
+            axum::routing::put(note_handlers::update_notebook)
+                .delete(note_handlers::delete_notebook),
+        )
         .with_state(state);
 
     // Serve static assets from frontend/build, with SPA fallback to index.html

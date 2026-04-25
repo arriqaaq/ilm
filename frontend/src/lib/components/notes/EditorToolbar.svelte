@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import ColorPickerPopover from './ColorPickerPopover.svelte';
 
   let { editorEl }: { editorEl?: HTMLDivElement } = $props();
 
-  // Active formatting states
   let isBold = $state(false);
   let isItalic = $state(false);
   let isUnderline = $state(false);
@@ -11,6 +11,8 @@
   let blockType = $state('Normal');
   let showBlockMenu = $state(false);
   let showInsertMenu = $state(false);
+  let showTextColorPicker = $state(false);
+  let showBgColorPicker = $state(false);
 
   const BLOCK_TYPES = [
     { label: 'Normal', tag: 'p' },
@@ -25,6 +27,37 @@
     { label: 'Numbered List', icon: '1.', action: () => execFormat('insertOrderedList') },
   ];
 
+  const TEXT_COLORS = [
+    { value: '', label: 'Default' },
+    { value: '#000000', label: 'Black' },
+    { value: '#374151', label: 'Dark Gray' },
+    { value: '#dc2626', label: 'Red' },
+    { value: '#ea580c', label: 'Orange' },
+    { value: '#d97706', label: 'Amber' },
+    { value: '#059669', label: 'Green' },
+    { value: '#0d9488', label: 'Teal' },
+    { value: '#2563eb', label: 'Blue' },
+    { value: '#7c3aed', label: 'Purple' },
+    { value: '#db2777', label: 'Pink' },
+    { value: '#6b7280', label: 'Gray' },
+    { value: '#92400e', label: 'Brown' },
+  ];
+
+  const BG_COLORS = [
+    { value: '', label: 'None' },
+    { value: '#fef3c7', label: 'Yellow' },
+    { value: '#dcfce7', label: 'Green' },
+    { value: '#dbeafe', label: 'Blue' },
+    { value: '#fce7f3', label: 'Pink' },
+    { value: '#ede9fe', label: 'Purple' },
+    { value: '#e0f2fe', label: 'Light Blue' },
+    { value: '#fef9c3', label: 'Light Yellow' },
+    { value: '#f0fdf4', label: 'Mint' },
+    { value: '#fdf2f8', label: 'Rose' },
+    { value: '#e0e7ff', label: 'Indigo' },
+    { value: '#f5f5f4', label: 'Stone' },
+  ];
+
   function execFormat(command: string, value?: string) {
     editorEl?.focus();
     document.execCommand(command, false, value);
@@ -33,12 +66,30 @@
 
   function setBlockType(tag: string) {
     editorEl?.focus();
-    if (tag === 'p') {
-      document.execCommand('formatBlock', false, 'p');
-    } else {
-      document.execCommand('formatBlock', false, tag);
-    }
+    document.execCommand('formatBlock', false, tag === 'p' ? 'p' : tag);
     showBlockMenu = false;
+    updateState();
+  }
+
+  function setTextColor(color: string) {
+    editorEl?.focus();
+    if (!color) {
+      document.execCommand('removeFormat', false);
+    } else {
+      document.execCommand('foreColor', false, color);
+    }
+    showTextColorPicker = false;
+    updateState();
+  }
+
+  function setBgColor(color: string) {
+    editorEl?.focus();
+    if (!color) {
+      document.execCommand('hiliteColor', false, 'transparent');
+    } else {
+      document.execCommand('hiliteColor', false, color);
+    }
+    showBgColorPicker = false;
     updateState();
   }
 
@@ -53,6 +104,13 @@
     else if (block === 'h3') blockType = 'Heading 3';
     else if (block === 'blockquote') blockType = 'Blockquote';
     else blockType = 'Normal';
+  }
+
+  function closeAllMenus() {
+    showBlockMenu = false;
+    showInsertMenu = false;
+    showTextColorPicker = false;
+    showBgColorPicker = false;
   }
 
   function handleSelectionChange() {
@@ -70,6 +128,10 @@
     }
     if (!target.closest('.insert-menu') && !target.closest('.insert-dropdown-btn')) {
       showInsertMenu = false;
+    }
+    if (!target.closest('.color-picker-popover') && !target.closest('.color-btn')) {
+      showTextColorPicker = false;
+      showBgColorPicker = false;
     }
   }
 
@@ -89,7 +151,7 @@
   <div class="toolbar-group">
     <button
       class="block-dropdown-btn"
-      onclick={() => { showBlockMenu = !showBlockMenu; showInsertMenu = false; }}
+      onclick={() => { closeAllMenus(); showBlockMenu = !showBlockMenu; }}
     >
       <span class="block-label">{blockType}</span>
       <span class="dropdown-arrow">&#9662;</span>
@@ -129,13 +191,55 @@
 
   <span class="divider"></span>
 
+  <!-- Text Color -->
+  <div class="toolbar-group">
+    <button
+      class="fmt-btn color-btn"
+      title="Text Color"
+      onclick={() => { closeAllMenus(); showTextColorPicker = !showTextColorPicker; }}
+    >
+      <span class="color-a">A</span>
+      <span class="color-bar" style="background: var(--accent)"></span>
+    </button>
+    {#if showTextColorPicker}
+      <ColorPickerPopover
+        title="Text Color"
+        colors={TEXT_COLORS}
+        onselect={setTextColor}
+        onclose={() => { showTextColorPicker = false; }}
+      />
+    {/if}
+  </div>
+
+  <!-- Background Color -->
+  <div class="toolbar-group">
+    <button
+      class="fmt-btn color-btn"
+      title="Background Color"
+      onclick={() => { closeAllMenus(); showBgColorPicker = !showBgColorPicker; }}
+    >
+      <span class="bg-a">A</span>
+      <span class="color-bar bg-bar"></span>
+    </button>
+    {#if showBgColorPicker}
+      <ColorPickerPopover
+        title="Background Color"
+        colors={BG_COLORS}
+        onselect={setBgColor}
+        onclose={() => { showBgColorPicker = false; }}
+      />
+    {/if}
+  </div>
+
+  <span class="divider"></span>
+
   <!-- Lists -->
   <div class="toolbar-group">
     <button class="fmt-btn" onclick={() => execFormat('insertUnorderedList')} title="Bullet List">
-      <span class="list-icon">•≡</span>
+      <span class="list-icon">&bull;&#8801;</span>
     </button>
     <button class="fmt-btn" onclick={() => execFormat('insertOrderedList')} title="Numbered List">
-      <span class="list-icon">1≡</span>
+      <span class="list-icon">1&#8801;</span>
     </button>
   </div>
 
@@ -145,7 +249,7 @@
   <div class="toolbar-group">
     <button
       class="insert-dropdown-btn"
-      onclick={() => { showInsertMenu = !showInsertMenu; showBlockMenu = false; }}
+      onclick={() => { closeAllMenus(); showInsertMenu = !showInsertMenu; }}
     >
       Insert <span class="dropdown-arrow">&#9662;</span>
     </button>
@@ -166,11 +270,11 @@
   .editor-toolbar-bar {
     display: flex;
     align-items: center;
-    gap: 2px;
-    padding: 8px 16px;
+    gap: 3px;
+    padding: 10px 20px;
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border-subtle);
-    min-height: 40px;
+    min-height: 42px;
     flex-wrap: wrap;
   }
   .toolbar-group {
@@ -183,25 +287,24 @@
     width: 1px;
     height: 18px;
     background: var(--border);
-    margin: 0 8px;
+    margin: 0 6px;
     flex-shrink: 0;
     opacity: 0.5;
   }
 
-  /* Format buttons */
   .fmt-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 30px;
+    width: 30px;
+    height: 28px;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: 6px;
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 0.9rem;
-    font-family: var(--font-serif);
+    font-size: 0.85rem;
+    font-family: var(--font-sans);
     transition: all var(--transition);
   }
   .fmt-btn:hover {
@@ -209,7 +312,7 @@
     color: var(--text-primary);
   }
   .fmt-btn.active {
-    background: var(--accent-muted);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
     color: var(--accent);
   }
   .italic-btn {
@@ -221,21 +324,52 @@
     letter-spacing: -1px;
   }
 
-  /* Dropdown buttons */
+  /* Color buttons */
+  .color-btn {
+    flex-direction: column;
+    gap: 1px;
+    width: 30px;
+    height: 30px;
+  }
+  .color-a {
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-family: var(--font-serif);
+    line-height: 1;
+  }
+  .bg-a {
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-family: var(--font-serif);
+    line-height: 1;
+    background: linear-gradient(135deg, #fef3c7 0%, #dcfce7 50%, #dbeafe 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .color-bar {
+    width: 14px;
+    height: 3px;
+    border-radius: 1px;
+  }
+  .bg-bar {
+    background: linear-gradient(90deg, #fef3c7, #dcfce7, #dbeafe);
+  }
+
   .block-dropdown-btn,
   .insert-dropdown-btn {
     display: flex;
     align-items: center;
     gap: 5px;
     padding: 4px 12px;
-    height: 30px;
+    height: 28px;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: 6px;
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 0.8rem;
-    font-family: var(--font-serif);
+    font-size: 0.78rem;
+    font-family: var(--font-sans);
     transition: all var(--transition);
     white-space: nowrap;
   }
@@ -252,7 +386,6 @@
     color: var(--text-muted);
   }
 
-  /* Dropdown menus */
   .block-menu,
   .insert-menu {
     position: absolute;
@@ -260,8 +393,8 @@
     left: 0;
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 0 0 1px rgba(218,221,227,0.2);
     z-index: 100;
     min-width: 160px;
     overflow: hidden;
@@ -272,14 +405,17 @@
     gap: 8px;
     width: 100%;
     text-align: left;
-    padding: 8px 14px;
+    padding: 9px 16px;
     border: none;
     background: none;
     color: var(--text-primary);
     font-size: 0.8rem;
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     cursor: pointer;
     transition: background var(--transition);
+    border-radius: 6px;
+    margin: 0 4px;
+    width: calc(100% - 8px);
   }
   .menu-item:hover {
     background: var(--bg-hover);
