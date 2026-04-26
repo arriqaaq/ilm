@@ -466,3 +466,20 @@ impl From<LinkPreview> for ApiLinkPreview {
         }
     }
 }
+
+// ── Isnad Search ──
+
+#[derive(Debug, Serialize)]
+pub struct IsnadSearchResponse {
+    pub narrators: Vec<ApiNarratorSearchResult>,
+    pub hadiths: Vec<ApiHadithSearchResult>,
+    pub mode: String,
+    pub total: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CommonNarratorsResponse {
+    pub narrator1: ApiNarratorSearchResult,
+    pub narrator2: ApiNarratorSearchResult,
+    pub common: Vec<ApiNarratorWithCount>,
+}

@@ -341,140 +341,214 @@ pub async fn narrator_hadiths(
     })
 }
 
-/// Find a transmission path between two narrators via batched BFS over heard_from edges.
-/// Uses 2 queries per depth level (one for each edge direction) instead of 1 per node.
-pub async fn chain_between(
+/// Find hadiths where all specified narrators appear in the chain.
+pub async fn isnad_search_tool(
     db: &Surreal<Db>,
-    narrator1: &Narrator,
-    narrator2: &Narrator,
+    narrators: &[Narrator],
+    ordered: bool,
+    limit: usize,
 ) -> Result<ToolOutput> {
-    let id1 = narrator1.id.as_ref().unwrap();
-    let id2 = narrator2.id.as_ref().unwrap();
-    let name1 = narrator1.name_ar.as_deref().unwrap_or(&narrator1.name_en);
-    let name2 = narrator2.name_ar.as_deref().unwrap_or(&narrator2.name_en);
+    let narrator_rids: Vec<RecordId> = narrators.iter().filter_map(|n| n.id.clone()).collect();
+    let narrator_count = narrator_rids.len() as i64;
 
-    let id1_str = record_id_string(id1);
-    let id2_str = record_id_string(id2);
+    let sql = format!(
+        "LET $matched = (SELECT VALUE out FROM (\
+            SELECT out, count() AS c FROM narrates \
+            WHERE in IN $narrator_ids \
+            GROUP BY out\
+        ) WHERE c = $narrator_count); \
+        SELECT id, hadith_number, collection_id, text_ar, text_en, narrator_text \
+        FROM hadith WHERE id IN $matched LIMIT {limit}"
+    );
 
-    // Batched BFS: query ALL frontier nodes at once per depth level.
-    // 2 queries per level (outward + inward edges) instead of 1 query per node.
-    let max_depth = 6;
-    let mut visited: HashSet<String> = HashSet::new();
-    // Map from node id_str -> (parent_id_str, node_name) for path reconstruction
-    let mut parent: std::collections::HashMap<String, (String, String)> =
-        std::collections::HashMap::new();
+    let mut res = db
+        .query(&sql)
+        .bind(("narrator_ids", narrator_rids))
+        .bind(("narrator_count", narrator_count))
+        .await?;
+    let mut hadiths: Vec<HadithSearchResult> = res.take(1).unwrap_or_default();
 
-    visited.insert(id1_str.clone());
-    parent.insert(id1_str.clone(), ("".to_string(), name1.to_string()));
-
-    let mut frontier: Vec<RecordId> = vec![id1.clone()];
-    let mut found = false;
-
-    // Edge row: one side is a frontier node, the other is the neighbor
-    #[derive(Debug, SurrealValue)]
-    struct EdgeRow {
-        from_id: RecordId,
-        to_id: RecordId,
-        to_name_ar: Option<String>,
-        to_name_en: String,
+    // For ordered mode, verify heard_from edges between consecutive narrators
+    if ordered && narrators.len() >= 2 {
+        #[derive(Debug, SurrealValue)]
+        struct StrictCount {
+            c: i64,
+        }
+        let mut filtered = Vec::new();
+        for h in hadiths {
+            let hrid = h.id.clone().unwrap();
+            let mut valid = true;
+            for pair in narrators.windows(2) {
+                let student = pair[0].id.as_ref().unwrap();
+                let teacher = pair[1].id.as_ref().unwrap();
+                let mut check = db
+                    .query(
+                        "SELECT count() AS c FROM heard_from \
+                         WHERE in = $student AND out = $teacher AND hadith_ref = $hid \
+                         GROUP ALL",
+                    )
+                    .bind(("student", student.clone()))
+                    .bind(("teacher", teacher.clone()))
+                    .bind(("hid", hrid.clone()))
+                    .await?;
+                let row: Option<StrictCount> = check.take(0).unwrap_or(None);
+                if row.map(|r| r.c).unwrap_or(0) == 0 {
+                    valid = false;
+                    break;
+                }
+            }
+            if valid {
+                filtered.push(h);
+            }
+        }
+        hadiths = filtered;
     }
 
-    for _depth in 0..max_depth {
-        if frontier.is_empty() {
-            break;
-        }
-
-        // Batch query: outward edges (frontier -> heard_from -> narrator)
-        // Uses heard_from_out_idx on `out` (frontier nodes are `out` in heard_from)
-        // heard_from: in=student, out=teacher. "out heard_from in" = "out's teacher is in"
-        // Wait — re-reading schema: RELATION FROM narrator TO narrator
-        // RELATE $from->heard_from->$to means $from heard from $to
-        // So `out` = the person being heard from (teacher), `in` = the one who heard (student)
-        // ->heard_from-> traverses outward: gets teachers
-        // <-heard_from<- traverses inward: gets students
-        //
-        // For edges where frontier nodes are the `in` side (student): teachers
-        let mut res = db
-            .query(
-                "SELECT in AS from_id, out AS to_id, out.name_ar AS to_name_ar, out.name_en AS to_name_en \
-                 FROM heard_from WHERE in IN $frontier",
-            )
-            .bind(("frontier", frontier.clone()))
-            .await?;
-        let outward: Vec<EdgeRow> = res.take(0).unwrap_or_default();
-
-        // For edges where frontier nodes are the `out` side (teacher): students
-        let mut res2 = db
-            .query(
-                "SELECT out AS from_id, in AS to_id, in.name_ar AS to_name_ar, in.name_en AS to_name_en \
-                 FROM heard_from WHERE out IN $frontier",
-            )
-            .bind(("frontier", frontier.clone()))
-            .await?;
-        let inward: Vec<EdgeRow> = res2.take(0).unwrap_or_default();
-
-        let mut next_frontier: Vec<RecordId> = Vec::new();
-
-        for edge in outward.iter().chain(inward.iter()) {
-            let from_str = record_id_string(&edge.from_id);
-            let to_str = record_id_string(&edge.to_id);
-
-            if visited.contains(&to_str) {
-                continue;
-            }
-            visited.insert(to_str.clone());
-
-            let to_name = edge
-                .to_name_ar
-                .as_deref()
-                .unwrap_or(&edge.to_name_en)
-                .to_string();
-            parent.insert(to_str.clone(), (from_str, to_name));
-
-            if to_str == id2_str {
-                found = true;
-                break;
-            }
-            next_frontier.push(edge.to_id.clone());
-        }
-
-        if found {
-            break;
-        }
-        frontier = next_frontier;
-    }
-
-    // Reconstruct path from parent map
-    let found_path = if found {
-        let mut path = Vec::new();
-        let mut current = id2_str.clone();
-        while !current.is_empty() {
-            if let Some((prev, name)) = parent.get(&current) {
-                path.push(name.clone());
-                current = prev.clone();
-            } else {
-                break;
-            }
-        }
-        path.reverse();
-        Some(path)
+    let names: Vec<String> = narrators
+        .iter()
+        .map(|n| n.name_ar.as_deref().unwrap_or(&n.name_en).to_string())
+        .collect();
+    let mode_label = if ordered {
+        "ordered chain"
     } else {
-        None
+        "any order"
     };
 
-    let mut context = format!("## Transmission Chain: {} ↔ {}\n\n", name1, name2);
-
-    if let Some(ref path) = found_path {
-        context.push_str(&format!("Found a path of {} steps:\n\n", path.len() - 1));
-        context.push_str(&format!("{}\n", path.join(" → ")));
-    } else {
+    let mut context = format!(
+        "## Isnad Search Results ({})\n\nNarrators: {}\n",
+        mode_label,
+        names.join(", ")
+    );
+    context.push_str(&format!(
+        "Found {} hadiths where all narrators appear in the chain:\n\n",
+        hadiths.len()
+    ));
+    for h in &hadiths {
         context.push_str(&format!(
-            "No transmission path found between {name1} and {name2} within {max_depth} steps.\n"
+            "Hadith #{} (Book {})\n",
+            h.hadith_number, h.collection_id
         ));
+        if let Some(text) = h.text_en.as_deref().or(h.text_ar.as_deref()) {
+            let truncated = if text.len() > 300 {
+                &text[..text.floor_char_boundary(300)]
+            } else {
+                text
+            };
+            context.push_str(&format!("{truncated}\n\n"));
+        }
     }
 
-    let src1 = narrator_to_source(narrator1, vec![], vec![]);
-    let src2 = narrator_to_source(narrator2, vec![], vec![]);
+    let narrator_sources: Vec<ApiNarratorSource> = narrators
+        .iter()
+        .map(|n| narrator_to_source(n, vec![], vec![]))
+        .collect();
+
+    Ok(ToolOutput {
+        context,
+        narrator_sources,
+        hadith_sources: hadiths,
+    })
+}
+
+/// Find narrators common to two narrators' chains.
+pub async fn common_narrators_tool(
+    db: &Surreal<Db>,
+    n1: &Narrator,
+    n2: &Narrator,
+) -> Result<ToolOutput> {
+    let nid1 = n1.id.as_ref().unwrap();
+    let nid2 = n2.id.as_ref().unwrap();
+    let name1 = n1.name_ar.as_deref().unwrap_or(&n1.name_en);
+    let name2 = n2.name_ar.as_deref().unwrap_or(&n2.name_en);
+
+    // Get hadith sets for each narrator
+    #[derive(Debug, SurrealValue)]
+    struct OutId {
+        out: RecordId,
+    }
+    let mut res = db
+        .query(
+            "SELECT out FROM narrates WHERE in = $nid1; \
+             SELECT out FROM narrates WHERE in = $nid2",
+        )
+        .bind(("nid1", nid1.clone()))
+        .bind(("nid2", nid2.clone()))
+        .await?;
+
+    let set1: Vec<OutId> = res.take(0).unwrap_or_default();
+    let set2: Vec<OutId> = res.take(1).unwrap_or_default();
+
+    let ids2: HashSet<String> = set2.iter().map(|r| record_id_string(&r.out)).collect();
+    let shared: Vec<RecordId> = set1
+        .into_iter()
+        .filter(|r| ids2.contains(&record_id_string(&r.out)))
+        .map(|r| r.out)
+        .collect();
+
+    let mut context = format!("## Common Narrators between {} and {}\n\n", name1, name2);
+
+    if shared.is_empty() {
+        context.push_str("No shared hadiths found between these narrators.\n");
+        let src1 = narrator_to_source(n1, vec![], vec![]);
+        let src2 = narrator_to_source(n2, vec![], vec![]);
+        return Ok(ToolOutput {
+            context,
+            narrator_sources: vec![src1, src2],
+            hadith_sources: vec![],
+        });
+    }
+
+    context.push_str(&format!("Found {} shared hadiths.\n\n", shared.len()));
+
+    // Find other narrators in those shared hadiths
+    #[derive(Debug, SurrealValue)]
+    struct NarratorRef {
+        narrator: RecordId,
+    }
+    let mut res = db
+        .query(
+            "SELECT in AS narrator FROM narrates \
+             WHERE out IN $shared AND in != $nid1 AND in != $nid2",
+        )
+        .bind(("shared", shared))
+        .bind(("nid1", nid1.clone()))
+        .bind(("nid2", nid2.clone()))
+        .await?;
+
+    let refs: Vec<NarratorRef> = res.take(0).unwrap_or_default();
+
+    let mut seen = HashSet::new();
+    let unique_ids: Vec<RecordId> = refs
+        .into_iter()
+        .filter(|r| seen.insert(record_id_string(&r.narrator)))
+        .map(|r| r.narrator)
+        .collect();
+
+    let common_narrators: Vec<Narrator> = if unique_ids.is_empty() {
+        vec![]
+    } else {
+        let mut res = db
+            .query("SELECT * FROM narrator WHERE id IN $ids ORDER BY hadith_count DESC LIMIT 20")
+            .bind(("ids", unique_ids))
+            .await?;
+        res.take(0).unwrap_or_default()
+    };
+
+    context.push_str(&format!(
+        "Found {} narrators common to both chains:\n\n",
+        common_narrators.len()
+    ));
+    for n in &common_narrators {
+        let cname = n.name_ar.as_deref().unwrap_or(&n.name_en);
+        context.push_str(&format!("- {} ({})", cname, n.name_en));
+        if let Some(generation) = &n.generation {
+            context.push_str(&format!(", generation {generation}"));
+        }
+        context.push('\n');
+    }
+
+    let src1 = narrator_to_source(n1, vec![], vec![]);
+    let src2 = narrator_to_source(n2, vec![], vec![]);
     Ok(ToolOutput {
         context,
         narrator_sources: vec![src1, src2],

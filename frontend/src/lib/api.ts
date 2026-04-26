@@ -435,3 +435,27 @@ export async function getHadithSharhPages(bookId: number, hadithNumbers: number[
   const nums = hadithNumbers.join(',');
   return get(`/hadiths/sharh-pages?book=${bookId}&numbers=${nums}`);
 }
+
+// ── Isnad Search ──
+
+export async function narratorAutocomplete(q: string, limit = 8): Promise<import('./types').ApiNarratorSearchResult[]> {
+  return get(`/narrators/autocomplete?q=${encodeURIComponent(q)}&limit=${limit}`);
+}
+
+export async function isnadSearch(params: {
+  narrator_ids: string[];
+  mode?: string;
+  limit?: number;
+}): Promise<import('./types').IsnadSearchResponse> {
+  const res = await fetch(`${BASE}/isnad/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export async function getCommonNarrators(a: string, b: string): Promise<import('./types').CommonNarratorsResponse> {
+  return get(`/narrators/common?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+}

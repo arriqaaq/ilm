@@ -10,8 +10,9 @@ use surrealdb::types::{RecordId, SurrealValue};
 use crate::analysis;
 use crate::models::{
     ApiCollection, ApiHadith, ApiHadithFamily, ApiHadithSearchResult, ApiNarrator,
-    ApiNarratorSearchResult, ApiNarratorWithCount, Collection, GraphData, GraphEdge, GraphEdgeData,
-    GraphNode, GraphNodeData, HADITH_FIELDS, Hadith, HadithFamily, Narrator, PaginatedResponse,
+    ApiNarratorSearchResult, ApiNarratorWithCount, Collection, CommonNarratorsResponse, GraphData,
+    GraphEdge, GraphEdgeData, GraphNode, GraphNodeData, HADITH_FIELDS, HADITH_SEARCH_FIELDS,
+    Hadith, HadithFamily, HadithSearchResult, IsnadSearchResponse, Narrator, PaginatedResponse,
     StatsResponse, record_id_key_string, record_id_string,
 };
 use crate::rag::ChatChunk;
@@ -58,6 +59,25 @@ pub struct ListParams {
 pub struct AskRequest {
     pub question: String,
     pub model: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct AutocompleteParams {
+    pub q: String,
+    pub limit: Option<usize>,
+}
+
+#[derive(Deserialize)]
+pub struct IsnadSearchRequest {
+    pub narrator_ids: Vec<String>,
+    pub mode: Option<String>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Deserialize)]
+pub struct CommonNarratorsParams {
+    pub a: String,
+    pub b: String,
 }
 
 // ── API Handlers ──
@@ -1209,6 +1229,362 @@ struct HeardFromEdge {
     in_id: RecordId,
     out_id: RecordId,
     chain_position: Option<i64>,
+}
+
+// ── Isnad Search endpoints ──
+
+pub async fn narrator_autocomplete(
+    State(state): State<AppState>,
+    Query(params): Query<AutocompleteParams>,
+) -> impl IntoResponse {
+    let q = params.q.trim().to_string();
+    if q.is_empty() {
+        return Json(Vec::<ApiNarratorWithCount>::new());
+    }
+    let limit = params.limit.unwrap_or(8);
+    let slug = crate::quran::ingest::strip_arabic_diacritics(&q);
+
+    let sql = "SELECT * FROM narrator \
+        WHERE string::lowercase(name_en) CONTAINS string::lowercase($q) \
+           OR name_ar CONTAINS $q \
+           OR kunya CONTAINS $q \
+           OR search_name CONTAINS $slug \
+           OR $q INSIDE aliases \
+        ORDER BY hadith_count DESC \
+        LIMIT $limit";
+
+    let narrators: Vec<NarratorWithCount> = match state
+        .db
+        .query(sql)
+        .bind(("q", q))
+        .bind(("slug", slug))
+        .bind(("limit", limit))
+        .await
+    {
+        Ok(mut r) => r.take(0).unwrap_or_default(),
+        Err(e) => {
+            tracing::error!("Autocomplete query failed: {e}");
+            vec![]
+        }
+    };
+
+    Json(
+        narrators
+            .into_iter()
+            .map(|n| ApiNarratorWithCount {
+                id: n.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+                name_ar: n.name_ar,
+                name_en: n.name_en,
+                generation: n.generation,
+                bio: n.bio,
+                kunya: n.kunya,
+                death_year: n.death_year,
+                hadith_count: n.hadith_count.unwrap_or(0),
+            })
+            .collect::<Vec<_>>(),
+    )
+}
+
+pub async fn isnad_search(
+    State(state): State<AppState>,
+    Json(body): Json<IsnadSearchRequest>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let limit = body.limit.unwrap_or(20).min(100);
+    let mode = body.mode.as_deref().unwrap_or("loose");
+
+    if body.narrator_ids.len() < 2 {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    // 1. Resolve narrator IDs and collect RecordIds
+    let mut narrators: Vec<Narrator> = Vec::new();
+    let mut narrator_rids: Vec<RecordId> = Vec::new();
+    for slug in &body.narrator_ids {
+        let nrid = rid("narrator", slug);
+        let mut res = state
+            .db
+            .query("SELECT * FROM $rid")
+            .bind(("rid", nrid))
+            .await
+            .map_err(|e| {
+                tracing::error!("Narrator lookup failed: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+        let n: Option<Narrator> = res.take(0).unwrap_or(None);
+        let n = n.ok_or(StatusCode::NOT_FOUND)?;
+        narrator_rids.push(n.id.clone().unwrap());
+        narrators.push(n);
+    }
+
+    // 2. Two-step LET query: find hadiths where all narrators appear in the chain
+    let narrator_count = narrator_rids.len() as i64;
+    let sql = format!(
+        "LET $matched = (SELECT VALUE out FROM (\
+            SELECT out, count() AS c FROM narrates \
+            WHERE in IN $narrator_ids \
+            GROUP BY out\
+        ) WHERE c = $narrator_count); \
+        SELECT {HADITH_SEARCH_FIELDS} FROM hadith \
+        WHERE id IN $matched LIMIT $limit"
+    );
+
+    let mut res = state
+        .db
+        .query(&sql)
+        .bind(("narrator_ids", narrator_rids.clone()))
+        .bind(("narrator_count", narrator_count))
+        .bind(("limit", limit))
+        .await
+        .map_err(|e| {
+            tracing::error!("Isnad search failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    // LET is statement 0, SELECT is statement 1
+    let hadiths: Vec<HadithSearchResult> = res.take(1).unwrap_or_default();
+
+    // 3. For strict mode: verify heard_from edges between consecutive narrator pairs
+    let hadiths = if mode == "strict" && narrators.len() >= 2 {
+        filter_strict_chains(&state.db, &narrators, hadiths)
+            .await
+            .map_err(|e| {
+                tracing::error!("Strict chain filter failed: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+    } else {
+        hadiths
+    };
+
+    let total = hadiths.len();
+    let api_narrators: Vec<ApiNarratorSearchResult> = narrators
+        .iter()
+        .map(|n| ApiNarratorSearchResult {
+            id: n.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+            name_ar: n.name_ar.clone(),
+            name_en: n.name_en.clone(),
+            generation: n.generation.clone(),
+            hadith_count: n.hadith_count,
+        })
+        .collect();
+    let api_hadiths: Vec<ApiHadithSearchResult> = hadiths
+        .into_iter()
+        .map(|h| ApiHadithSearchResult {
+            id: h.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+            hadith_number: h.hadith_number,
+            collection_id: h.collection_id,
+            text_ar: h.text_ar,
+            text_en: h.text_en,
+            narrator_text: h.narrator_text,
+            score: None,
+        })
+        .collect();
+
+    Ok(Json(IsnadSearchResponse {
+        narrators: api_narrators,
+        hadiths: api_hadiths,
+        mode: mode.to_string(),
+        total,
+    }))
+}
+
+/// For strict mode: keep only hadiths where consecutive narrator pairs have heard_from edges.
+async fn filter_strict_chains(
+    db: &surrealdb::Surreal<crate::db::Db>,
+    narrators: &[Narrator],
+    hadiths: Vec<HadithSearchResult>,
+) -> anyhow::Result<Vec<HadithSearchResult>> {
+    #[derive(Debug, SurrealValue)]
+    struct CountRow {
+        c: i64,
+    }
+
+    let mut result = Vec::new();
+    for h in hadiths {
+        let hadith_rid = h.id.clone().unwrap();
+        let mut valid = true;
+        // Check consecutive pairs: narrators[0] heard from narrators[1], etc.
+        for pair in narrators.windows(2) {
+            let student = pair[0].id.as_ref().unwrap();
+            let teacher = pair[1].id.as_ref().unwrap();
+            let mut res = db
+                .query(
+                    "SELECT count() AS c FROM heard_from \
+                     WHERE in = $student AND out = $teacher AND hadith_ref = $hid \
+                     GROUP ALL",
+                )
+                .bind(("student", student.clone()))
+                .bind(("teacher", teacher.clone()))
+                .bind(("hid", hadith_rid.clone()))
+                .await?;
+            let row: Option<CountRow> = res.take(0).unwrap_or(None);
+            if row.map(|r| r.c).unwrap_or(0) == 0 {
+                valid = false;
+                break;
+            }
+        }
+        if valid {
+            result.push(h);
+        }
+    }
+    Ok(result)
+}
+
+pub async fn common_narrators(
+    State(state): State<AppState>,
+    Query(params): Query<CommonNarratorsParams>,
+) -> Result<impl IntoResponse, StatusCode> {
+    // 1. Resolve both narrators
+    let nrid1 = rid("narrator", &params.a);
+    let nrid2 = rid("narrator", &params.b);
+
+    let mut res = state
+        .db
+        .query("SELECT * FROM $rid1; SELECT * FROM $rid2")
+        .bind(("rid1", nrid1))
+        .bind(("rid2", nrid2))
+        .await
+        .map_err(|e| {
+            tracing::error!("Common narrators lookup failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let n1: Option<Narrator> = res.take(0).unwrap_or(None);
+    let n2: Option<Narrator> = res.take(1).unwrap_or(None);
+    let n1 = n1.ok_or(StatusCode::NOT_FOUND)?;
+    let n2 = n2.ok_or(StatusCode::NOT_FOUND)?;
+
+    let nid1 = n1.id.as_ref().unwrap().clone();
+    let nid2 = n2.id.as_ref().unwrap().clone();
+
+    // 2. Get hadith sets for each narrator
+    #[derive(Debug, SurrealValue)]
+    struct OutId {
+        out: RecordId,
+    }
+    let mut res = state
+        .db
+        .query(
+            "SELECT out FROM narrates WHERE in = $nid1; \
+             SELECT out FROM narrates WHERE in = $nid2",
+        )
+        .bind(("nid1", nid1.clone()))
+        .bind(("nid2", nid2.clone()))
+        .await
+        .map_err(|e| {
+            tracing::error!("Common narrators hadith query failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let set1: Vec<OutId> = res.take(0).unwrap_or_default();
+    let set2: Vec<OutId> = res.take(1).unwrap_or_default();
+
+    let ids2: HashSet<String> = set2.iter().map(|r| record_id_string(&r.out)).collect();
+    let shared: Vec<RecordId> = set1
+        .into_iter()
+        .filter(|r| ids2.contains(&record_id_string(&r.out)))
+        .map(|r| r.out)
+        .collect();
+
+    if shared.is_empty() {
+        let api_n1 = ApiNarratorSearchResult {
+            id: n1.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+            name_ar: n1.name_ar.clone(),
+            name_en: n1.name_en.clone(),
+            generation: n1.generation.clone(),
+            hadith_count: n1.hadith_count,
+        };
+        let api_n2 = ApiNarratorSearchResult {
+            id: n2.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+            name_ar: n2.name_ar.clone(),
+            name_en: n2.name_en.clone(),
+            generation: n2.generation.clone(),
+            hadith_count: n2.hadith_count,
+        };
+        return Ok(Json(CommonNarratorsResponse {
+            narrator1: api_n1,
+            narrator2: api_n2,
+            common: vec![],
+        }));
+    }
+
+    // 3. Find narrators who also narrate the shared hadiths (excluding the two inputs)
+    let mut res = state
+        .db
+        .query(
+            "SELECT in AS narrator FROM narrates \
+             WHERE out IN $shared AND in != $nid1 AND in != $nid2",
+        )
+        .bind(("shared", shared))
+        .bind(("nid1", nid1))
+        .bind(("nid2", nid2))
+        .await
+        .map_err(|e| {
+            tracing::error!("Common narrators query failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    #[derive(Debug, SurrealValue)]
+    struct NarratorRef {
+        narrator: RecordId,
+    }
+    let refs: Vec<NarratorRef> = res.take(0).unwrap_or_default();
+
+    // Deduplicate
+    let mut seen = HashSet::new();
+    let unique_ids: Vec<RecordId> = refs
+        .into_iter()
+        .filter(|r| seen.insert(record_id_string(&r.narrator)))
+        .map(|r| r.narrator)
+        .collect();
+
+    // Fetch narrator details
+    let common: Vec<NarratorWithCount> = if unique_ids.is_empty() {
+        vec![]
+    } else {
+        let mut res = state
+            .db
+            .query("SELECT * FROM narrator WHERE id IN $ids ORDER BY hadith_count DESC LIMIT 50")
+            .bind(("ids", unique_ids))
+            .await
+            .map_err(|e| {
+                tracing::error!("Common narrators detail query failed: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+        res.take(0).unwrap_or_default()
+    };
+
+    let api_n1 = ApiNarratorSearchResult {
+        id: n1.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+        name_ar: n1.name_ar.clone(),
+        name_en: n1.name_en.clone(),
+        generation: n1.generation.clone(),
+        hadith_count: n1.hadith_count,
+    };
+    let api_n2 = ApiNarratorSearchResult {
+        id: n2.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+        name_ar: n2.name_ar.clone(),
+        name_en: n2.name_en.clone(),
+        generation: n2.generation.clone(),
+        hadith_count: n2.hadith_count,
+    };
+    let api_common: Vec<ApiNarratorWithCount> = common
+        .into_iter()
+        .map(|n| ApiNarratorWithCount {
+            id: n.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+            name_ar: n.name_ar,
+            name_en: n.name_en,
+            generation: n.generation,
+            bio: n.bio,
+            kunya: n.kunya,
+            death_year: n.death_year,
+            hadith_count: n.hadith_count.unwrap_or(0),
+        })
+        .collect();
+
+    Ok(Json(CommonNarratorsResponse {
+        narrator1: api_n1,
+        narrator2: api_n2,
+        common: api_common,
+    }))
 }
 
 // ── Unified Quran & Sunnah endpoints ──

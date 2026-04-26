@@ -587,3 +587,18 @@ export interface NarratorBookRef {
   entry_num: number | null;
   book_name: string;
 }
+
+// ── Isnad Search ──
+
+export interface IsnadSearchResponse {
+  narrators: ApiNarratorSearchResult[];
+  hadiths: ApiHadithSearchResult[];
+  mode: string;
+  total: number;
+}
+
+export interface CommonNarratorsResponse {
+  narrator1: ApiNarratorSearchResult;
+  narrator2: ApiNarratorSearchResult;
+  common: ApiNarratorWithCount[];
+}

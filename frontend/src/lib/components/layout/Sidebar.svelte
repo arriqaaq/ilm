@@ -48,6 +48,7 @@
       items: [
         { path: '/hadiths', label: 'Hadiths', icon: '☰' },
         { path: '/narrators', label: 'Narrators', icon: '◎' },
+        { path: '/search/isnad', label: 'Isnad Search', icon: '⛓' },
         { path: '/books', label: 'Books', icon: '▤' },
         { path: '/families', label: 'Families', icon: '⬡', advanced: true },
         { path: '/diff', label: 'Diff', icon: '⇄' },

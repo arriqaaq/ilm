@@ -230,7 +230,24 @@ impl OllamaClient {
                 };
                 tools::narrator_hadiths(db, &narrator, 10).await?
             }
-            QueryIntent::ChainBetween { name1, name2 } => {
+            QueryIntent::IsnadSearch { narrators, ordered } => {
+                let mut resolved = Vec::new();
+                for name in narrators {
+                    match tools::resolve_narrator(db, name).await? {
+                        Some(n) => resolved.push(n),
+                        None => {
+                            tracing::info!(
+                                "Narrator '{name}' not found in isnad search, falling back"
+                            );
+                            return self
+                                .fallback_semantic(db, embedder, question, model_override, scope)
+                                .await;
+                        }
+                    }
+                }
+                tools::isnad_search_tool(db, &resolved, *ordered, 10).await?
+            }
+            QueryIntent::CommonNarrators { name1, name2 } => {
                 let Some(n1) = tools::resolve_narrator(db, name1).await? else {
                     return self
                         .fallback_semantic(db, embedder, question, model_override, scope)
@@ -241,7 +258,7 @@ impl OllamaClient {
                         .fallback_semantic(db, embedder, question, model_override, scope)
                         .await;
                 };
-                tools::chain_between(db, &n1, &n2).await?
+                tools::common_narrators_tool(db, &n1, &n2).await?
             }
             QueryIntent::ContentQuery => unreachable!(),
         };

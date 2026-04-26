@@ -1,5 +1,7 @@
+#[cfg(feature = "advanced")]
+use hadith::analysis;
 use hadith::embed::{EmbedModel, RerankBackendKind};
-use hadith::{analysis, db, embed, ingest, quran, web};
+use hadith::{db, embed, ingest, quran, web};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -276,6 +278,7 @@ async fn async_main() -> Result<()> {
 
             tracing::info!("Ingestion complete");
         }
+        #[allow(unused_variables)]
         Commands::Analyze {
             db_path,
             families,
@@ -286,6 +289,7 @@ async fn async_main() -> Result<()> {
             let db = db::connect(&db_path).await?;
             db::init_schema(&db, embed_model.dimension()).await?;
 
+            #[allow(unused_mut)]
             let mut did_something = false;
 
             if families {

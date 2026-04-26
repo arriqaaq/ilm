@@ -124,6 +124,18 @@ pub async fn serve(
             axum::routing::get(handlers::narrator_detail).put(handlers::update_narrator),
         )
         .route(
+            "/api/narrators/autocomplete",
+            axum::routing::get(handlers::narrator_autocomplete),
+        )
+        .route(
+            "/api/narrators/common",
+            axum::routing::get(handlers::common_narrators),
+        )
+        .route(
+            "/api/isnad/search",
+            axum::routing::post(handlers::isnad_search),
+        )
+        .route(
             "/api/chain/{hadith_id}",
             axum::routing::get(handlers::chain_graph_data),
         )

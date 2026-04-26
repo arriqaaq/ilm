@@ -21,7 +21,11 @@ pub enum QueryIntent {
     NarratorHadiths {
         name: String,
     },
-    ChainBetween {
+    IsnadSearch {
+        narrators: Vec<String>,
+        ordered: bool,
+    },
+    CommonNarrators {
         name1: String,
         name2: String,
     },
@@ -37,7 +41,8 @@ Categories:\n\
 - {\"intent\":\"narrator_teachers\",\"name\":\"...\"} - Who were someone's teachers / who did they hear from\n\
 - {\"intent\":\"narrator_students\",\"name\":\"...\"} - Who were someone's students / who heard from them\n\
 - {\"intent\":\"narrator_hadiths\",\"name\":\"...\"} - Show hadiths narrated by someone\n\
-- {\"intent\":\"chain_between\",\"name1\":\"...\",\"name2\":\"...\"} - Transmission chain between two narrators\n\
+- {\"intent\":\"isnad_search\",\"narrators\":[\"name1\",\"name2\",...],\"ordered\":false} - Find hadiths narrated through ALL these specific narrators (2 or more). Use for multi-narrator intersection (\"hadiths from Abu Huraira and Nafi\"), transmission chain queries (\"chain between X and Y\"), and ordered chains (\"A from B from C\"). Set ordered=true when the user specifies a sequence/chain order.\n\
+- {\"intent\":\"common_narrators\",\"name1\":\"...\",\"name2\":\"...\"} - Find narrators common to two people's chains\n\
 - {\"intent\":\"content\"} - General questions about hadith content, meaning, rulings, Quran\n\
 \n\
 Rules:\n\
@@ -100,13 +105,29 @@ impl OllamaClient {
                     QueryIntent::NarratorHadiths { name }
                 }
             }
-            "chain_between" => {
+            "isnad_search" => {
+                let narrators: Vec<String> = json["narrators"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let ordered = json["ordered"].as_bool().unwrap_or(false);
+                if narrators.len() < 2 {
+                    QueryIntent::ContentQuery
+                } else {
+                    QueryIntent::IsnadSearch { narrators, ordered }
+                }
+            }
+            "common_narrators" => {
                 let name1 = json["name1"].as_str().unwrap_or("").to_string();
                 let name2 = json["name2"].as_str().unwrap_or("").to_string();
                 if name1.is_empty() || name2.is_empty() {
                     QueryIntent::ContentQuery
                 } else {
-                    QueryIntent::ChainBetween { name1, name2 }
+                    QueryIntent::CommonNarrators { name1, name2 }
                 }
             }
             _ => QueryIntent::ContentQuery,
