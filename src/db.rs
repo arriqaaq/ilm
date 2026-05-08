@@ -96,9 +96,6 @@ DEFINE FIELD IF NOT EXISTS family ON isnad_analysis TYPE record<hadith_family>;
 DEFINE FIELD IF NOT EXISTS breadth_class ON isnad_analysis TYPE string;
 DEFINE FIELD IF NOT EXISTS min_breadth ON isnad_analysis TYPE int;
 DEFINE FIELD IF NOT EXISTS bottleneck_tabaqah ON isnad_analysis TYPE option<int>;
-DEFINE FIELD IF NOT EXISTS sahabi_count ON isnad_analysis TYPE int;
-DEFINE FIELD IF NOT EXISTS mutabaat_count ON isnad_analysis TYPE int;
-DEFINE FIELD IF NOT EXISTS shawahid_count ON isnad_analysis TYPE int;
 DEFINE FIELD IF NOT EXISTS chain_count ON isnad_analysis TYPE int;
 DEFINE FIELD IF NOT EXISTS ilal_flags ON isnad_analysis TYPE option<array<string>>;
 DEFINE INDEX IF NOT EXISTS isnad_family_idx ON TABLE isnad_analysis FIELDS family UNIQUE;
@@ -106,7 +103,6 @@ DEFINE INDEX IF NOT EXISTS isnad_family_idx ON TABLE isnad_analysis FIELDS famil
 DEFINE TABLE IF NOT EXISTS chain_assessment SCHEMAFULL;
 DEFINE FIELD IF NOT EXISTS family ON chain_assessment TYPE record<hadith_family>;
 DEFINE FIELD IF NOT EXISTS variant ON chain_assessment TYPE record<hadith>;
-DEFINE FIELD IF NOT EXISTS continuity ON chain_assessment TYPE string;
 DEFINE FIELD IF NOT EXISTS narrator_count ON chain_assessment TYPE int;
 DEFINE FIELD IF NOT EXISTS has_chronology_conflict ON chain_assessment TYPE bool;
 DEFINE FIELD IF NOT EXISTS narrator_ids ON chain_assessment TYPE option<array<string>>;

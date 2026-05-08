@@ -82,7 +82,7 @@
     <div class="methodology">
       <h3>Methodology</h3>
       <p>This tool displays <strong>structural analysis</strong> of transmission chains and <strong>scholarly assessments</strong> of narrators from classical rijal works. No algorithmic grades are computed &mdash; only observable facts about the chain and what scholars actually said.</p>
-      <p>Each chain is analyzed for continuity (muttasil/munqati'/mursal). Families are classified by transmission breadth (mutawatir/mashhur/'aziz/gharib). Corroboration counts (mutaba'at and shawahid) show how many independent paths exist.</p>
+      <p>Each chain is listed with its narrators and any chronology conflicts. Families are classified by transmission breadth (mutawatir/mashhur/'aziz/gharib) using the minimum number of narrators at any tabaqah. Pivot narrators (high bundle coverage) are surfaced as madar al-isnad candidates.</p>
       <p>Narrator assessments are sourced from:</p>
       <div class="outcome-legend">
         <div class="outcome-item"><Badge text="Taqrib" variant="accent" /> Ibn Hajar al-Asqalani, <em>Taqrib al-Tahdhib</em></div>

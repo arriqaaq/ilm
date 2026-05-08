@@ -962,9 +962,6 @@ pub async fn mustalah_family_analysis(
         breadth_class: Option<String>,
         min_breadth: Option<i64>,
         bottleneck_tabaqah: Option<i64>,
-        sahabi_count: Option<i64>,
-        mutabaat_count: Option<i64>,
-        shawahid_count: Option<i64>,
         chain_count: Option<i64>,
         ilal_flags: Option<Vec<String>>,
     }
@@ -972,7 +969,6 @@ pub async fn mustalah_family_analysis(
     #[derive(Debug, SurrealValue, serde::Serialize)]
     struct ChainRow {
         variant: Option<RecordId>,
-        continuity: Option<String>,
         narrator_count: Option<i64>,
         has_chronology_conflict: Option<bool>,
         narrator_ids: Option<Vec<String>>,
@@ -1008,7 +1004,6 @@ pub async fn mustalah_family_analysis(
         .map(|c| {
             serde_json::json!({
                 "variant_id": c.variant.as_ref().map(record_id_key_string).unwrap_or_default(),
-                "continuity": c.continuity,
                 "narrator_count": c.narrator_count,
                 "has_chronology_conflict": c.has_chronology_conflict,
                 "narrator_ids": c.narrator_ids,

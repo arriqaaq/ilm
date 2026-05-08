@@ -43,25 +43,22 @@ pub fn export_markdown(result: &FamilyMustalahResult) -> String {
 
     // Chain assessments table
     md.push_str("## Chain Assessments\n\n");
-    md.push_str("| Variant | Continuity | Narrators |\n");
-    md.push_str("|---------|-----------|----------|\n");
+    md.push_str("| Variant | Narrators | Chronology |\n");
+    md.push_str("|---------|-----------|------------|\n");
 
     for c in &result.chains {
         md.push_str(&format!(
-            "| {} | {:?} | {} |\n",
-            c.variant_id, c.continuity, c.narrator_count,
+            "| {} | {} | {} |\n",
+            c.variant_id,
+            c.narrator_count,
+            if c.has_chronology_conflict {
+                "conflict"
+            } else {
+                "ok"
+            },
         ));
     }
     md.push('\n');
-
-    // Corroboration
-    md.push_str("## Corroboration\n\n");
-    md.push_str(&format!(
-        "- Sahabah: {}\n- Mutaba'at: {}\n- Shawahid: {}\n\n",
-        result.corroboration.sahabi_count,
-        result.corroboration.mutabaat_count,
-        result.corroboration.shawahid_count,
-    ));
 
     // Pivots
     if !result.pivots.is_empty() {

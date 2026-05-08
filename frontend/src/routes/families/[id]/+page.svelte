@@ -51,8 +51,6 @@
     if (!value) return null;
     const map: Record<string, string> = {
       mutawatir: 'mutawatir', mashhur: 'mashhur', aziz: 'aziz', gharib: 'gharib',
-      muttasil: 'muttasil', munqati: 'munqati', mursal: 'mursal',
-      muallaq: 'muallaq', mudal: 'mudal',
     };
     return map[value] ?? null;
   }
@@ -134,16 +132,6 @@
               <div class="detail">Min {a.min_breadth} narrator(s) at tabaqah {a.bottleneck_tabaqah ?? '?'}</div>
             </div>
             <div class="m-card">
-              <div class="label">Corroboration</div>
-              <div class="value">{a.mutabaat_count} / {a.shawahid_count}</div>
-              <div class="detail">Mutaba'at / Shawahid</div>
-            </div>
-            <div class="m-card">
-              <div class="label">Sahabah</div>
-              <div class="value">{a.sahabi_count}</div>
-              <div class="detail">Distinct companion narrator(s)</div>
-            </div>
-            <div class="m-card">
               <div class="label">Chains</div>
               <div class="value">{a.chain_count}</div>
               <div class="detail">Transmission chain(s)</div>
@@ -174,7 +162,6 @@
                   <div class="chain-info">
                     <a href="/hadiths/{c.variant_id}" onclick={(e: MouseEvent) => e.stopPropagation()}>{c.variant_id}</a>
                     <span class="chain-meta">
-                      {#if glossaryId(c.continuity)}<GlossaryTooltip termId={glossaryId(c.continuity) ?? ''}><Badge text={c.continuity} variant={c.continuity === 'muttasil' ? 'success' : 'warning'} /></GlossaryTooltip>{:else}<Badge text={c.continuity} variant={c.continuity === 'muttasil' ? 'success' : 'warning'} />{/if}
                       <span class="narrator-count">{c.narrator_count} narrators</span>
                       {#if c.has_chronology_conflict}<Badge text="chronology issue" variant="warning" />{/if}
                     </span>

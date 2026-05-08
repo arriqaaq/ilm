@@ -155,7 +155,6 @@ export interface GlossaryTerm {
 
 export interface ChainAssessment {
   variant_id: string;
-  continuity: string;
   narrator_count: number;
   has_chronology_conflict: boolean;
   narrator_ids: string[] | null;
@@ -165,9 +164,6 @@ export interface IsnadAnalysis {
   breadth_class: string | null;
   min_breadth: number | null;
   bottleneck_tabaqah: number | null;
-  sahabi_count: number | null;
-  mutabaat_count: number | null;
-  shawahid_count: number | null;
   chain_count: number | null;
   ilal_flags: string[] | null;
 }
