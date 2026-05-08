@@ -74,7 +74,7 @@
       <RichEditor
         value={content}
         onchange={(v) => { content = v; }}
-        placeholder="Write your thoughts... Type @ to embed ayahs (@2:255), hadiths (@im_1), or narrators"
+        placeholder="Write your thoughts... Type @ to embed ayahs (@2:255), hadiths (@bukhari:1), or narrators"
       />
 
       <div class="editor-toolbar">

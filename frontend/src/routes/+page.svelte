@@ -504,7 +504,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-6);
     opacity: 0;
     animation: fade-in-up 0.8s 0.3s ease forwards;
   }
@@ -539,8 +539,9 @@
     font-size: 4.5rem;
     color: var(--accent);
     font-weight: 400;
-    line-height: 1;
+    line-height: 1.3;
     opacity: 0.85;
+    padding-bottom: 0.15em;
   }
   .hero-tagline {
     font-family: var(--font-serif);
@@ -549,7 +550,7 @@
     color: var(--text-primary);
     font-weight: 500;
     letter-spacing: -0.2px;
-    margin: 8px 0 0;
+    margin: 0;
   }
 
   /* Description */

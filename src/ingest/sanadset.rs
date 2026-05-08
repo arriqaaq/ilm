@@ -9,6 +9,7 @@ use surrealdb::Surreal;
 use surrealdb::types::{RecordId, SurrealValue};
 
 use crate::db::Db;
+use crate::ingest::books;
 
 pub fn make_progress(len: u64, prefix: &str) -> ProgressBar {
     let pb = ProgressBar::new(len);
@@ -181,30 +182,11 @@ fn resolve_relative(bare: &str, referent_raw: &str) -> Option<String> {
     }
 }
 
-/// Mapping of Arabic book names to short English codes (sunnah.com style).
-const BOOK_CODES: &[(&str, &str)] = &[
-    ("صحيح البخاري", "bukhari"),
-    ("صحيح مسلم", "muslim"),
-    ("سنن أبي داود", "abudawud"),
-    ("سنن النسائى الصغرى", "nasai"),
-    ("جامع الترمذي", "tirmidhi"),
-    ("سنن ابن ماجه", "ibnmajah"),
-];
-
-/// Book slug: returns short English code like "bukhari", or "book_N" for unknown books.
+/// Book slug: returns short English code like "bukhari", or "book_N" for non-canonical books.
 fn book_slug(name: &str, book_number: usize) -> String {
-    let normalized = normalize_arabic(name);
-    for (ar, code) in BOOK_CODES {
-        if normalize_arabic(ar) == normalized {
-            return code.to_string();
-        }
-    }
-    format!("book_{}", book_number)
-}
-
-/// Hadith slug: returns "bukhari:1" style ID.
-fn hadith_slug(book_code: &str, num: i64) -> String {
-    format!("{}:{}", book_code, num)
+    books::by_arabic_name(name)
+        .map(|b| b.code.to_string())
+        .unwrap_or_else(|| format!("book_{}", book_number))
 }
 
 /// Strip all XML-style tags from text (<SANAD>, <NAR>, <MATN>, <IDF>, etc.)
@@ -407,7 +389,7 @@ pub async fn ingest(
             .collect();
 
         let bslug = book_slug(&book_name, books_created.len() + 1);
-        let hslug = hadith_slug(&bslug, hadith_num);
+        let hslug = books::hadith_slug(&bslug, hadith_num);
 
         // Create book if new
         if !books_created.contains(&book_name) {

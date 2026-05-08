@@ -17,6 +17,7 @@ use surrealdb::types::RecordId;
 
 use crate::db::Db;
 use crate::ingest::batch::{Batch, batch_size_from_env};
+use crate::ingest::books::{self, BOOKS};
 use crate::ingest::sanadset::make_progress;
 
 // ── JSON schema (matches scripts/build_semantic_data.py output) ─────────────
@@ -77,11 +78,6 @@ fn rid(table: &str, key: &str) -> RecordId {
 /// Slug for a book: e.g. "book_sb"
 fn book_slug(prefix: &str) -> String {
     format!("book_{}", prefix.to_lowercase())
-}
-
-/// Slug for a hadith: e.g. "sb_1"
-fn hadith_slug(prefix: &str, num: i64) -> String {
-    format!("{}_{}", prefix.to_lowercase(), num)
 }
 
 /// Slug for a narrator: e.g. "hn_04698"
@@ -170,17 +166,12 @@ fn fix_english_text(text: &str) -> String {
         .replace("Peace be upon him", "ﷺ")
 }
 
-/// Convert a SemanticHadith hadith ID like "SB-HD0001" to our slug format "sb_1".
+/// Convert a SemanticHadith hadith ID like "SB-HD0001" to our slug "bukhari:1".
 fn parse_hadith_ref(sem_id: &str) -> Option<String> {
-    // SB-HD0001 → sb_1
-    let parts: Vec<&str> = sem_id.split("-HD").collect();
-    if parts.len() == 2 {
-        let prefix = parts[0].to_lowercase();
-        let num: i64 = parts[1].parse().ok()?;
-        Some(format!("{}_{}", prefix, num))
-    } else {
-        None
-    }
+    let (prefix, rest) = sem_id.split_once("-HD")?;
+    let num: i64 = rest.parse().ok()?;
+    let book = books::by_prefix(prefix)?;
+    Some(books::hadith_slug(book.code, num))
 }
 
 /// Main ingestion from SemanticHadith JSON.
@@ -234,30 +225,19 @@ pub async fn ingest(
 
     // ── Create books ───────────────────────────────────────────────────────
 
-    // Fixed book order for deterministic collection_id assignment
-    const BOOK_ORDER: &[(&str, &str)] = &[
-        ("SB", "صحيح البخاري"),
-        ("SM", "صحيح مسلم"),
-        ("SD", "سنن أبي داود"),
-        ("JT", "جامع الترمذي"),
-        ("SN", "سنن النسائى الصغرى"),
-        ("IM", "سنن ابن ماجه"),
-    ];
-
     let mut books_created: HashSet<String> = HashSet::new();
     let mut book_num_map: HashMap<String, i64> = HashMap::new();
-    for (i, (prefix, arabic_name)) in BOOK_ORDER.iter().enumerate() {
-        let bslug = book_slug(prefix);
-        let book_num = (i + 1) as i64;
+    for book in BOOKS {
+        let bslug = book_slug(book.prefix);
         db.query(
             "CREATE $rid CONTENT { collection_id: $collection_id, name_en: $name, name_ar: $name }",
         )
         .bind(("rid", rid("collection", &bslug)))
-        .bind(("collection_id", book_num))
-        .bind(("name", arabic_name.to_string()))
+        .bind(("collection_id", book.collection_id))
+        .bind(("name", book.arabic_name.to_string()))
         .await?;
-        book_num_map.insert(prefix.to_string(), book_num);
-        books_created.insert(prefix.to_string());
+        book_num_map.insert(book.prefix.to_string(), book.collection_id);
+        books_created.insert(book.prefix.to_string());
     }
 
     // ── Create narrators (all at once, with bio) ───────────────────────────
@@ -385,11 +365,12 @@ pub async fn ingest(
     let mut pending_slugs: HashSet<String> = HashSet::with_capacity(pending.len());
     for (_hid, hadith) in &pending {
         let ref_no = hadith.ref_no.unwrap();
-        let base = hadith_slug(&hadith.book, ref_no);
+        let book = books::by_prefix(&hadith.book).expect("unknown book prefix");
+        let base = books::hadith_slug(book.code, ref_no);
         let subs = split_tahwil_chain(&hadith.chain, &data.narrators);
         if subs.len() > 1 {
             for vi in 0..subs.len() {
-                pending_slugs.insert(format!("{}_v{}", base, vi + 1));
+                pending_slugs.insert(books::variant_slug(&base, vi + 1));
             }
         } else {
             pending_slugs.insert(base);
@@ -406,7 +387,8 @@ pub async fn ingest(
         for (_hid, hadith) in batch {
             let ref_no = hadith.ref_no.unwrap();
             let bslug = book_slug(&hadith.book);
-            let base_hslug = hadith_slug(&hadith.book, ref_no);
+            let book = books::by_prefix(&hadith.book).expect("unknown book prefix");
+            let base_hslug = books::hadith_slug(book.code, ref_no);
             let text_ar = hadith.text_ar.as_deref().unwrap_or("");
             let text_en = hadith.text_en.as_deref().map(fix_english_text);
             let sub_chains = split_tahwil_chain(&hadith.chain, &data.narrators);
@@ -424,7 +406,7 @@ pub async fn ingest(
 
             for (vi, sub_chain) in sub_chains.iter().enumerate() {
                 let hslug = if is_tahwil {
-                    format!("{}_v{}", base_hslug, vi + 1)
+                    books::variant_slug(&base_hslug, vi + 1)
                 } else {
                     base_hslug.clone()
                 };
@@ -518,7 +500,7 @@ pub async fn ingest(
 
             // similar_to edges (anchored on the first sub-chain variant).
             let first_hslug = if is_tahwil {
-                format!("{}_v1", base_hslug)
+                books::variant_slug(&base_hslug, 1)
             } else {
                 base_hslug.clone()
             };
@@ -530,10 +512,10 @@ pub async fn ingest(
                         continue;
                     };
                     // Skip dangling refs to hadiths not in this ingest scope.
-                    // Tahwil targets are checked by base form (sim_ref has no _vN
+                    // Tahwil targets are checked by base form (sim_ref has no :vN
                     // suffix); accept if any variant or the base exists.
                     let exists = pending_slugs.contains(&sim_ref)
-                        || pending_slugs.contains(&format!("{sim_ref}_v1"));
+                        || pending_slugs.contains(&books::variant_slug(&sim_ref, 1));
                     if !exists {
                         continue;
                     }

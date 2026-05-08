@@ -32,8 +32,10 @@ pub struct AppState {
 
 pub struct ServeConfig {
     pub port: u16,
-    pub llm: LlmConfig,
-    pub embed: EmbedConfig,
+    /// `None` = lite mode, no LLM provider (Ask/classification/LLM-rerank disabled).
+    pub llm: Option<LlmConfig>,
+    /// `None` = lite mode, no embedder (text-only search; no semantic/hybrid).
+    pub embed: Option<EmbedConfig>,
     pub rerank_backend: Option<RerankBackendKind>,
     pub reranker_model: Option<String>,
     pub pageindex_dir: Option<String>,
@@ -42,16 +44,42 @@ pub struct ServeConfig {
 pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
     let advanced_enabled = cfg!(feature = "advanced");
 
-    let embedder = if advanced_enabled
-        || cfg.embed.provider != crate::embedding::EmbedProviderKind::Fastembed
-    {
-        Some(build_embedder(&cfg.embed)?)
-    } else {
-        tracing::info!("Advanced features disabled — skipping embedding model");
-        None
+    let embedder = match cfg.embed {
+        Some(ref ecfg)
+            if advanced_enabled
+                || ecfg.provider != crate::embedding::EmbedProviderKind::Fastembed =>
+        {
+            tracing::info!(
+                "Embeddings: provider={} model={}",
+                ecfg.provider.as_str(),
+                ecfg.model
+            );
+            Some(build_embedder(ecfg)?)
+        }
+        Some(_) => {
+            tracing::info!("Advanced features disabled — skipping fastembed embedder");
+            None
+        }
+        None => {
+            tracing::info!("No --embed-model — running in text-only (lite) mode");
+            None
+        }
     };
 
-    let llm_client = Arc::clone(&build_provider(&cfg.llm)?);
+    let llm_client: Option<Arc<dyn LlmProvider>> = match cfg.llm {
+        Some(ref lcfg) => {
+            tracing::info!(
+                "LLM: provider={} model={}",
+                lcfg.provider.as_str(),
+                lcfg.model
+            );
+            Some(build_provider(lcfg)?)
+        }
+        None => {
+            tracing::info!("No --llm-model — Ask, classification, and LLM rerank disabled");
+            None
+        }
+    };
 
     let reranker = match cfg.rerank_backend {
         #[cfg(feature = "advanced")]
@@ -61,19 +89,25 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
                 crate::embed::FastembedReranker::new()?,
             )))
         }
-        Some(RerankBackendKind::Llm) => {
-            tracing::info!(
-                "Using LLM reranker via {} (model: {})",
-                llm_client.provider_name(),
-                cfg.reranker_model
-                    .as_deref()
-                    .unwrap_or(llm_client.default_model())
-            );
-            Some(Arc::new(RerankerBackend::Llm {
-                provider: Arc::clone(&llm_client),
-                model: cfg.reranker_model,
-            }))
-        }
+        Some(RerankBackendKind::Llm) => match llm_client.as_ref() {
+            Some(provider) => {
+                tracing::info!(
+                    "Using LLM reranker via {} (model: {})",
+                    provider.provider_name(),
+                    cfg.reranker_model
+                        .as_deref()
+                        .unwrap_or(provider.default_model())
+                );
+                Some(Arc::new(RerankerBackend::Llm {
+                    provider: Arc::clone(provider),
+                    model: cfg.reranker_model,
+                }))
+            }
+            None => {
+                tracing::warn!("--reranker llm requires an --llm-model; reranker disabled");
+                None
+            }
+        },
         #[cfg(not(feature = "advanced"))]
         Some(RerankBackendKind::Fastembed) => {
             tracing::warn!("Fastembed reranker requires advanced features — ignoring");
@@ -82,7 +116,7 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
         None => None,
     };
 
-    let llm = Some(llm_client);
+    let llm = llm_client;
 
     let book_trees = if let Some(dir) = cfg.pageindex_dir {
         let path = std::path::Path::new(&dir);

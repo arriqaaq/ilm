@@ -183,14 +183,18 @@ enum Commands {
         db_path: String,
 
         // ── LLM provider ──────────────────────────────────────────────
+        // Both --llm-model and --embed-model are OPTIONAL. Omit them for
+        // "lite" mode: text-only search, no Ask, no embeddings, no LLM.
+        // Useful for browsing data without setting up Ollama/OpenAI/etc.
         /// LLM provider for chat/classification/reranking.
+        /// Ignored unless --llm-model is also set.
         #[arg(long, env = "LLM_PROVIDER", default_value = "ollama", value_enum)]
         llm_provider: LlmProviderKind,
 
         /// LLM model name. Provider-specific (e.g. `llama3.2`, `gpt-4o-mini`,
-        /// `claude-opus-4-7`).
+        /// `claude-opus-4-7`). Omit to disable Ask / classification / LLM rerank.
         #[arg(long, env = "LLM_MODEL")]
-        llm_model: String,
+        llm_model: Option<String>,
 
         /// LLM base URL — Ollama only. Defaults to http://localhost:11434.
         #[arg(long, env = "LLM_BASE_URL")]
@@ -201,14 +205,15 @@ enum Commands {
         llm_api_key: Option<String>,
 
         // ── Embedding provider ────────────────────────────────────────
-        /// Embedding provider.
+        /// Embedding provider. Ignored unless --embed-model is also set.
         #[arg(long, env = "EMBED_PROVIDER", default_value = "fastembed", value_enum)]
         embed_provider: EmbedProviderKind,
 
         /// Embedding model name. fastembed: `bge-m3`/`e5-small`. openai:
         /// `text-embedding-3-small`/`-large`. ollama: any embedding model.
-        #[arg(long, env = "EMBED_MODEL", default_value = "e5-small")]
-        embed_model: String,
+        /// Omit to disable embeddings (text-only search; no semantic/hybrid).
+        #[arg(long, env = "EMBED_MODEL")]
+        embed_model: Option<String>,
 
         /// Embedding base URL — Ollama only.
         #[arg(long, env = "EMBED_BASE_URL")]
@@ -591,34 +596,36 @@ async fn async_main() -> Result<()> {
         } => {
             let db = db::connect(&db_path).await?;
 
-            let embed_cfg = EmbedConfig {
+            // Embedding config is OPTIONAL. Omit --embed-model for lite mode
+            // (text-only search). When set, build the matching `EmbedConfig`.
+            let embed_cfg: Option<EmbedConfig> = embed_model.map(|model| EmbedConfig {
                 provider: embed_provider,
-                model: embed_model,
+                model,
                 base_url: embed_base_url,
                 api_key: embed_api_key,
                 dimensions: embed_dimensions,
-            };
+            });
 
-            // The DB schema has a fixed embedding dim; for the schema init we
-            // need a number up front. For fastembed we know it from the model
-            // name; for openai/ollama we either trust the explicit
-            // --embed-dimensions or fall back to a sensible default that the
-            // dimension check will confirm.
-            let dim = match (embed_cfg.provider, embed_cfg.dimensions) {
-                (_, Some(d)) => d,
-                (EmbedProviderKind::Fastembed, None) => match embed_cfg.model.as_str() {
-                    "bge-m3" => 1024,
-                    "e5-small" | _ => 384,
-                },
-                (EmbedProviderKind::Openai, None) => match embed_cfg.model.as_str() {
-                    "text-embedding-3-large" => 3072,
-                    _ => 1536,
-                },
-                (EmbedProviderKind::Ollama, None) => {
-                    anyhow::bail!(
+            // The DB schema needs a fixed embedding dim. With no embedder
+            // configured we still default to the lite-mode E5-small dim (384)
+            // — same as the old behaviour, lets text-only search work over
+            // databases that may or may not contain embeddings.
+            let dim = match embed_cfg.as_ref() {
+                None => FastembedModelKind::default().dimension(),
+                Some(cfg) => match (cfg.provider, cfg.dimensions) {
+                    (_, Some(d)) => d,
+                    (EmbedProviderKind::Fastembed, None) => match cfg.model.as_str() {
+                        "bge-m3" => 1024,
+                        _ => 384,
+                    },
+                    (EmbedProviderKind::Openai, None) => match cfg.model.as_str() {
+                        "text-embedding-3-large" => 3072,
+                        _ => 1536,
+                    },
+                    (EmbedProviderKind::Ollama, None) => anyhow::bail!(
                         "--embed-dimensions / EMBED_DIMENSIONS is required when --embed-provider=ollama"
-                    )
-                }
+                    ),
+                },
             };
 
             db::init_schema(&db, dim).await?;
@@ -632,12 +639,14 @@ async fn async_main() -> Result<()> {
             db::init_notebook_schema(&db).await?;
             quran::audio::init_reciters(&db).await?;
 
-            let llm_cfg = LlmConfig {
+            // LLM config is OPTIONAL. Omit --llm-model for lite mode
+            // (no Ask, no classification, no LLM rerank).
+            let llm_cfg: Option<LlmConfig> = llm_model.map(|model| LlmConfig {
                 provider: llm_provider,
-                model: llm_model,
+                model,
                 base_url: llm_base_url,
                 api_key: llm_api_key,
-            };
+            });
 
             let serve_cfg = ServeConfig {
                 port,

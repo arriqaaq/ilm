@@ -44,8 +44,8 @@
       return;
     }
 
-    // Hadith pattern: any word containing underscore or starting with letter then _ (actual DB IDs like im_1, sb_123)
-    if (/^[a-z]{2,}_\d/.test(q)) {
+    // Hadith pattern: code:number (e.g. bukhari:1, ibnmajah:5)
+    if (/^[a-z]+:\d/.test(q)) {
       matchType = 'hadith';
       previewLoading = true;
       getHadith(q).then(res => {
@@ -114,7 +114,7 @@
   {#if matchType === 'hint'}
     <div class="mention-hint">
       <div><code>@2:255</code> — Quran ayah</div>
-      <div><code>@im_1</code> — Hadith (by ID)</div>
+      <div><code>@bukhari:1</code> — Hadith (by ID)</div>
       <div><code>@name</code> — Narrator (Arabic)</div>
       <div>URLs are auto-detected</div>
     </div>
