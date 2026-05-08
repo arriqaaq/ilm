@@ -58,7 +58,7 @@
     margin-top: 12px;
   }
   .surah-name-ar {
-    font-family: 'Amiri Quran', 'Amiri', 'Noto Naskh Arabic', serif;
+    font-family: var(--font-arabic-text);
     font-size: 4rem;
     color: var(--accent);
     line-height: 1.6;
@@ -117,7 +117,7 @@
     padding: 28px 0 16px;
   }
   .bismillah-ar {
-    font-family: 'Amiri Quran', 'Amiri', 'Noto Naskh Arabic', serif;
+    font-family: var(--font-arabic-text);
     font-size: 2.2rem;
     color: var(--accent);
     margin-bottom: 8px;

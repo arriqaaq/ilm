@@ -258,7 +258,7 @@
 
   /* English text — matn only, entirely in green bold italic blockquote */
   .text-en {
-    font-family: 'Georgia', 'Palatino Linotype', 'Book Antiqua', serif;
+    font-family: var(--font-serif);
     font-size: 1.1rem;
     line-height: 1.9;
     color: var(--success);

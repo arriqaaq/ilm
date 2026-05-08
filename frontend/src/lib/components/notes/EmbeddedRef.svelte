@@ -187,7 +187,7 @@
     color: var(--text-secondary);
   }
   .hadith-ar {
-    font-family: var(--font-arabic-text, 'Noto Naskh Arabic', serif);
+    font-family: var(--font-arabic-text);
     font-size: 1.05rem;
     line-height: 2.2;
     color: var(--text-primary);
@@ -242,7 +242,7 @@
     border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
   }
   .ayah-ar {
-    font-family: var(--font-arabic-text, 'Noto Naskh Arabic', serif);
+    font-family: var(--font-arabic-text);
     font-size: 1.2rem;
     line-height: 2.4;
     color: var(--text-primary);

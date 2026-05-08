@@ -47,19 +47,20 @@
   .topbar {
     height: var(--topbar-height);
     background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--accent-muted);
+    box-shadow: 0 1px 0 var(--border-subtle);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 var(--space-5);
     flex-shrink: 0;
-    gap: 12px;
+    gap: var(--space-3);
   }
 
   .topbar-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     flex-shrink: 0;
   }
 
@@ -67,8 +68,8 @@
     display: none;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
+    width: var(--btn-height-md);
+    height: var(--btn-height-md);
     border-radius: var(--radius);
     color: var(--text-secondary);
     background: none;
@@ -84,7 +85,7 @@
   .topbar-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3);
     min-width: 0;
     flex: 1;
     justify-content: flex-end;
@@ -95,32 +96,39 @@
     align-items: center;
     background: var(--bg-surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0 12px;
+    border-radius: var(--radius-lg);
+    padding: 0 14px;
     flex: 1;
-    max-width: 320px;
+    max-width: 360px;
     min-width: 0;
-    transition: border-color var(--transition);
+    transition: all var(--transition);
   }
 
   .search-form:focus-within {
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-muted);
   }
 
   .search-icon {
-    color: var(--text-muted);
-    font-size: 1rem;
-    margin-right: 8px;
+    color: var(--accent);
+    font-size: var(--text-base);
+    margin-right: var(--space-2);
     flex-shrink: 0;
+    opacity: 0.85;
   }
 
   .search-input {
     border: none;
     background: transparent;
-    padding: 8px 0;
+    padding: var(--space-2) 0;
     width: 100%;
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
+    font-family: var(--font-serif);
     min-width: 0;
+  }
+  .search-input::placeholder {
+    font-style: italic;
+    color: var(--text-muted);
   }
 
   .search-input:focus {
@@ -128,7 +136,7 @@
   }
 
   @media (max-width: 768px) {
-    .topbar { padding: 0 12px; }
+    .topbar { padding: 0 var(--space-3); }
     .hamburger { display: flex; }
     .search-form { display: none; }
   }

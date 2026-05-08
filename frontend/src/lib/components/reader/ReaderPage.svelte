@@ -14,7 +14,7 @@
 
 <style>
   .reader-page {
-    font-family: var(--font-arabic-text), 'Noto Naskh Arabic', serif;
+    font-family: var(--font-arabic-text);
     font-size: 1.35rem;
     line-height: 2.5;
     color: var(--text-primary);

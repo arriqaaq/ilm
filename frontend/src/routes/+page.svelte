@@ -5,6 +5,7 @@
   import { appConfig } from '$lib/stores/config';
   import { getStats, getQuranStats } from '$lib/api';
   import type { StatsResponse, QuranStatsResponse } from '$lib/types';
+  import Ornament from '$lib/components/common/Ornament.svelte';
 
   let hadithStats: StatsResponse | null = $state(null);
   let quranStats: QuranStatsResponse | null = $state(null);
@@ -37,6 +38,10 @@
   <section class="hero">
     <div class="hero-glow"></div>
     <div class="hero-glow-2"></div>
+
+    <div class="hero-ornament hero-ornament-top">
+      <Ornament variant="divider" size={20} />
+    </div>
 
     <div class="hero-title-group">
       <h1 class="hero-title">
@@ -503,6 +508,18 @@
     opacity: 0;
     animation: fade-in-up 0.8s 0.3s ease forwards;
   }
+
+  .hero-ornament {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 360px;
+    opacity: 0;
+    animation: fade-in-up 0.8s 0.2s ease forwards;
+  }
+  .hero-ornament-top {
+    margin-bottom: 8px;
+  }
   .hero-title {
     display: flex;
     align-items: baseline;
@@ -518,17 +535,20 @@
     line-height: 1;
   }
   .title-ar {
-    font-family: var(--font-arabic);
-    font-size: 4rem;
-    color: var(--text-muted);
+    font-family: var(--font-arabic-text);
+    font-size: 4.5rem;
+    color: var(--accent);
     font-weight: 400;
     line-height: 1;
+    opacity: 0.85;
   }
   .hero-tagline {
+    font-family: var(--font-serif);
     font-size: 1.5rem;
+    font-style: italic;
     color: var(--text-primary);
-    font-weight: 600;
-    letter-spacing: -0.3px;
+    font-weight: 500;
+    letter-spacing: -0.2px;
     margin: 8px 0 0;
   }
 

@@ -360,7 +360,7 @@
     line-height: 1.2;
     color: var(--text-primary);
     margin: 0;
-    font-family: 'Scheherazade New', var(--font-serif), serif;
+    font-family: var(--font-arabic-text);
   }
   .hero-name-secondary {
     font-size: 1.25rem;
@@ -397,7 +397,7 @@
     color: var(--text-muted);
   }
   .known-names {
-    font-family: 'Noto Naskh Arabic', var(--font-arabic-text), serif;
+    font-family: var(--font-arabic-text);
     font-size: 1.05rem;
     color: var(--text-secondary);
   }

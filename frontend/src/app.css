@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Amiri:wght@400;700&family=Amiri+Quran&family=Scheherazade+New:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap');
 
 /* KFGQPC Uthmanic Hafs — same font used by quran.com */
 @font-face {
@@ -10,16 +10,16 @@
 }
 
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
+  --bg-primary: #fdfaf3;
+  --bg-secondary: #f7f1e3;
   --bg-surface: #ffffff;
-  --bg-hover: #f0f1f3;
-  --bg-active: #e8e9ec;
-  --border: #e5e7eb;
-  --border-subtle: #f0f1f3;
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a4a68;
-  --text-muted: #9ca3af;
+  --bg-hover: #f0e8d4;
+  --bg-active: #e8dec5;
+  --border: #e8dcc0;
+  --border-subtle: #f1e8d3;
+  --text-primary: #2a2418;
+  --text-secondary: #5b4a3a;
+  --text-muted: #998c75;
   --accent: #c8a96a;
   --accent-hover: #b09050;
   --accent-muted: rgba(200, 169, 106, 0.1);
@@ -33,13 +33,88 @@
   --warning: #d97706;
   --error: #dc2626;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-arabic: 'UthmanicHafs', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
-  --font-arabic-text: 'Noto Naskh Arabic', 'Traditional Arabic', serif;
-  --font-body: Georgia, 'Times New Roman', serif;
+  --font-arabic: 'UthmanicHafs', 'Amiri', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
+  --font-arabic-text: 'Amiri', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
+  --font-arabic-ui: 'IBM Plex Sans Arabic', 'Noto Naskh Arabic', 'Tahoma', sans-serif;
   --font-mono: 'Menlo', 'Consolas', monospace;
+
+  /* Typography scale (15px base) */
+  --text-2xs: 0.7rem;
+  --text-xs: 0.78rem;
+  --text-sm: 0.85rem;
+  --text-base: 0.95rem;
+  --text-md: 1.05rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.4rem;
+  --text-2xl: 1.6rem;
+  --text-3xl: 2.2rem;
+  --text-display: 4rem;
+
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.9;
+  --leading-arabic: 2.0;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-card-y: var(--space-4);
+  --space-card-x: var(--space-5);
+
+  /* Radius */
   --radius: 8px;
   --radius-lg: 12px;
   --radius-sm: 4px;
+  --radius-xl: 14px;
+  --radius-2xl: 16px;
+  --radius-pill: 999px;
+  --radius-full: 50%;
+
+  /* Icon sizes */
+  --icon-xs: 12px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --icon-xl: 32px;
+
+  /* Button tokens */
+  --btn-height-sm: 28px;
+  --btn-height-md: 36px;
+  --btn-height-lg: 44px;
+  --btn-padding-x-sm: var(--space-3);
+  --btn-padding-x-md: var(--space-4);
+  --btn-padding-x-lg: var(--space-5);
+  --btn-radius: var(--radius);
+  --btn-font-size: var(--text-xs);
+  --btn-font-weight: var(--font-weight-semibold);
+  --btn-letter-spacing: var(--tracking-wide);
+  --btn-primary-fg: #fdfaf3;
+
+  /* Card tokens */
+  --card-bg: var(--bg-surface);
+  --card-border: 1px solid var(--border);
+  --card-radius: var(--radius);
+  --card-radius-lg: var(--radius-xl);
+  --card-padding: var(--space-card-y) var(--space-card-x);
+  --card-stripe-width: 3px;
+
   --sidebar-width: 220px;
   --sidebar-collapsed-width: 48px;
   --topbar-height: 56px;
@@ -71,11 +146,11 @@
 
   /* Scholarly UI tokens */
   --font-serif: 'EB Garamond', Georgia, serif;
-  --radius-xl: 14px;
-  --radius-2xl: 16px;
   --shadow-card: 0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.03);
   --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
   --shadow-editor: 0 0 0 1px var(--border-subtle);
+  --card-shadow: var(--shadow-card);
+  --card-shadow-hover: var(--shadow-card-hover);
   --note-editor-bg: #ffffff;
   --note-card-bg: #ffffff;
 }
@@ -108,11 +183,12 @@ a:hover {
 h1, h2, h3, h4 {
   font-family: var(--font-serif);
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--leading-tight);
 }
-h1 { font-size: 1.5rem; }
-h2 { font-size: 1.25rem; }
-h3 { font-size: 1.1rem; }
+h1 { font-size: var(--text-2xl); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-lg); }
 
 ::-webkit-scrollbar {
   width: 6px;
@@ -129,20 +205,29 @@ h3 { font-size: 1.1rem; }
   background: var(--text-muted);
 }
 
-[dir="rtl"], .arabic {
-  font-family: var(--font-arabic);
+[dir="rtl"], .arabic, .arabic-text {
+  font-family: var(--font-arabic-text);
   direction: rtl;
   text-align: right;
-  line-height: 2.2;
-  font-size: 1.4em;
-  font-weight: 500;
+  line-height: var(--leading-arabic);
+  font-size: 1.3em;
+  font-weight: var(--font-weight-normal);
 }
 
-/* Hadith body text — rich serif for English */
+.arabic-quran {
+  font-family: var(--font-arabic);
+}
+
+.arabic-ui {
+  font-family: var(--font-arabic-ui);
+  direction: rtl;
+  font-feature-settings: "kern", "liga";
+}
+
 .hadith-body {
-  font-family: 'Georgia', 'Palatino Linotype', 'Book Antiqua', serif;
-  font-size: 1.1rem;
-  line-height: 1.9;
+  font-family: var(--font-serif);
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
   color: var(--text-primary);
   letter-spacing: 0.01em;
 }
@@ -151,6 +236,72 @@ h3 { font-size: 1.1rem; }
   font-family: var(--font-mono);
   font-size: 0.85em;
 }
+
+/* ── Button system ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--btn-height-md);
+  padding: 0 var(--btn-padding-x-md);
+  font-family: var(--font-sans);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-font-weight);
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary { background: var(--accent); color: var(--btn-primary-fg); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.btn-secondary { background: transparent; color: var(--accent); border-color: var(--accent); }
+.btn-secondary:hover:not(:disabled) { background: var(--accent-muted); }
+
+.btn-ghost { background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+
+.btn-soft {
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border-color: var(--btn-border);
+}
+.btn-soft:hover:not(:disabled) { background: var(--btn-bg-hover); border-color: var(--btn-border-hover); }
+
+.btn-sm { height: var(--btn-height-sm); padding: 0 var(--btn-padding-x-sm); }
+.btn-md { height: var(--btn-height-md); padding: 0 var(--btn-padding-x-md); }
+.btn-lg { height: var(--btn-height-lg); padding: 0 var(--btn-padding-x-lg); }
+
+.btn-pill { border-radius: var(--radius-pill); }
+.btn-icon { width: var(--btn-height-md); padding: 0; }
+.btn-icon.btn-sm { width: var(--btn-height-sm); }
+.btn-icon.btn-lg { width: var(--btn-height-lg); }
+
+.btn-uppercase { text-transform: uppercase; letter-spacing: var(--btn-letter-spacing); }
+.btn-block { width: 100%; }
+
+/* ── Card system ── */
+.card {
+  position: relative;
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--card-shadow);
+  transition: box-shadow var(--transition), border-color var(--transition);
+}
+.card:hover { box-shadow: var(--card-shadow-hover); border-color: var(--accent); }
+.card-lg { border-radius: var(--card-radius-lg); padding: var(--space-5) var(--space-6); }
+.card-flat { box-shadow: none; }
+.card-link { display: block; color: var(--text-primary); text-decoration: none; }
+.card-stripe { border-right: var(--card-stripe-width) solid var(--accent); }
 
 button {
   font-family: var(--font-sans);
@@ -162,12 +313,12 @@ button {
 
 input, select {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--text-sm);
   color: var(--text-primary);
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   outline: none;
   transition: border-color var(--transition);
 }
@@ -197,16 +348,16 @@ input::placeholder {
 
 /* ── Theme: Dark (Night) ── */
 [data-theme="dark"] {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-surface: #1c2128;
-  --bg-hover: #262c36;
-  --bg-active: #2d333b;
-  --border: #30363d;
-  --border-subtle: #21262d;
-  --text-primary: #e6edf3;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  --bg-primary: #15110b;
+  --bg-secondary: #1c170f;
+  --bg-surface: #221c12;
+  --bg-hover: #2a2418;
+  --bg-active: #322b1d;
+  --border: #3a3122;
+  --border-subtle: #251f15;
+  --text-primary: #ede5d2;
+  --text-secondary: #b3a584;
+  --text-muted: #7a6f5a;
   --accent: #e5c890;
   --accent-hover: #d4b57f;
   --accent-muted: rgba(229, 200, 144, 0.15);
@@ -216,6 +367,7 @@ input::placeholder {
   --btn-border: #30363d;
   --btn-bg-hover: #262c36;
   --btn-border-hover: #444c56;
+  --btn-primary-fg: #15110b;
   --success: #3fb950;
   --warning: #d29922;
   --error: #f85149;
@@ -270,6 +422,7 @@ input::placeholder {
   --btn-border: #d4c5a0;
   --btn-bg-hover: #e8dcc3;
   --btn-border-hover: #c4b48e;
+  --btn-primary-fg: #faf3e3;
   --success: #2d7a3a;
   --warning: #b8860b;
   --error: #c53030;

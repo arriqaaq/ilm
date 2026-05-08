@@ -235,7 +235,7 @@
     text-align: right;
     cursor: pointer;
     transition: background var(--transition);
-    font-family: var(--font-arabic-text), 'Noto Naskh Arabic', serif;
+    font-family: var(--font-arabic-text);
   }
   .tree-parent:hover { background: var(--bg-hover); }
   .tree-parent.active { color: var(--accent); background: var(--accent-muted); }
@@ -267,7 +267,7 @@
     text-align: right;
     cursor: pointer;
     transition: all var(--transition);
-    font-family: var(--font-arabic-text), 'Noto Naskh Arabic', serif;
+    font-family: var(--font-arabic-text);
   }
   .tree-child:hover { background: var(--bg-hover); color: var(--text-primary); }
   .tree-child.active { color: var(--accent); background: var(--accent-muted); font-weight: 600; }

@@ -435,7 +435,7 @@
 
   /* Honorific styling */
   .rich-editor :global(.honorific) {
-    font-family: var(--font-arabic-text, 'Noto Naskh Arabic', serif);
+    font-family: var(--font-arabic-text);
     font-size: 0.95em;
     color: var(--accent);
     direction: rtl;

@@ -105,9 +105,9 @@
     </div>
   {:else}
     <!-- Default view: interactive inline word spans or plain text fallback -->
-    <div class="ayah-arabic" dir="rtl" style="font-size: {$preferences.arabicFontSize}rem">
+    <div class="ayah-arabic arabic-quran" dir="rtl" style="font-size: {$preferences.arabicFontSize}rem">
       {#if $preferences.quranFont !== 'uthmani' && glyphReady && glyphText}
-        <span class="arabic-text qcf-text" style="font-family: {glyphFontFamily}">{glyphText}</span>
+        <span class="ayah-glyph qcf-text" style="font-family: {glyphFontFamily}">{glyphText}</span>
       {:else if words}
         <!-- Interactive words: each word is a hoverable/clickable span -->
         {#each words as word}
@@ -123,7 +123,7 @@
         <span class="verse-badge">{ayah.ayah_number}</span>
       {:else}
         <!-- Fallback: plain text while words load -->
-        <span class="arabic-text">{ayah.text_ar}</span>
+        <span class="ayah-glyph">{ayah.text_ar}</span>
         <span class="verse-badge">{ayah.ayah_number}</span>
       {/if}
     </div>
@@ -212,22 +212,22 @@
 
 <style>
   .ayah-card {
-    padding: 24px 16px;
+    padding: var(--space-6) var(--space-4);
     border-bottom: 1px solid var(--border-subtle);
   }
   .ayah-card.compact {
-    padding: 14px 16px;
+    padding: var(--space-3) var(--space-4);
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
   }
   .ayah-arabic {
     text-align: right;
-    line-height: 2.2;
-    margin-bottom: 12px;
-    padding: 0 8px;
+    line-height: var(--leading-arabic);
+    margin-bottom: var(--space-3);
+    padding: 0 var(--space-2);
   }
-  .arabic-text {
+  .ayah-glyph {
     color: var(--text-primary);
   }
   .qcf-text {
@@ -253,26 +253,26 @@
   }
   .ayah-translation {
     font-family: var(--font-serif);
-    line-height: 1.8;
+    line-height: var(--leading-relaxed);
     color: var(--text-secondary);
     text-align: left;
-    margin-bottom: 10px;
-    padding: 0 12px;
+    margin-bottom: var(--space-3);
+    padding: 0 var(--space-3);
   }
   .ayah-footer {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 0 8px;
+    gap: var(--space-3);
+    padding: 0 var(--space-2);
     flex-wrap: wrap;
   }
   .verse-ref {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     color: var(--text-muted);
     font-family: var(--font-mono);
   }
   .score {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     color: var(--success);
   }
   .ayah-card.active {
@@ -283,17 +283,17 @@
   .word-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    padding: 8px;
+    gap: var(--space-2);
+    padding: var(--space-2);
     justify-content: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: var(--space-3);
   }
   .word-token {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 8px 12px;
+    padding: var(--space-2) var(--space-3);
     background: var(--bg-hover);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -308,10 +308,10 @@
   }
   .word-ar {
     color: var(--text-primary);
-    line-height: 1.6;
+    line-height: var(--leading-normal);
   }
   .word-en {
-    font-size: 0.65rem;
+    font-size: var(--text-2xs);
     color: var(--text-muted);
     max-width: 80px;
     text-align: center;
@@ -320,31 +320,31 @@
     white-space: nowrap;
   }
   .word-pos {
-    font-size: 0.55rem;
+    font-size: var(--text-2xs);
     color: var(--accent);
     font-family: var(--font-mono);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
   .transliteration-line {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--text-muted);
     font-style: italic;
-    padding: 0 8px;
-    margin-bottom: 8px;
+    padding: 0 var(--space-2);
+    margin-bottom: var(--space-2);
     direction: ltr;
     text-align: left;
   }
   .audio-btn {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     color: var(--btn-text);
     background: var(--btn-bg);
     border: 1px solid var(--btn-border);
     border-radius: var(--radius-sm);
-    padding: 2px 8px;
+    padding: 2px var(--space-2);
     cursor: pointer;
     transition: all var(--transition);
     text-decoration: none;
-    line-height: 1.4;
+    line-height: var(--leading-snug);
     display: inline-flex;
     align-items: center;
   }
@@ -353,15 +353,15 @@
     border-color: var(--btn-border-hover);
   }
   .download-btn {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
   }
   .words-toggle, .detail-toggle {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     color: var(--btn-text);
     background: var(--btn-bg);
     border: 1px solid var(--btn-border);
     border-radius: var(--radius-sm);
-    padding: 2px 10px;
+    padding: 2px var(--space-3);
     cursor: pointer;
     transition: all var(--transition);
   }
@@ -384,9 +384,9 @@
     border-color: var(--btn-border-hover);
   }
   @media (max-width: 640px) {
-    .ayah-card { padding: 14px 0; }
-    .ayah-arabic { padding: 0 12px; }
-    .ayah-translation { padding: 0 12px; }
-    .ayah-footer { padding: 0 12px; }
+    .ayah-card { padding: var(--space-3) 0; }
+    .ayah-arabic { padding: 0 var(--space-3); }
+    .ayah-translation { padding: 0 var(--space-3); }
+    .ayah-footer { padding: 0 var(--space-3); }
   }
 </style>

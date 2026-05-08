@@ -714,7 +714,7 @@
   .arabic-verbatim {
     direction: rtl;
     text-align: right;
-    font-family: var(--font-arabic-text), 'Noto Naskh Arabic', serif;
+    font-family: var(--font-arabic-text);
     font-size: 1.05rem;
     line-height: 2;
     color: var(--text-primary);

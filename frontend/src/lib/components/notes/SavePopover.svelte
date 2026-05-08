@@ -201,9 +201,9 @@
   }
   .btn-create {
     padding: 4px 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #fff;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--btn-primary-fg);
     background: var(--accent);
     border: none;
     border-radius: var(--radius-sm);

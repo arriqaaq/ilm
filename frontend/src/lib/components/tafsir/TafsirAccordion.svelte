@@ -223,7 +223,7 @@
     border-bottom: 1px solid var(--border-subtle);
   }
   .body-text {
-    font-family: var(--font-arabic-text), 'Noto Naskh Arabic', serif;
+    font-family: var(--font-arabic-text);
     font-size: 1.1rem;
     line-height: 2.1;
     color: var(--text-primary);

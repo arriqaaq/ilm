@@ -205,15 +205,16 @@
     gap: 10px;
   }
   .btn-new {
-    padding: 8px 20px;
-    font-size: 0.78rem;
-    font-weight: 600;
+    padding: 0 var(--btn-padding-x-md);
+    height: var(--btn-height-md);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #fff;
+    letter-spacing: var(--btn-letter-spacing);
+    color: var(--btn-primary-fg);
     background: var(--accent);
     border: none;
-    border-radius: var(--radius);
+    border-radius: var(--btn-radius);
     cursor: pointer;
     transition: all var(--transition);
   }
@@ -303,7 +304,7 @@
   }
   .tag-chip.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--btn-primary-fg);
     border-color: var(--accent);
   }
   .color-filters {

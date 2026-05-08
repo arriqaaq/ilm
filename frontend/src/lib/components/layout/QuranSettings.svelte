@@ -4,8 +4,8 @@
   let open = $state(false);
 
   const themes: { key: Theme; label: string; color: string }[] = [
-    { key: 'light', label: 'Light', color: '#ffffff' },
-    { key: 'dark', label: 'Night', color: '#0d1117' },
+    { key: 'light', label: 'Light', color: '#fdfaf3' },
+    { key: 'dark', label: 'Night', color: '#15110b' },
     { key: 'brown', label: 'Sepia', color: '#f5ecd7' },
   ];
 
@@ -57,7 +57,7 @@
             <button
               class="theme-dot"
               class:active={$preferences.theme === t.key}
-              style="background: {t.color}; {t.key === 'dark' ? 'border-color: #30363d' : ''}"
+              style:background={t.color}
               onclick={() => setTheme(t.key)}
               title={t.label}
             ></button>
@@ -117,9 +117,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
+    width: var(--btn-height-md);
+    height: var(--btn-height-md);
+    border-radius: var(--radius-full);
     border: 1px solid var(--border);
     background: var(--bg-surface);
     color: var(--text-secondary);
@@ -137,47 +137,47 @@
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 14px 16px;
+    padding: var(--space-3) var(--space-4);
     min-width: 220px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: var(--card-shadow-hover);
     z-index: 100;
   }
   .dropdown-title {
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: var(--text-2xs);
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-muted);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-3);
   }
   .section-label {
-    font-size: 0.65rem;
-    font-weight: 600;
+    font-size: var(--text-2xs);
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-muted);
-    margin: 10px 0 8px;
-    padding-top: 8px;
+    margin: var(--space-3) 0 var(--space-2);
+    padding-top: var(--space-2);
     border-top: 1px solid var(--border-subtle);
   }
   .control-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 10px;
+    margin-bottom: var(--space-3);
   }
   .control-label {
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     color: var(--text-secondary);
   }
   .theme-row {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
   }
   .theme-dot {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+    border-radius: var(--radius-full);
     border: 2px solid var(--border);
     cursor: pointer;
     transition: all var(--transition);
@@ -192,16 +192,16 @@
   }
   .font-row {
     display: flex;
-    gap: 4px;
+    gap: var(--space-1);
   }
   .font-pill {
     padding: 3px 10px;
-    border-radius: 12px;
+    border-radius: var(--radius-pill);
     border: 1px solid var(--border);
     background: var(--bg-hover);
     color: var(--text-secondary);
-    font-size: 0.7rem;
-    font-weight: 500;
+    font-size: var(--text-2xs);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all var(--transition);
   }
@@ -213,7 +213,7 @@
     background: var(--accent-muted);
     border-color: var(--accent);
     color: var(--accent);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
   .stepper {
     display: flex;
@@ -221,14 +221,14 @@
     gap: 6px;
   }
   .step-btn {
-    width: 26px;
-    height: 26px;
+    width: var(--btn-height-sm);
+    height: var(--btn-height-sm);
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     background: var(--bg-hover);
     color: var(--text-primary);
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -240,7 +240,7 @@
     color: var(--accent);
   }
   .step-value {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     font-family: var(--font-mono);
     color: var(--text-primary);
     min-width: 28px;
@@ -248,9 +248,9 @@
   }
   .reset-btn {
     width: 100%;
-    margin-top: 4px;
-    padding: 4px 0;
-    font-size: 0.7rem;
+    margin-top: var(--space-1);
+    padding: var(--space-1) 0;
+    font-size: var(--text-2xs);
     color: var(--text-muted);
     background: none;
     border: none;

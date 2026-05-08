@@ -62,10 +62,10 @@
   <form class="search-form" onsubmit={handleSubmit}>
     <input type="text" placeholder="Search hadiths and narrators..." bind:value={query} class="search-input" />
     <div class="type-toggle">
-      <button type="button" class="toggle-btn" class:active={searchType === 'text'} onclick={() => searchType = 'text'}>Text</button>
+      <button type="button" class="btn btn-soft btn-sm toggle-btn" class:active={searchType === 'text'} onclick={() => searchType = 'text'}>Text</button>
       {#if $appConfig.advanced_enabled}
-        <button type="button" class="toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
-        <button type="button" class="toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
+        <button type="button" class="btn btn-soft btn-sm toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
+        <button type="button" class="btn btn-soft btn-sm toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
       {/if}
     </div>
     {#if $appConfig.advanced_enabled && searchType === 'hybrid'}
@@ -74,7 +74,7 @@
         <span>⚡ Precision mode</span>
       </label>
     {/if}
-    <button type="submit" class="search-btn">Search</button>
+    <button type="submit" class="btn btn-primary btn-md">Search</button>
   </form>
 
   {#if loading}
@@ -124,29 +124,30 @@
 </div>
 
 <style>
-  .search-page { padding: 24px; }
-  h1 { margin-bottom: 20px; }
-  .search-form { display: flex; gap: 8px; margin-bottom: 24px; align-items: center; flex-wrap: wrap; }
+  .search-page { padding: var(--space-6); }
+  h1 { margin-bottom: var(--space-5); }
+  .search-form { display: flex; gap: var(--space-2); margin-bottom: var(--space-6); align-items: center; flex-wrap: wrap; }
   .search-input { flex: 1; max-width: 100%; min-width: 200px; }
-  .type-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .toggle-btn { padding: 8px 14px; font-size: 0.8rem; background: var(--bg-surface); color: var(--text-secondary); transition: all var(--transition); }
-  .toggle-btn.active { background: var(--accent); color: var(--bg-primary); }
-  .rerank-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; user-select: none; }
+  .type-toggle { display: flex; gap: 0; }
+  .toggle-btn { border-radius: 0; }
+  .toggle-btn:first-child { border-top-left-radius: var(--radius); border-bottom-left-radius: var(--radius); }
+  .toggle-btn:last-child { border-top-right-radius: var(--radius); border-bottom-right-radius: var(--radius); }
+  .toggle-btn:not(:first-child) { border-left: none; }
+  .toggle-btn.active { background: var(--accent); color: var(--btn-primary-fg); border-color: var(--accent); }
+  .rerank-toggle { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--text-secondary); cursor: pointer; user-select: none; }
   .rerank-toggle input { margin: 0; cursor: pointer; }
-  .search-btn { padding: 8px 20px; background: var(--accent); color: var(--bg-primary); border-radius: var(--radius); font-weight: 600; font-size: 0.85rem; transition: background var(--transition); }
-  .search-btn:hover { background: var(--accent-hover); }
-  .results-section { margin-bottom: 28px; }
-  .results-section h2 { margin-bottom: 12px; }
-  .results-list { display: flex; flex-direction: column; gap: 10px; }
-  .result-card { display: block; padding: 14px 16px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); transition: all var(--transition); }
+  .results-section { margin-bottom: var(--space-8); }
+  .results-section h2 { margin-bottom: var(--space-3); }
+  .results-list { display: flex; flex-direction: column; gap: var(--space-3); }
+  .result-card { display: block; padding: var(--space-3) var(--space-4); background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); transition: all var(--transition); }
   .result-card:hover { border-color: var(--accent); background: var(--bg-hover); color: var(--text-primary); }
-  .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-  .hadith-num { color: var(--text-muted); font-size: 0.8rem; }
-  .score { margin-left: auto; color: var(--success); font-size: 0.8rem; }
-  .narrator { color: var(--accent); font-size: 0.85rem; margin-bottom: 4px; }
-  .text { color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; }
-  .narrator-name { font-weight: 600; font-size: 0.95rem; }
-  .name-ar { color: var(--text-secondary); font-size: 0.95rem; }
-  .hadith-count { color: var(--text-muted); font-size: 0.8rem; }
-  .empty { text-align: center; color: var(--text-muted); padding: 40px; }
+  .result-header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: 6px; }
+  .hadith-num { color: var(--text-muted); font-size: var(--text-sm); }
+  .score { margin-left: auto; color: var(--success); font-size: var(--text-sm); }
+  .narrator { color: var(--accent); font-size: var(--text-sm); margin-bottom: var(--space-1); }
+  .text { color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.5; }
+  .narrator-name { font-weight: var(--font-weight-semibold); font-size: var(--text-base); }
+  .name-ar { color: var(--text-secondary); font-size: var(--text-base); }
+  .hadith-count { color: var(--text-muted); font-size: var(--text-sm); }
+  .empty { text-align: center; color: var(--text-muted); padding: var(--space-10); }
 </style>

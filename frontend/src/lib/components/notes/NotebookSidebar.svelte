@@ -262,14 +262,14 @@
   }
   .create-btn {
     padding: 5px 14px;
-    font-size: 0.72rem;
-    font-weight: 600;
+    font-size: var(--text-2xs);
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--btn-letter-spacing);
     background: var(--accent);
-    color: #fff;
+    color: var(--btn-primary-fg);
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
   }
   .cancel-btn {

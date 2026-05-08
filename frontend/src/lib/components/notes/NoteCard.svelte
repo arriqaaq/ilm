@@ -47,7 +47,7 @@
   let contentParts = $derived(parseContent(note.content));
 </script>
 
-<div class="note-card" style="--card-accent: var(--note-{note.color}); --glow-rgb: var(--note-{note.color}-rgb)">
+<div class="card card-lg note-card" style="--card-accent: var(--note-{note.color}); --glow-rgb: var(--note-{note.color}-rgb)">
   <div class="note-header">
     <div class="note-meta">
       {#if note.title}
@@ -104,17 +104,8 @@
 
 <style>
   .note-card {
-    position: relative;
-    padding: 18px 22px;
     background: var(--note-card-bg);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-card);
-    transition: box-shadow var(--transition), border-color var(--transition);
-  }
-  .note-card:hover {
-    box-shadow: var(--shadow-card-hover);
-    border-color: var(--border);
+    border-color: var(--border-subtle);
   }
   .note-card:hover .action-btn {
     opacity: 1;
@@ -123,44 +114,44 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
   }
   .note-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     flex-wrap: wrap;
   }
   .note-title {
     font-family: var(--font-serif);
-    font-weight: 700;
-    font-size: 1.1rem;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--text-lg);
     color: var(--text-primary);
-    line-height: 1.3;
+    line-height: var(--leading-tight);
     letter-spacing: -0.01em;
   }
   .note-ref {
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     font-family: var(--font-mono);
     color: var(--accent);
     text-decoration: none;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
   .note-ref:hover { text-decoration: underline; color: var(--accent-hover); }
   .ref-count {
-    font-size: 0.7rem;
+    font-size: var(--text-2xs);
     color: var(--text-muted);
     font-family: var(--font-mono);
   }
   .note-actions {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--space-1);
     flex-shrink: 0;
   }
   .note-time {
-    font-size: 0.65rem;
+    font-size: var(--text-2xs);
     color: var(--text-muted);
   }
   .action-btn {
@@ -168,8 +159,8 @@
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    font-size: 0.9rem;
-    padding: 4px 6px;
+    font-size: var(--text-base);
+    padding: var(--space-1) 6px;
     border-radius: var(--radius-sm);
     opacity: 0;
     transition: opacity var(--transition), color var(--transition), background var(--transition);
@@ -178,7 +169,7 @@
   .delete-btn:hover { color: var(--error); background: rgba(220, 38, 38, 0.08); }
   .note-content {
     font-family: var(--font-serif);
-    font-size: 0.95rem;
+    font-size: var(--text-base);
     line-height: 1.7;
     color: var(--text-secondary);
     word-break: break-word;
@@ -195,6 +186,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 12px;
+    margin-top: var(--space-3);
   }
 </style>

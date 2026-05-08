@@ -27,8 +27,8 @@
   }
   .count {
     font-size: 0.6rem;
-    color: #fff;
-    font-weight: 700;
+    color: var(--btn-primary-fg);
+    font-weight: var(--font-weight-bold);
     font-family: var(--font-mono);
     line-height: 1;
   }

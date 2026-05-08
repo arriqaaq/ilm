@@ -172,15 +172,16 @@
     margin-left: auto;
   }
   .btn-save {
-    padding: 8px 24px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    padding: 0 var(--btn-padding-x-md);
+    height: var(--btn-height-md);
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #fff;
+    letter-spacing: var(--btn-letter-spacing);
+    color: var(--btn-primary-fg);
     background: var(--accent);
     border: none;
-    border-radius: var(--radius);
+    border-radius: var(--btn-radius);
     cursor: pointer;
     transition: background var(--transition);
   }

@@ -13,9 +13,9 @@
   let isArabic = $derived($language === 'ar' || !narrator.name_en || narrator.name_en === narrator.name_ar);
 </script>
 
-<a href="/narrators/{narrator.id}" class="narrator-card">
+<a href="/narrators/{narrator.id}" class="card card-stripe card-link narrator-card">
   <div class="card-header">
-    <h3 class="name" class:arabic={isArabic} dir={isArabic ? 'rtl' : 'ltr'}>{displayName}</h3>
+    <h3 class="name" class:arabic-text={isArabic} dir={isArabic ? 'rtl' : 'ltr'}>{displayName}</h3>
     {#if narrator.generation}
       <Badge text={narrator.generation} variant="accent" />
     {/if}
@@ -34,34 +34,21 @@
 </a>
 
 <style>
-  .narrator-card {
-    display: block;
-    padding: 16px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    transition: all var(--transition);
-    color: var(--text-primary);
-    overflow: hidden;
-  }
-
   .narrator-card:hover {
-    border-color: var(--accent);
     background: var(--bg-hover);
-    color: var(--text-primary);
   }
 
   .card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: var(--space-2);
+    margin-bottom: var(--space-1);
   }
 
   .name {
-    font-size: 0.95rem;
-    font-weight: 600;
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -71,7 +58,7 @@
 
   .kunya {
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     margin-top: 2px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -79,7 +66,7 @@
   }
 
   .card-footer {
-    margin-top: 8px;
+    margin-top: var(--space-2);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -87,11 +74,11 @@
 
   .hadith-count {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
 
   .death-year {
     color: var(--text-muted);
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
   }
 </style>

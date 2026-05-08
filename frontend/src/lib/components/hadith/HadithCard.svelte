@@ -11,8 +11,8 @@
   } = $props();
 </script>
 
-<div class="hadith-card-wrapper">
-  <a href="/hadiths/{hadith.id}" class="hadith-card">
+<div class="card card-stripe hadith-card-wrapper">
+  <a href="/hadiths/{hadith.id}" class="card-link hadith-card">
     <div class="card-header">
       {#if hadith.book_name}
         <Badge text={hadith.book_name} variant="accent" />
@@ -29,7 +29,7 @@
     {#if $language === 'en' && hadith.text_en}
       <p class="text-preview">{truncate(stripHtml(hadith.text_en), 180)}</p>
     {:else if hadith.text_ar}
-      <p class="text-ar arabic" dir="rtl">{truncate(hadith.text_ar, 150)}</p>
+      <p class="text-ar arabic-text" dir="rtl">{truncate(hadith.text_ar, 150)}</p>
     {:else if hadith.text_en}
       <p class="text-preview">{truncate(stripHtml(hadith.text_en), 180)}</p>
     {/if}
@@ -38,7 +38,7 @@
   {#if sharhPage && onopensharh}
     <div class="card-actions">
       <button
-        class="sharh-btn"
+        class="btn btn-secondary btn-sm"
         onclick={() => onopensharh({ bookId: sharhPage.book_id, pageIndex: sharhPage.page_index, bookName: sharhPage.book_name, hadithNumber: hadith.hadith_number })}
         title="View {sharhPage.book_name}"
       >
@@ -50,76 +50,53 @@
 
 <style>
   .hadith-card-wrapper {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    transition: all var(--transition);
     overflow: hidden;
+    padding: 0;
   }
   .hadith-card-wrapper:hover {
-    border-color: var(--accent);
     background: var(--bg-hover);
   }
 
   .hadith-card {
-    display: block;
-    padding: 16px;
-    color: var(--text-primary);
-    text-decoration: none;
+    padding: var(--space-card-y) var(--space-card-x);
   }
 
   .card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-2);
   }
 
   .hadith-num {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
   }
 
   .narrator {
     color: var(--accent);
-    font-size: 0.85rem;
-    margin-bottom: 8px;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-2);
+    font-weight: var(--font-weight-medium);
   }
 
   .text-preview {
     font-family: var(--font-serif);
     color: var(--text-secondary);
-    font-size: 0.88rem;
-    line-height: 1.6;
-    margin-bottom: 8px;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    margin-bottom: var(--space-2);
   }
 
   .text-ar {
     color: var(--text-secondary);
-    font-family: var(--font-arabic-text);
-    font-size: 0.95rem;
-    opacity: 0.8;
+    font-size: var(--text-md);
+    opacity: 0.9;
   }
 
   .card-actions {
-    padding: 0 16px 10px;
+    padding: 0 var(--space-card-x) var(--space-3);
     display: flex;
-    gap: 8px;
-  }
-
-  .sharh-btn {
-    font-size: 0.75rem;
-    color: var(--accent);
-    background: var(--bg-primary);
-    border: 1px solid var(--accent);
-    border-radius: var(--radius-sm);
-    padding: 3px 12px;
-    cursor: pointer;
-    transition: all var(--transition);
-    font-weight: 500;
-  }
-  .sharh-btn:hover {
-    background: var(--accent-muted);
+    gap: var(--space-2);
   }
 </style>

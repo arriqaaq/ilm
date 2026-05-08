@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { appConfig } from '$lib/stores/config';
+  import Ornament from '$lib/components/common/Ornament.svelte';
 
   let { collapsed = false, onToggle }: {
     collapsed?: boolean;
@@ -25,15 +26,15 @@
       label: 'Browse',
       advanced: true,
       items: [
-        { path: '/explore', label: 'Explore', icon: '◈', advanced: true },
-        { path: '/ask', label: 'Ask', icon: '◇', advanced: true },
+        { path: '/explore', label: 'Explore', icon: '✦', advanced: true },
+        { path: '/ask', label: 'Ask', icon: '◈', advanced: true },
       ],
     },
     {
-      label: 'Quran',
+      label: 'Qurʾān',
       items: [
-        { path: '/quran', label: 'Quran', icon: '❐' },
-        { path: '/tafsir', label: 'Tafsir', icon: '✦' },
+        { path: '/quran', label: 'Quran', icon: '▣' },
+        { path: '/tafsir', label: 'Tafsir', icon: '✧' },
         { path: '/quran/search', label: 'Search', icon: '⌕' },
       ],
     },
@@ -44,11 +45,11 @@
       ],
     },
     {
-      label: 'Hadith',
+      label: 'Ḥadīth',
       items: [
-        { path: '/hadiths', label: 'Hadiths', icon: '☰' },
-        { path: '/narrators', label: 'Narrators', icon: '◎' },
-        { path: '/search/isnad', label: 'Isnad Search', icon: '⛓' },
+        { path: '/hadiths', label: 'Hadiths', icon: '⛓' },
+        { path: '/narrators', label: 'Narrators', icon: '◉' },
+        { path: '/search/isnad', label: 'Isnad Search', icon: '⌬' },
         { path: '/books', label: 'Books', icon: '▤' },
         { path: '/families', label: 'Families', icon: '⬡', advanced: true },
         { path: '/diff', label: 'Diff', icon: '⇄' },
@@ -78,9 +79,10 @@
 <nav class="sidebar" class:collapsed>
   <div class="sidebar-header">
     <a href="/" class="logo-link" title="Ilm">
-      <span class="logo">◆</span>
+      <span class="logo">❋</span>
       {#if !collapsed}
         <span class="logo-text">Ilm</span>
+        <span class="logo-arabic" dir="rtl">عِلْم</span>
       {/if}
     </a>
     <button class="collapse-toggle" onclick={onToggle} title={collapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}>
@@ -89,7 +91,12 @@
   </div>
 
   <div class="nav-items">
-    {#each filteredGroups as group}
+    {#each filteredGroups as group, i}
+      {#if !collapsed && i > 0}
+        <div class="group-divider">
+          <Ornament variant="divider" size={10} color="var(--border)" />
+        </div>
+      {/if}
       <div class="nav-group">
         {#if !collapsed}
           <span class="section-label">{group.label}</span>
@@ -113,7 +120,10 @@
 
   <div class="sidebar-footer">
     {#if !collapsed}
-      <span class="footer-text">Islamic Knowledge Platform</span>
+      <div class="footer-stack">
+        <span class="footer-text">Islamic Knowledge Platform</span>
+        <span class="footer-arabic" dir="rtl">منصة العلوم الإسلامية</span>
+      </div>
     {/if}
   </div>
 </nav>
@@ -136,7 +146,7 @@
   }
 
   .sidebar-header {
-    padding: 12px 12px;
+    padding: var(--space-3);
     border-bottom: 1px solid var(--border-subtle);
     display: flex;
     align-items: center;
@@ -148,13 +158,13 @@
   }
   .collapsed .sidebar-header {
     justify-content: center;
-    padding: 12px 4px;
+    padding: var(--space-3) var(--space-1);
   }
 
   .logo-link {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-2);
     text-decoration: none;
     color: inherit;
     transition: opacity var(--transition);
@@ -166,21 +176,30 @@
 
   .logo {
     color: var(--accent);
-    font-size: 1.1rem;
+    font-size: var(--text-md);
     flex-shrink: 0;
   }
 
   .logo-text {
     font-family: var(--font-serif);
-    font-weight: 600;
-    font-size: 1.15rem;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--text-lg);
     color: var(--text-primary);
-    letter-spacing: -0.02em;
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .logo-arabic {
+    font-family: var(--font-arabic-ui);
+    font-size: var(--text-md);
+    color: var(--accent);
+    margin-left: var(--space-1);
+    opacity: 0.85;
+    line-height: 1;
   }
 
   .nav-items {
     flex: 1;
-    padding: 8px 10px;
+    padding: var(--space-2) 10px;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -188,7 +207,7 @@
     overflow-x: hidden;
   }
   .collapsed .nav-items {
-    padding: 8px 4px;
+    padding: var(--space-2) var(--space-1);
   }
 
   .nav-group {
@@ -197,40 +216,45 @@
     gap: 1px;
   }
 
+  .group-divider {
+    padding: var(--space-2) 14px;
+  }
+
   .section-label {
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-wide);
     color: var(--text-muted);
-    padding: 16px 12px 5px;
-    font-weight: 600;
-    font-family: var(--font-sans);
+    padding: var(--space-4) var(--space-3) 6px;
+    font-weight: var(--font-weight-medium);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-variant: small-caps;
     user-select: none;
     white-space: nowrap;
   }
 
   .nav-group:first-child .section-label {
-    padding-top: 8px;
+    padding-top: var(--space-2);
   }
 
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 7px 12px;
+    gap: var(--space-2);
+    padding: 7px var(--space-3);
     border-radius: var(--radius-sm);
-    border-left: 2px solid transparent;
+    border-left: 3px solid transparent;
     color: var(--text-secondary);
     transition: all var(--transition);
     font-family: var(--font-sans);
-    font-size: 0.88rem;
+    font-size: var(--text-sm);
     text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
   }
   .collapsed .nav-item {
     justify-content: center;
-    padding: 8px 0;
+    padding: var(--space-2) 0;
     border-left: none;
     border-radius: var(--radius-sm);
   }
@@ -244,16 +268,16 @@
     background: var(--accent-muted);
     color: var(--accent);
     border-left-color: var(--accent);
-    font-weight: 500;
+    font-weight: var(--font-weight-semibold);
   }
   .collapsed .nav-item.active {
     border-left-color: transparent;
   }
 
   .nav-icon {
-    width: 18px;
+    width: var(--icon-md);
     text-align: center;
-    font-size: 0.82rem;
+    font-size: var(--text-sm);
     color: var(--text-muted);
     flex-shrink: 0;
   }
@@ -262,30 +286,48 @@
   }
 
   .sidebar-footer {
-    padding: 10px 12px;
+    padding: var(--space-3);
     border-top: 1px solid var(--border-subtle);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
   }
   .collapsed .sidebar-footer {
     justify-content: center;
-    padding: 10px 4px;
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .footer-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    overflow: hidden;
   }
 
   .footer-text {
     font-family: var(--font-serif);
-    font-size: 0.72rem;
+    font-size: var(--text-2xs);
     font-style: italic;
     color: var(--text-muted);
-    flex: 1;
     white-space: nowrap;
     overflow: hidden;
   }
 
+  .footer-arabic {
+    font-family: var(--font-arabic-ui);
+    font-size: var(--text-xs);
+    color: var(--accent);
+    opacity: 0.75;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-align: right;
+  }
+
   .collapse-toggle {
-    width: 32px;
-    height: 32px;
+    width: var(--btn-height-sm);
+    height: var(--btn-height-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -293,8 +335,8 @@
     border-radius: var(--radius-sm);
     background: none;
     color: var(--text-secondary);
-    font-size: 1.1rem;
-    font-weight: 700;
+    font-size: var(--text-md);
+    font-weight: var(--font-weight-bold);
     cursor: pointer;
     transition: all var(--transition);
     flex-shrink: 0;

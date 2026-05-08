@@ -349,7 +349,7 @@
   .assessments-cell { display: flex; flex-wrap: wrap; gap: 8px; }
   .assessment { display: inline-flex; align-items: baseline; gap: 4px; padding: 2px 8px; background: var(--bg-primary); border-radius: var(--radius); font-size: 0.82rem; }
   .scholar-name { color: var(--text-secondary); font-size: 0.75rem; white-space: nowrap; }
-  .citation-text { color: var(--text-primary); font-family: 'Amiri', serif; }
+  .citation-text { color: var(--text-primary); font-family: var(--font-arabic-text); }
   .no-data { color: var(--text-muted); font-size: 0.8rem; font-style: italic; }
   .loading-text { color: var(--text-muted); font-size: 0.8rem; }
 

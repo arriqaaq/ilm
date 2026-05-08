@@ -214,7 +214,7 @@
     border-radius: 10px;
   }
   .ayah-ar {
-    font-family: var(--font-arabic-text), 'Noto Naskh Arabic', serif;
+    font-family: var(--font-arabic-text);
     font-size: 1.4rem;
     line-height: 2.2;
     color: var(--text-primary);
