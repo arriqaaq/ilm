@@ -30,6 +30,10 @@ reqwest = { version = "0.12", features = ["json", "stream"] }
 futures = "0.3"
 bytes = "1"
 
+# LLM provider abstraction
+async-trait = "0.1"
+genai = "0.5"
+
 # Embeddings (optional — only needed for advanced features: semantic search, hybrid search, reranking)
 fastembed = { version = "5.13", optional = true }
 

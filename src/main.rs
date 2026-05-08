@@ -1,6 +1,9 @@
 #[cfg(feature = "advanced")]
 use hadith::analysis;
-use hadith::embed::{EmbedModel, RerankBackendKind};
+use hadith::embed::RerankBackendKind;
+use hadith::embedding::{EmbedConfig, EmbedProviderKind, FastembedModelKind};
+use hadith::llm::{LlmConfig, LlmProviderKind};
+use hadith::web::ServeConfig;
 use hadith::{db, embed, ingest, quran, web};
 
 use anyhow::Result;
@@ -32,7 +35,7 @@ enum Commands {
         #[arg(long)]
         translate: bool,
 
-        /// Ollama model for fallback translation
+        /// Ollama model for fallback translation (used when --translate is set).
         #[arg(long, default_value = "command-r7b-arabic")]
         translate_model: String,
 
@@ -40,10 +43,10 @@ enum Commands {
         #[arg(long, default_value = "db_data")]
         db_path: String,
 
-        /// Embedding model to use
-        /// Embedding model: e5-small is faster, bge-m3 is higher quality but slower
+        /// Embedding model: e5-small (faster) or bge-m3 (higher quality).
+        /// Data-prep commands always use local fastembed.
         #[arg(long, default_value = "e5-small", value_enum)]
-        embed_model: EmbedModel,
+        embed_model: FastembedModelKind,
     },
     /// Run analysis on ingested data (families, narrator enrichment)
     Analyze {
@@ -63,10 +66,9 @@ enum Commands {
         #[arg(long, default_value = "500")]
         max_family_size: usize,
 
-        /// Embedding model to use
-        /// Embedding model: e5-small is faster, bge-m3 is higher quality but slower
+        /// Embedding model: e5-small (faster) or bge-m3 (higher quality).
         #[arg(long, default_value = "e5-small", value_enum)]
-        embed_model: EmbedModel,
+        embed_model: FastembedModelKind,
     },
     /// Ingest Quran data (Arabic + English + Tafsir Ibn Kathir)
     IngestQuran {
@@ -78,10 +80,9 @@ enum Commands {
         #[arg(long, default_value = "db_data")]
         db_path: String,
 
-        /// Embedding model to use
-        /// Embedding model: e5-small is faster, bge-m3 is higher quality but slower
+        /// Embedding model: e5-small (faster) or bge-m3 (higher quality).
         #[arg(long, default_value = "e5-small", value_enum)]
-        embed_model: EmbedModel,
+        embed_model: FastembedModelKind,
     },
     /// Ingest Quran→Hadith reference mappings from Quran.com
     IngestQuranHadithRefs {
@@ -181,30 +182,59 @@ enum Commands {
         #[arg(long, default_value = "db_data")]
         db_path: String,
 
-        /// Ollama API base URL
-        #[arg(long, env = "OLLAMA_URL")]
-        ollama_url: Option<String>,
+        // ── LLM provider ──────────────────────────────────────────────
+        /// LLM provider for chat/classification/reranking.
+        #[arg(long, env = "LLM_PROVIDER", default_value = "ollama", value_enum)]
+        llm_provider: LlmProviderKind,
 
-        /// Ollama model name
-        #[arg(long, env = "OLLAMA_MODEL")]
-        ollama_model: Option<String>,
+        /// LLM model name. Provider-specific (e.g. `llama3.2`, `gpt-4o-mini`,
+        /// `claude-opus-4-7`).
+        #[arg(long, env = "LLM_MODEL")]
+        llm_model: String,
 
-        /// Embedding model to use
-        /// Embedding model: e5-small is faster, bge-m3 is higher quality but slower
-        #[arg(long, default_value = "e5-small", value_enum)]
-        embed_model: EmbedModel,
+        /// LLM base URL — Ollama only. Defaults to http://localhost:11434.
+        #[arg(long, env = "LLM_BASE_URL")]
+        llm_base_url: Option<String>,
 
+        /// LLM API key — required for openai/anthropic.
+        #[arg(long, env = "LLM_API_KEY")]
+        llm_api_key: Option<String>,
+
+        // ── Embedding provider ────────────────────────────────────────
+        /// Embedding provider.
+        #[arg(long, env = "EMBED_PROVIDER", default_value = "fastembed", value_enum)]
+        embed_provider: EmbedProviderKind,
+
+        /// Embedding model name. fastembed: `bge-m3`/`e5-small`. openai:
+        /// `text-embedding-3-small`/`-large`. ollama: any embedding model.
+        #[arg(long, env = "EMBED_MODEL", default_value = "e5-small")]
+        embed_model: String,
+
+        /// Embedding base URL — Ollama only.
+        #[arg(long, env = "EMBED_BASE_URL")]
+        embed_base_url: Option<String>,
+
+        /// Embedding API key — OpenAI only.
+        #[arg(long, env = "EMBED_API_KEY")]
+        embed_api_key: Option<String>,
+
+        /// Explicit embedding dimension. Required for ollama, optional for
+        /// openai (text-embedding-3-* support reduced dims). Ignored for fastembed.
+        #[arg(long, env = "EMBED_DIMENSIONS")]
+        embed_dimensions: Option<usize>,
+
+        // ── Reranker ──────────────────────────────────────────────────
         /// Reranker backend (opt-in via `rerank=true` query param on hybrid search).
-        /// Omit to disable reranking entirely.
-        /// - fastembed: local cross-encoder (BAAI/bge-reranker-v2-m3). Fast, CPU-bound.
-        /// - ollama:    LLM relevance judge via Ollama. Slower; requires a running server.
+        /// Omit to disable reranking.
+        /// - fastembed: local cross-encoder (BAAI/bge-reranker-v2-m3).
+        /// - llm: relevance judge via the configured --llm-provider.
         #[arg(long, value_enum)]
         reranker: Option<RerankBackendKind>,
 
-        /// Override Ollama model name for `--reranker ollama`. Defaults to the
-        /// server's main `--ollama-model` / `OLLAMA_MODEL`.
-        #[arg(long, env = "RERANKER_OLLAMA_MODEL")]
-        reranker_ollama_model: Option<String>,
+        /// Override LLM model name for `--reranker llm`. Defaults to the
+        /// server's main `--llm-model`.
+        #[arg(long, env = "RERANKER_MODEL")]
+        reranker_model: Option<String>,
 
         /// Path to PageIndex workspace directory (enables book chat feature)
         #[arg(long, env = "PAGEINDEX_DIR", default_value = "data/pageindex")]
@@ -254,24 +284,25 @@ async fn async_main() -> Result<()> {
 
             #[cfg(feature = "advanced")]
             let embedder = {
-                let e = embed::Embedder::new(embed_model)?;
-                embed::check_embedding_dimension(&db, embed_model.dimension()).await?;
+                let e = embed_model.build()?;
+                embed::check_embedding_dimension(&db, e.as_ref()).await?;
                 Some(e)
             };
             #[cfg(not(feature = "advanced"))]
-            let embedder: Option<embed::Embedder> = {
+            let embedder: Option<
+                std::sync::Arc<dyn hadith::embedding::EmbeddingProvider>,
+            > = {
                 println!("Advanced features disabled — skipping embeddings");
                 None
             };
 
-            ingest::semantic::ingest(&db, &file, limit, embedder.as_ref()).await?;
+            ingest::semantic::ingest(&db, &file, limit, embedder.as_deref()).await?;
 
             // Merge human English translations from sunnah.com (better quality)
             println!("🌐 Merging human English translations from sunnah.com...");
             ingest::sanadset::merge_human_translations(&db).await?;
 
             if translate {
-                // Fill gaps with Ollama for hadiths/narrators still missing English
                 println!("🤖 Filling translation gaps via Ollama ({translate_model})...");
                 ingest::sanadset::translate_all(&db, &translate_model).await?;
             }
@@ -295,8 +326,8 @@ async fn async_main() -> Result<()> {
             if families {
                 #[cfg(feature = "advanced")]
                 {
-                    let embedder = embed::Embedder::new(embed_model)?;
-                    let count = analysis::family::compute_families(&db, &embedder).await?;
+                    let embedder = embed_model.build()?;
+                    let count = analysis::family::compute_families(&db, embedder.as_ref()).await?;
                     tracing::info!("Created {count} hadith families");
                     did_something = true;
                 }
@@ -418,32 +449,29 @@ async fn async_main() -> Result<()> {
             let dim = embed_model.dimension();
             db::init_schema(&db, dim).await?;
             db::init_quran_schema(&db, dim).await?;
-            // Define fulltext indexes BEFORE ingesting data — on an empty table
-            // this is instant, and subsequent inserts incrementally update the
-            // index. This avoids the "memtable history insufficient" error that
-            // occurs when building a fulltext index over thousands of rows in a
-            // single long-running transaction after ingestion.
             db::init_quran_fulltext_indexes(&db).await?;
             #[cfg(feature = "advanced")]
             let embedder = {
-                let e = embed::Embedder::new(embed_model)?;
-                embed::check_embedding_dimension(&db, embed_model.dimension()).await?;
+                let e = embed_model.build()?;
+                embed::check_embedding_dimension(&db, e.as_ref()).await?;
                 Some(e)
             };
             #[cfg(not(feature = "advanced"))]
-            let embedder: Option<embed::Embedder> = {
+            let embedder: Option<
+                std::sync::Arc<dyn hadith::embedding::EmbeddingProvider>,
+            > = {
                 println!("Advanced features disabled — skipping ayah embeddings");
                 None
             };
 
-            quran::ingest::ingest(&db, &file, embedder.as_ref()).await?;
+            quran::ingest::ingest(&db, &file, embedder.as_deref()).await?;
 
             tracing::info!("Quran ingestion complete");
         }
         Commands::IngestQuranHadithRefs { db_path } => {
             let db = db::connect(&db_path).await?;
-            db::init_schema(&db, EmbedModel::default().dimension()).await?;
-            db::init_quran_schema(&db, EmbedModel::default().dimension()).await?;
+            db::init_schema(&db, FastembedModelKind::default().dimension()).await?;
+            db::init_quran_schema(&db, FastembedModelKind::default().dimension()).await?;
             quran::hadith_refs::ingest_hadith_refs(&db).await?;
             tracing::info!("Quran-Hadith reference ingestion complete");
         }
@@ -466,7 +494,7 @@ async fn async_main() -> Result<()> {
         }
         Commands::IngestQuranSimilar { qul_dir, db_path } => {
             let db = db::connect(&db_path).await?;
-            db::init_quran_schema(&db, EmbedModel::default().dimension()).await?;
+            db::init_quran_schema(&db, FastembedModelKind::default().dimension()).await?;
             db::init_quran_word_schema(&db).await?;
             db::init_quran_similar_schema(&db).await?;
             println!("Ingesting shared phrases and similar ayahs from {qul_dir}...");
@@ -548,15 +576,51 @@ async fn async_main() -> Result<()> {
         Commands::Serve {
             port,
             db_path,
-            ollama_url,
-            ollama_model,
+            llm_provider,
+            llm_model,
+            llm_base_url,
+            llm_api_key,
+            embed_provider,
             embed_model,
+            embed_base_url,
+            embed_api_key,
+            embed_dimensions,
             reranker,
-            reranker_ollama_model,
+            reranker_model,
             pageindex_dir,
         } => {
             let db = db::connect(&db_path).await?;
-            let dim = embed_model.dimension();
+
+            let embed_cfg = EmbedConfig {
+                provider: embed_provider,
+                model: embed_model,
+                base_url: embed_base_url,
+                api_key: embed_api_key,
+                dimensions: embed_dimensions,
+            };
+
+            // The DB schema has a fixed embedding dim; for the schema init we
+            // need a number up front. For fastembed we know it from the model
+            // name; for openai/ollama we either trust the explicit
+            // --embed-dimensions or fall back to a sensible default that the
+            // dimension check will confirm.
+            let dim = match (embed_cfg.provider, embed_cfg.dimensions) {
+                (_, Some(d)) => d,
+                (EmbedProviderKind::Fastembed, None) => match embed_cfg.model.as_str() {
+                    "bge-m3" => 1024,
+                    "e5-small" | _ => 384,
+                },
+                (EmbedProviderKind::Openai, None) => match embed_cfg.model.as_str() {
+                    "text-embedding-3-large" => 3072,
+                    _ => 1536,
+                },
+                (EmbedProviderKind::Ollama, None) => {
+                    anyhow::bail!(
+                        "--embed-dimensions / EMBED_DIMENSIONS is required when --embed-provider=ollama"
+                    )
+                }
+            };
+
             db::init_schema(&db, dim).await?;
             db::init_quran_schema(&db, dim).await?;
             db::init_quran_word_schema(&db).await?;
@@ -567,19 +631,24 @@ async fn async_main() -> Result<()> {
             db::init_link_preview_schema(&db).await?;
             db::init_notebook_schema(&db).await?;
             quran::audio::init_reciters(&db).await?;
-            #[cfg(feature = "advanced")]
-            embed::check_embedding_dimension(&db, embed_model.dimension()).await?;
-            web::serve(
-                db,
+
+            let llm_cfg = LlmConfig {
+                provider: llm_provider,
+                model: llm_model,
+                base_url: llm_base_url,
+                api_key: llm_api_key,
+            };
+
+            let serve_cfg = ServeConfig {
                 port,
-                ollama_url,
-                ollama_model,
-                embed_model,
-                reranker,
-                reranker_ollama_model,
+                llm: llm_cfg,
+                embed: embed_cfg,
+                rerank_backend: reranker,
+                reranker_model,
                 pageindex_dir,
-            )
-            .await?;
+            };
+
+            web::serve(db, serve_cfg).await?;
         }
     }
 

@@ -4,7 +4,8 @@ use surrealdb::Surreal;
 use tracing;
 
 use crate::db::Db;
-use crate::embed::{Embedder, RerankerBackend};
+use crate::embed::RerankerBackend;
+use crate::embedding::EmbeddingProvider;
 use crate::models::ApiHadithSearchResult;
 use crate::quran::models::ApiAyahSearchResult;
 
@@ -44,7 +45,7 @@ fn rrf_score(rank: usize) -> f64 {
 /// Search both Quran ayahs and Hadiths, then interleave via cross-source RRF with pagination.
 pub async fn search_unified(
     db: &Surreal<Db>,
-    embedder: &Embedder,
+    embedder: &dyn EmbeddingProvider,
     query: &str,
     search_type: &str,
     limit: usize,

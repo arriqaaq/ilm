@@ -5,15 +5,16 @@ use axum::response::{IntoResponse, Json, Response};
 use futures::StreamExt;
 use serde::Deserialize;
 
+use crate::llm::ChatOptions;
 use crate::models::{ApiHadith, ApiHadithSearchResult};
 use crate::quran::models::{
     AYAH_FIELDS, ApiAyah, ApiAyahSearchResult, ApiPhraseWithAyahs, ApiQuranWord, ApiReciter,
     ApiSimilarAyah, ApiSurah, Ayah, AyahSimilarResponse, QuranPhrase, QuranSearchResponse,
     QuranStatsResponse, QuranWord, Reciter, RootSearchResponse, Surah, SurahDetailResponse,
 };
-use crate::rag::ChatChunk;
 
 use super::AppState;
+use super::sse::token_stream_to_sse;
 
 // ── Query parameter types ──
 
@@ -221,38 +222,41 @@ pub async fn ask_quran(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    let embedder = state.embedder.as_deref().ok_or_else(|| {
-        tracing::error!("Advanced features (embeddings) not available");
+    let embedder = state.embedder.as_ref().ok_or_else(|| {
+        tracing::error!("Embeddings provider not available");
         StatusCode::SERVICE_UNAVAILABLE
     })?;
 
-    let ollama = state.ollama.as_ref().ok_or_else(|| {
-        tracing::error!("Ollama client not configured");
+    let llm = state.llm.as_ref().ok_or_else(|| {
+        tracing::error!("LLM provider not configured");
         StatusCode::SERVICE_UNAVAILABLE
     })?;
 
-    let model_name = body.model.clone();
+    let opts = ChatOptions {
+        model: body.model.clone(),
+        ..Default::default()
+    };
 
-    let result = ollama
-        .ask_agentic(
-            &state.db,
-            embedder,
-            &question,
-            model_name.as_deref(),
-            crate::agentic_rag::AskScope::Quran,
-        )
-        .await
-        .map_err(|e| {
-            tracing::error!("Agentic RAG ask (quran) failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let result = crate::agentic_rag::ask_agentic(
+        llm.as_ref(),
+        &state.db,
+        embedder.as_ref(),
+        &question,
+        &opts,
+        crate::agentic_rag::AskScope::Quran,
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Agentic RAG ask (quran) failed: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     use crate::agentic_rag::AgenticResult;
 
-    let (sources_event, byte_stream) = match result {
+    let (sources_event, token_stream) = match result {
         AgenticResult::Semantic {
             ayah_sources,
-            byte_stream,
+            token_stream,
             ..
         } => {
             let ayah_api: Vec<ApiAyahSearchResult> = ayah_sources
@@ -263,7 +267,7 @@ pub async fn ask_quran(
                 "data: {}\n\n",
                 serde_json::to_string(&serde_json::json!({ "quran_sources": ayah_api })).unwrap()
             );
-            (event, byte_stream)
+            (event, token_stream)
         }
         // Structured intents don't fire under Quran scope (classifier is
         // skipped). If that ever changes, surface whatever narrator/hadith
@@ -271,7 +275,7 @@ pub async fn ask_quran(
         AgenticResult::Structured {
             narrator_sources,
             hadith_sources,
-            byte_stream,
+            token_stream,
         } => {
             let hadith_api: Vec<ApiHadithSearchResult> = hadith_sources
                 .into_iter()
@@ -285,7 +289,7 @@ pub async fn ask_quran(
                 }))
                 .unwrap()
             );
-            (event, byte_stream)
+            (event, token_stream)
         }
     };
 
@@ -293,38 +297,7 @@ pub async fn ask_quran(
         futures::stream::once(
             async move { Ok::<_, std::io::Error>(bytes::Bytes::from(sources_event)) },
         )
-        .chain(byte_stream.map(|chunk| match chunk {
-            Ok(raw) => {
-                let mut sse = String::new();
-                for line in raw.split(|&b| b == b'\n') {
-                    if line.is_empty() {
-                        continue;
-                    }
-                    if let Ok(parsed) = serde_json::from_slice::<ChatChunk>(line) {
-                        if let Some(msg) = parsed.message
-                            && !msg.content.is_empty()
-                        {
-                            sse.push_str(&format!(
-                                "data: {}\n\n",
-                                serde_json::to_string(&serde_json::json!({ "text": msg.content }))
-                                    .unwrap()
-                            ));
-                        }
-                        if parsed.done {
-                            sse.push_str("data: {\"done\":true}\n\n");
-                        }
-                    }
-                }
-                Ok(bytes::Bytes::from(sse))
-            }
-            Err(e) => {
-                let err_event = format!(
-                    "data: {}\n\n",
-                    serde_json::to_string(&serde_json::json!({ "error": e.to_string() })).unwrap()
-                );
-                Ok(bytes::Bytes::from(err_event))
-            }
-        }));
+        .chain(token_stream_to_sse(token_stream));
 
     Ok(Response::builder()
         .header("content-type", "text/event-stream")

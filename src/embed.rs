@@ -1,8 +1,13 @@
+//! Reranker backends and bulk-indexing helpers.
+//!
+//! The actual embedding model lives in `crate::embedding` (provider-agnostic
+//! trait + adapters). This file is what's left: rerankers (which can be a
+//! local cross-encoder or any LLM provider) and the indexing helpers that
+//! wire embeddings into SurrealDB.
+
 use anyhow::Result;
 #[cfg(feature = "advanced")]
-use fastembed::{
-    EmbeddingModel, InitOptions, RerankInitOptions, RerankerModel, TextEmbedding, TextRerank,
-};
+use fastembed::{RerankInitOptions, RerankerModel, TextRerank};
 use std::sync::Arc;
 #[cfg(feature = "advanced")]
 use std::sync::Mutex;
@@ -13,133 +18,12 @@ use surrealdb::types::{RecordId, SurrealValue};
 
 #[cfg(feature = "advanced")]
 use crate::db::Db;
-use crate::rag::OllamaClient;
+#[cfg(feature = "advanced")]
+use crate::embedding::EmbeddingProvider;
+use crate::llm::{ChatOptions, LlmProvider};
 
 #[cfg(feature = "advanced")]
 const BATCH_SIZE: usize = 64;
-
-/// Supported embedding models.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Default)]
-pub enum EmbedModel {
-    /// BAAI/bge-m3 (1024-dim, no prefixes)
-    #[value(name = "bge-m3")]
-    BgeM3,
-    /// intfloat/multilingual-e5-small (384-dim, requires query/passage prefixes)
-    #[value(name = "e5-small")]
-    #[default]
-    MultilingualE5Small,
-}
-
-impl EmbedModel {
-    #[cfg(feature = "advanced")]
-    pub fn fastembed_model(&self) -> EmbeddingModel {
-        match self {
-            Self::BgeM3 => EmbeddingModel::BGEM3,
-            Self::MultilingualE5Small => EmbeddingModel::MultilingualE5Small,
-        }
-    }
-
-    pub fn dimension(&self) -> usize {
-        match self {
-            Self::BgeM3 => 1024,
-            Self::MultilingualE5Small => 384,
-        }
-    }
-
-    #[cfg(feature = "advanced")]
-    fn query_prefix(&self) -> &'static str {
-        match self {
-            Self::BgeM3 => "",
-            Self::MultilingualE5Small => "query: ",
-        }
-    }
-
-    #[cfg(feature = "advanced")]
-    fn passage_prefix(&self) -> &'static str {
-        match self {
-            Self::BgeM3 => "",
-            Self::MultilingualE5Small => "passage: ",
-        }
-    }
-}
-
-// ── Embedder ─────────────────────────────────────────────────────────────────
-
-#[cfg(feature = "advanced")]
-pub struct Embedder {
-    model: Mutex<TextEmbedding>,
-    config: EmbedModel,
-}
-
-#[cfg(feature = "advanced")]
-impl Embedder {
-    pub fn new(config: EmbedModel) -> Result<Self> {
-        let model = TextEmbedding::try_new(
-            InitOptions::new(config.fastembed_model()).with_show_download_progress(true),
-        )?;
-        Ok(Self {
-            model: Mutex::new(model),
-            config,
-        })
-    }
-
-    pub fn dimension(&self) -> usize {
-        self.config.dimension()
-    }
-
-    /// Embed passages (applies passage prefix for models that need it).
-    pub fn embed(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {
-        let prefix = self.config.passage_prefix();
-        let mut model = self.model.lock().unwrap();
-        if prefix.is_empty() {
-            let embeddings = model.embed(texts, None)?;
-            Ok(embeddings)
-        } else {
-            let prefixed: Vec<String> = texts.iter().map(|t| format!("{prefix}{t}")).collect();
-            let refs: Vec<&str> = prefixed.iter().map(|s| s.as_str()).collect();
-            let embeddings = model.embed(refs, None)?;
-            Ok(embeddings)
-        }
-    }
-
-    /// Embed a single query (applies query prefix for models that need it).
-    pub fn embed_single(&self, text: &str) -> Result<Vec<f32>> {
-        let prefix = self.config.query_prefix();
-        let mut model = self.model.lock().unwrap();
-        if prefix.is_empty() {
-            let mut embeddings = model.embed(vec![text], None)?;
-            Ok(embeddings.remove(0))
-        } else {
-            let prefixed = format!("{prefix}{text}");
-            let mut embeddings = model.embed(vec![prefixed.as_str()], None)?;
-            Ok(embeddings.remove(0))
-        }
-    }
-}
-
-#[cfg(not(feature = "advanced"))]
-pub struct Embedder;
-
-#[cfg(not(feature = "advanced"))]
-impl Embedder {
-    pub fn new(_config: EmbedModel) -> Result<Self> {
-        anyhow::bail!(
-            "Advanced features (embeddings) are disabled in this build. Rebuild with: cargo build (default features)"
-        );
-    }
-
-    pub fn dimension(&self) -> usize {
-        0
-    }
-
-    pub fn embed(&self, _texts: &[&str]) -> Result<Vec<Vec<f32>>> {
-        anyhow::bail!("Advanced features disabled")
-    }
-
-    pub fn embed_single(&self, _text: &str) -> Result<Vec<f32>> {
-        anyhow::bail!("Advanced features disabled")
-    }
-}
 
 // ── Reranker ─────────────────────────────────────────────────────────────────
 
@@ -148,8 +32,9 @@ impl Embedder {
 pub enum RerankBackendKind {
     /// Cross-encoder via fastembed (local, fast, BAAI/bge-reranker-v2-m3).
     Fastembed,
-    /// LLM via Ollama (slower, needs a running Ollama server).
-    Ollama,
+    /// LLM relevance judge via the configured `--llm-provider`.
+    /// Slower; same provider as the main chat client.
+    Llm,
 }
 
 #[cfg(feature = "advanced")]
@@ -186,9 +71,10 @@ impl FastembedReranker {
 pub enum RerankerBackend {
     #[cfg(feature = "advanced")]
     Fastembed(FastembedReranker),
-    Ollama {
-        client: Arc<OllamaClient>,
-        model: String,
+    Llm {
+        provider: Arc<dyn LlmProvider>,
+        /// Optional override; falls back to the provider's default model.
+        model: Option<String>,
     },
 }
 
@@ -197,20 +83,23 @@ impl RerankerBackend {
         match self {
             #[cfg(feature = "advanced")]
             Self::Fastembed(r) => r.rerank(query, passages),
-            Self::Ollama { client, model } => ollama_rerank(client, model, query, passages).await,
+            Self::Llm { provider, model } => {
+                llm_rerank(provider.as_ref(), model.as_deref(), query, passages).await
+            }
         }
     }
 }
 
-/// Listwise Ollama reranker. Batches passages in groups to keep prompts
-/// manageable, asks the model to return JSON scores per passage, stitches
-/// them back together in input order. Unscored passages default to 0.
+/// Listwise LLM-backed reranker. Batches passages in groups of 10, asks the
+/// model for a JSON `{"scores": [...]}` per batch, and stitches results back
+/// in input order. Unscored passages default to 0. Provider-agnostic — works
+/// against Ollama, OpenAI, Anthropic, or any custom `LlmProvider`.
 ///
 /// Scores are 0.0–1.0 relevance judgments. Not calibrated across queries —
 /// only use for ranking within a single query's candidate set.
-async fn ollama_rerank(
-    client: &OllamaClient,
-    model: &str,
+async fn llm_rerank(
+    provider: &dyn LlmProvider,
+    model: Option<&str>,
     query: &str,
     passages: &[&str],
 ) -> Result<Vec<f32>> {
@@ -220,6 +109,11 @@ async fn ollama_rerank(
         where 1.0 is a direct, on-topic answer and 0.0 is unrelated. \
         Return ONLY valid JSON of the form {\"scores\": [<float>, ...]} \
         with exactly as many scores as input passages, in the same order. No prose.";
+
+    let opts = ChatOptions {
+        model: model.map(str::to_string),
+        ..Default::default()
+    };
 
     let mut scores = vec![0.0f32; passages.len()];
     for (batch_idx, chunk) in passages.chunks(BATCH).enumerate() {
@@ -234,7 +128,7 @@ async fn ollama_rerank(
             chunk.len()
         ));
 
-        let parsed = client.chat_json(SYSTEM, &user, Some(model)).await?;
+        let parsed = provider.chat_json(SYSTEM, &user, &opts).await?;
         let arr = parsed
             .get("scores")
             .and_then(|v| v.as_array())
@@ -254,10 +148,20 @@ async fn ollama_rerank(
 
 // ── Embedding helpers (advanced-only) ────────────────────────────────────────
 
-/// Check that existing embeddings (if any) match the expected dimension.
-/// Returns an error with instructions if there's a mismatch.
+/// Check that existing embeddings (if any) match the embedder's dimension.
+/// Returns an error with instructions if there's a mismatch — switching embed
+/// providers/models requires re-ingestion.
 #[cfg(feature = "advanced")]
-pub async fn check_embedding_dimension(db: &Surreal<Db>, expected_dim: usize) -> Result<()> {
+pub async fn check_embedding_dimension(
+    db: &Surreal<Db>,
+    embedder: &dyn EmbeddingProvider,
+) -> Result<()> {
+    let expected_dim = embedder.dimension();
+    if expected_dim == 0 {
+        // Embedder didn't declare a dimension up-front (e.g. Ollama probe pending).
+        // Skip the check — first embed call will tell us.
+        return Ok(());
+    }
     #[derive(Debug, SurrealValue)]
     struct EmbedProbe {
         embedding: Option<Vec<f32>>,
@@ -271,12 +175,14 @@ pub async fn check_embedding_dimension(db: &Surreal<Db>, expected_dim: usize) ->
         && emb.len() != expected_dim
     {
         anyhow::bail!(
-            "Existing embeddings have dimension {} but selected model produces dimension {}.\n\
+            "Existing embeddings have dimension {} but selected embedder ({}/{}) produces dimension {}.\n\
                      To switch models, clean your data directory and re-ingest:\n  \
                      rm -rf db_data\n  \
-                     hadith ingest --embed-model <model> --file data/semantic_hadith.json\n  \
-                     hadith ingest-quran --embed-model <model> --file data/quran.csv",
+                     hadith ingest --file data/semantic_hadith.json\n  \
+                     hadith ingest-quran --file data/quran.csv",
             emb.len(),
+            embedder.provider_name(),
+            embedder.model_name(),
             expected_dim,
         );
     }
@@ -285,7 +191,7 @@ pub async fn check_embedding_dimension(db: &Surreal<Db>, expected_dim: usize) ->
 
 /// Generate embeddings for all hadiths that don't have one yet.
 #[cfg(feature = "advanced")]
-pub async fn embed_all_hadiths(db: &Surreal<Db>, embedder: &Embedder) -> Result<()> {
+pub async fn embed_all_hadiths(db: &Surreal<Db>, embedder: &dyn EmbeddingProvider) -> Result<()> {
     let mut response = db
         .query("SELECT id, hadith_number, text_ar, text_en, narrator_text FROM hadith WHERE embedding IS NONE")
         .await?;
@@ -316,7 +222,7 @@ pub async fn embed_all_hadiths(db: &Surreal<Db>, embedder: &Embedder) -> Result<
             .collect();
 
         let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
-        let embeddings = embedder.embed(&text_refs)?;
+        let embeddings = embedder.embed_passages(&text_refs).await?;
 
         let futs: Vec<_> = chunk
             .iter()

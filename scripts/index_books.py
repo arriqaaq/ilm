@@ -287,9 +287,19 @@ def main():
         show_status(book_map)
         return
 
-    # Parse args
+    # Parse args. PageIndex accepts a litellm-format `provider/model` string;
+    # construct it from the same LLM_* env vars used everywhere else, with
+    # PAGEINDEX_MODEL as a backward-compat override.
     with_summaries = "--with-summaries" in sys.argv
-    model = os.environ.get("PAGEINDEX_MODEL", "ollama/command-r7b-arabic")
+
+    pageindex_override = os.environ.get("PAGEINDEX_MODEL")
+    if pageindex_override:
+        model = pageindex_override
+    else:
+        provider = os.environ.get("LLM_PROVIDER", "ollama")
+        model_name = os.environ.get("LLM_MODEL", "command-r7b-arabic")
+        model = f"{provider}/{model_name}"
+
     book_filter = None
 
     args = sys.argv[1:]

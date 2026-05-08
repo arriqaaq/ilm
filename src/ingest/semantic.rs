@@ -188,7 +188,7 @@ pub async fn ingest(
     db: &Surreal<Db>,
     json_path: &str,
     limit_per_book: Option<usize>,
-    embedder: Option<&crate::embed::Embedder>,
+    embedder: Option<&dyn crate::embedding::EmbeddingProvider>,
 ) -> Result<()> {
     let path = Path::new(json_path);
     if !path.exists() {

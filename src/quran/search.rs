@@ -5,7 +5,7 @@ use surrealdb::Surreal;
 use surrealdb::types::SurrealValue;
 
 use crate::db::Db;
-use crate::embed::Embedder;
+use crate::embedding::EmbeddingProvider;
 
 use super::models::{AYAH_SEARCH_FIELDS, AyahSearchResult};
 
@@ -99,12 +99,12 @@ pub async fn search_ayahs_text(
 /// (not `SELECT *`) to avoid pulling the embedding column through the result set.
 pub async fn search_ayahs_semantic(
     db: &Surreal<Db>,
-    embedder: &Embedder,
+    embedder: &dyn EmbeddingProvider,
     query: &str,
     limit: usize,
     offset: usize,
 ) -> Result<Vec<AyahSearchResult>> {
-    let query_vec = embedder.embed_single(query)?;
+    let query_vec = embedder.embed_query(query).await?;
 
     let fetch_count = limit + offset;
     let sql = format!(
@@ -120,12 +120,12 @@ pub async fn search_ayahs_semantic(
 /// Hybrid search combining BM25 full-text and vector similarity via Reciprocal Rank Fusion.
 pub async fn search_ayahs_hybrid(
     db: &Surreal<Db>,
-    embedder: &Embedder,
+    embedder: &dyn EmbeddingProvider,
     query: &str,
     limit: usize,
     offset: usize,
 ) -> Result<Vec<AyahSearchResult>> {
-    let query_vec = embedder.embed_single(query)?;
+    let query_vec = embedder.embed_query(query).await?;
     let normalized_ar = crate::quran::ingest::strip_arabic_diacritics(query);
     // TODO(surrealdb#7199): use bind variables instead of inline literals
     let safe_q = escape_surql(query);

@@ -21,7 +21,9 @@ NO SurrealDB dependency — everything comes from raw files.
   6. Cross-domain hadith↔Quran (from KG references)
 
 Usage:
-  python3 scripts/prepare_training_data.py [--ollama-url URL] [--model MODEL] [--workers N]
+  LLM_PROVIDER=ollama LLM_MODEL=command-r7b-arabic python3 scripts/prepare_training_data.py [--workers N]
+  LLM_PROVIDER=openai  LLM_MODEL=gpt-4o-mini    LLM_API_KEY=sk-... python3 scripts/prepare_training_data.py
+  LLM_PROVIDER=anthropic LLM_MODEL=claude-opus-4-7 LLM_API_KEY=sk-ant-... python3 scripts/prepare_training_data.py
 """
 
 import csv
@@ -32,9 +34,12 @@ import re
 import sys
 import time
 import argparse
-import urllib.request
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Ensure the scripts/ directory is on the path so `llm` resolves regardless of cwd.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from llm import ChatOptions, LlmProvider, build_llm  # noqa: E402
 
 csv.field_size_limit(sys.maxsize)
 
@@ -47,9 +52,6 @@ KG_PATH = os.path.join(DATA_DIR, "semantic_hadith.json")
 QURAN_PATH = os.path.join(DATA_DIR, "quran.csv")
 TRAIN_OUTPUT = os.path.join(DATA_DIR, "train.jsonl")
 VALID_OUTPUT = os.path.join(DATA_DIR, "valid.jsonl")
-
-DEFAULT_OLLAMA_URL = "http://localhost:11434"
-DEFAULT_MODEL = "command-r7b-arabic"
 
 BOOK_ENGLISH = {
     "SB": "Sahih al-Bukhari",
@@ -156,28 +158,19 @@ def load_quran() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Ollama helper
+# LLM helper (provider-agnostic via scripts/llm/)
 # ---------------------------------------------------------------------------
 
-def ollama_generate(prompt: str, system: str, ollama_url: str, model: str) -> str:
-    payload = json.dumps({
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
-        ],
-        "stream": False,
-        "options": {"temperature": 0.7, "num_predict": 300},
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        f"{ollama_url}/api/chat", data=payload,
-        headers={"Content-Type": "application/json"},
-    )
+def llm_generate(provider: LlmProvider, prompt: str, system: str) -> str:
+    """Non-streaming completion. Empty string on any error so callers fall through."""
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return data.get("message", {}).get("content", "").strip()
-    except Exception:
+        return provider.chat_text(
+            system,
+            prompt,
+            ChatOptions(temperature=0.7, max_tokens=300),
+        ).strip()
+    except Exception as e:
+        print(f"  LLM call failed: {e}", file=sys.stderr)
         return ""
 
 
@@ -540,14 +533,15 @@ def _build_rag_task(kg: dict, hids: list[str]) -> dict | None:
     return {"system_prompt": system_prompt, "context": context, "question": random.choice(questions)}
 
 
-def _generate_one_rag(task: dict, ollama_url: str, model: str) -> dict | None:
+def _generate_one_rag(task: dict, provider: LlmProvider) -> dict | None:
     gen_system = (
         "You are a knowledgeable Islamic scholar. Answer using ONLY the hadiths provided. "
         "Cite hadith numbers. Mention narrators. Be concise (150-300 words)."
     )
-    answer = ollama_generate(
+    answer = llm_generate(
+        provider,
         f"Context:\n{task['context']}\n\nQuestion: {task['question']}\n\nProvide a scholarly answer citing hadith numbers.",
-        gen_system, ollama_url, model,
+        gen_system,
     )
     if not answer or not re.search(r"#?\d+", answer):
         return None
@@ -560,9 +554,12 @@ def _generate_one_rag(task: dict, ollama_url: str, model: str) -> dict | None:
     }
 
 
-def generate_hadith_rag(kg: dict, ollama_url: str, model: str, target: int = 300, workers: int = 4) -> list[dict]:
-    """Generate hadith RAG Q&A via parallel Ollama calls."""
-    print(f"\nGenerating Category 4: Hadith RAG Q&A (target: {target}, workers: {workers})...")
+def generate_hadith_rag(kg: dict, provider: LlmProvider, target: int = 300, workers: int = 4) -> list[dict]:
+    """Generate hadith RAG Q&A via parallel LLM calls."""
+    print(
+        f"\nGenerating Category 4: Hadith RAG Q&A "
+        f"(target: {target}, workers: {workers}, provider: {provider.provider_name})..."
+    )
 
     # Group hadiths by book for sampling
     by_book: dict[str, list[str]] = defaultdict(list)
@@ -584,11 +581,11 @@ def generate_hadith_rag(kg: dict, ollama_url: str, model: str, target: int = 300
     random.shuffle(tasks)
     tasks = tasks[:target + 50]
 
-    # Parallel Ollama calls
+    # Parallel LLM calls
     examples = []
     done = 0
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(_generate_one_rag, t, ollama_url, model): t for t in tasks}
+        futures = {pool.submit(_generate_one_rag, t, provider): t for t in tasks}
         for future in as_completed(futures):
             done += 1
             result = future.result()
@@ -763,9 +760,30 @@ def write_jsonl(examples: list[dict], path: str) -> None:
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate training data for hadith-scholar LLM")
-    parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL)
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser = argparse.ArgumentParser(
+        description="Generate training data for hadith-scholar LLM"
+    )
+    # LLM provider config (also reads from LLM_* env vars)
+    parser.add_argument(
+        "--llm-provider",
+        default=os.environ.get("LLM_PROVIDER", "ollama"),
+        help="ollama, openai, anthropic, ... (env: LLM_PROVIDER)",
+    )
+    parser.add_argument(
+        "--llm-model",
+        default=os.environ.get("LLM_MODEL", "command-r7b-arabic"),
+        help="Provider-specific model name (env: LLM_MODEL)",
+    )
+    parser.add_argument(
+        "--llm-base-url",
+        default=os.environ.get("LLM_BASE_URL"),
+        help="Ollama only — defaults to http://localhost:11434 (env: LLM_BASE_URL)",
+    )
+    parser.add_argument(
+        "--llm-api-key",
+        default=os.environ.get("LLM_API_KEY"),
+        help="Required for openai/anthropic (env: LLM_API_KEY)",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--split-ratio", type=float, default=0.9)
@@ -781,13 +799,21 @@ def main():
     random.seed(args.seed)
     t0 = time.time()
 
-    # Check Ollama
-    print(f"Checking Ollama at {args.ollama_url}...")
+    # Build the LLM provider. If we can't (e.g. missing API key), fall back to
+    # skipping Category 4 — same behavior as the old "Ollama not reachable" path.
+    provider: LlmProvider | None = None
     try:
-        urllib.request.urlopen(f"{args.ollama_url}/api/tags", timeout=5)
-        print("  Ollama is running")
+        provider = build_llm(
+            provider=args.llm_provider,
+            model=args.llm_model,
+            api_key=args.llm_api_key,
+            base_url=args.llm_base_url,
+        )
+        print(
+            f"LLM provider: {provider.provider_name} (model: {provider.default_model})"
+        )
     except Exception as e:
-        print(f"  WARNING: Ollama not reachable ({e}). Category 4 (RAG Q&A) will be skipped.")
+        print(f"  WARNING: LLM provider unavailable ({e}). Category 4 (RAG Q&A) will be skipped.")
         args.rag = 0
 
     # Load data
@@ -800,7 +826,7 @@ def main():
     # Generate all categories
     all_examples = []
 
-    # Instant categories (no Ollama)
+    # Instant categories (no LLM)
     all_examples.extend(generate_terminology()[:args.terminology])
     all_examples.extend(generate_narrator_analysis(kg, args.narrator))
     all_examples.extend(generate_isnad_structural(kg, args.structural))
@@ -808,11 +834,13 @@ def main():
         all_examples.extend(generate_quran_tafsir(verses, args.tafsir))
     all_examples.extend(generate_cross_domain(kg, verses_lookup, args.crossdomain))
 
-    # Ollama category (parallelized)
-    if args.rag > 0:
+    # LLM category (parallelized)
+    if args.rag > 0 and provider is not None:
         t1 = time.time()
-        all_examples.extend(generate_hadith_rag(kg, args.ollama_url, args.model, args.rag, args.workers))
-        print(f"  Ollama generation took {time.time() - t1:.0f}s")
+        all_examples.extend(
+            generate_hadith_rag(kg, provider, args.rag, args.workers)
+        )
+        print(f"  LLM generation took {time.time() - t1:.0f}s")
 
     # Shuffle and split
     print(f"\nTotal examples: {len(all_examples)}")

@@ -7,7 +7,9 @@ use serde::Deserialize;
 use std::collections::HashSet;
 use surrealdb::types::{RecordId, SurrealValue};
 
+use super::sse::token_stream_to_sse;
 use crate::analysis;
+use crate::llm::ChatOptions;
 use crate::models::{
     ApiCollection, ApiHadith, ApiHadithFamily, ApiHadithSearchResult, ApiNarrator,
     ApiNarratorSearchResult, ApiNarratorWithCount, Collection, CommonNarratorsResponse, GraphData,
@@ -15,7 +17,6 @@ use crate::models::{
     Hadith, HadithFamily, HadithSearchResult, IsnadSearchResponse, Narrator, PaginatedResponse,
     StatsResponse, record_id_key_string, record_id_string,
 };
-use crate::rag::ChatChunk;
 
 use super::AppState;
 
@@ -26,7 +27,10 @@ fn rid(table: &str, key: &str) -> RecordId {
 pub async fn app_config(State(state): State<AppState>) -> impl IntoResponse {
     Json(serde_json::json!({
         "advanced_enabled": state.advanced_enabled,
-        "ollama_available": state.ollama.is_some(),
+        "llm_available": state.llm.is_some(),
+        "llm_provider": state.llm.as_ref().map(|l| l.provider_name()),
+        "embed_available": state.embedder.is_some(),
+        "embed_provider": state.embedder.as_ref().map(|e| e.provider_name()),
         "reranker_available": state.reranker.is_some(),
     }))
 }
@@ -648,39 +652,42 @@ pub async fn ask(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    let embedder = state.embedder.as_deref().ok_or_else(|| {
-        tracing::error!("Advanced features (embeddings) not available");
+    let embedder = state.embedder.as_ref().ok_or_else(|| {
+        tracing::error!("Embeddings provider not available");
         StatusCode::SERVICE_UNAVAILABLE
     })?;
 
-    let ollama = state.ollama.as_ref().ok_or_else(|| {
-        tracing::error!("Ollama client not configured");
+    let llm = state.llm.as_ref().ok_or_else(|| {
+        tracing::error!("LLM provider not configured");
         StatusCode::SERVICE_UNAVAILABLE
     })?;
 
-    let model_name = body.model.clone();
+    let opts = ChatOptions {
+        model: body.model.clone(),
+        ..Default::default()
+    };
 
-    let result = ollama
-        .ask_agentic(
-            &state.db,
-            embedder,
-            &question,
-            model_name.as_deref(),
-            crate::agentic_rag::AskScope::Hadith,
-        )
-        .await
-        .map_err(|e| {
-            tracing::error!("Agentic RAG ask (hadith) failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let result = crate::agentic_rag::ask_agentic(
+        llm.as_ref(),
+        &state.db,
+        embedder.as_ref(),
+        &question,
+        &opts,
+        crate::agentic_rag::AskScope::Hadith,
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Agentic RAG ask (hadith) failed: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     use crate::agentic_rag::AgenticResult;
 
-    let (sources_event, byte_stream) = match result {
+    let (sources_event, token_stream) = match result {
         AgenticResult::Structured {
             narrator_sources,
             hadith_sources,
-            byte_stream,
+            token_stream,
         } => {
             let hadith_api: Vec<ApiHadithSearchResult> = hadith_sources
                 .into_iter()
@@ -694,11 +701,11 @@ pub async fn ask(
                 }))
                 .unwrap()
             );
-            (event, byte_stream)
+            (event, token_stream)
         }
         AgenticResult::Semantic {
             hadith_sources,
-            byte_stream,
+            token_stream,
             ..
         } => {
             let hadith_api: Vec<ApiHadithSearchResult> = hadith_sources
@@ -710,7 +717,7 @@ pub async fn ask(
                 serde_json::to_string(&serde_json::json!({ "hadith_sources": hadith_api }))
                     .unwrap()
             );
-            (event, byte_stream)
+            (event, token_stream)
         }
     };
 
@@ -718,38 +725,7 @@ pub async fn ask(
         futures::stream::once(
             async move { Ok::<_, std::io::Error>(bytes::Bytes::from(sources_event)) },
         )
-        .chain(byte_stream.map(|chunk| match chunk {
-            Ok(raw) => {
-                let mut sse = String::new();
-                for line in raw.split(|&b| b == b'\n') {
-                    if line.is_empty() {
-                        continue;
-                    }
-                    if let Ok(parsed) = serde_json::from_slice::<ChatChunk>(line) {
-                        if let Some(msg) = parsed.message
-                            && !msg.content.is_empty()
-                        {
-                            sse.push_str(&format!(
-                                "data: {}\n\n",
-                                serde_json::to_string(&serde_json::json!({ "text": msg.content }))
-                                    .unwrap()
-                            ));
-                        }
-                        if parsed.done {
-                            sse.push_str("data: {\"done\":true}\n\n");
-                        }
-                    }
-                }
-                Ok(bytes::Bytes::from(sse))
-            }
-            Err(e) => {
-                let err_event = format!(
-                    "data: {}\n\n",
-                    serde_json::to_string(&serde_json::json!({ "error": e.to_string() })).unwrap()
-                );
-                Ok(bytes::Bytes::from(err_event))
-            }
-        }));
+        .chain(token_stream_to_sse(token_stream));
 
     let body = Body::from_stream(sse_stream);
 
@@ -1640,7 +1616,7 @@ pub async fn unified_search(
 
     match crate::unified::search_unified(
         &state.db,
-        embedder,
+        embedder.as_ref(),
         &query,
         &effective_type,
         limit,
@@ -1672,40 +1648,43 @@ pub async fn unified_ask(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    let embedder = state.embedder.as_deref().ok_or_else(|| {
-        tracing::error!("Advanced features (embeddings) not available");
+    let embedder = state.embedder.as_ref().ok_or_else(|| {
+        tracing::error!("Embeddings provider not available");
         StatusCode::SERVICE_UNAVAILABLE
     })?;
 
-    let ollama = state.ollama.as_ref().ok_or_else(|| {
-        tracing::error!("Ollama client not configured");
+    let llm = state.llm.as_ref().ok_or_else(|| {
+        tracing::error!("LLM provider not configured");
         StatusCode::SERVICE_UNAVAILABLE
     })?;
 
-    let model_name = body.model.clone();
+    let opts = ChatOptions {
+        model: body.model.clone(),
+        ..Default::default()
+    };
 
-    let result = ollama
-        .ask_agentic(
-            &state.db,
-            embedder,
-            &question,
-            model_name.as_deref(),
-            crate::agentic_rag::AskScope::Both,
-        )
-        .await
-        .map_err(|e| {
-            tracing::error!("Agentic RAG ask failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let result = crate::agentic_rag::ask_agentic(
+        llm.as_ref(),
+        &state.db,
+        embedder.as_ref(),
+        &question,
+        &opts,
+        crate::agentic_rag::AskScope::Both,
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Agentic RAG ask failed: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     use crate::agentic_rag::AgenticResult;
     use crate::quran::models::ApiAyahSearchResult;
 
-    let (sources_event, byte_stream) = match result {
+    let (sources_event, token_stream) = match result {
         AgenticResult::Structured {
             narrator_sources,
             hadith_sources,
-            byte_stream,
+            token_stream,
         } => {
             let hadith_api: Vec<ApiHadithSearchResult> = hadith_sources
                 .into_iter()
@@ -1719,12 +1698,12 @@ pub async fn unified_ask(
                 }))
                 .unwrap()
             );
-            (event, byte_stream)
+            (event, token_stream)
         }
         AgenticResult::Semantic {
             ayah_sources,
             hadith_sources,
-            byte_stream,
+            token_stream,
         } => {
             let quran_api: Vec<ApiAyahSearchResult> = ayah_sources
                 .into_iter()
@@ -1742,7 +1721,7 @@ pub async fn unified_ask(
                 }))
                 .unwrap()
             );
-            (event, byte_stream)
+            (event, token_stream)
         }
     };
 
@@ -1750,38 +1729,7 @@ pub async fn unified_ask(
         futures::stream::once(
             async move { Ok::<_, std::io::Error>(bytes::Bytes::from(sources_event)) },
         )
-        .chain(byte_stream.map(|chunk| match chunk {
-            Ok(raw) => {
-                let mut sse = String::new();
-                for line in raw.split(|&b| b == b'\n') {
-                    if line.is_empty() {
-                        continue;
-                    }
-                    if let Ok(parsed) = serde_json::from_slice::<ChatChunk>(line) {
-                        if let Some(msg) = parsed.message
-                            && !msg.content.is_empty()
-                        {
-                            sse.push_str(&format!(
-                                "data: {}\n\n",
-                                serde_json::to_string(&serde_json::json!({ "text": msg.content }))
-                                    .unwrap()
-                            ));
-                        }
-                        if parsed.done {
-                            sse.push_str("data: {\"done\":true}\n\n");
-                        }
-                    }
-                }
-                Ok(bytes::Bytes::from(sse))
-            }
-            Err(e) => {
-                let err_event = format!(
-                    "data: {}\n\n",
-                    serde_json::to_string(&serde_json::json!({ "error": e.to_string() })).unwrap()
-                );
-                Ok(bytes::Bytes::from(err_event))
-            }
-        }));
+        .chain(token_stream_to_sse(token_stream));
 
     let body = Body::from_stream(sse_stream);
 

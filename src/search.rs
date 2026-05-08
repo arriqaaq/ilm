@@ -5,7 +5,8 @@ use surrealdb::Surreal;
 use surrealdb::types::SurrealValue;
 
 use crate::db::Db;
-use crate::embed::{Embedder, RerankerBackend};
+use crate::embed::RerankerBackend;
+use crate::embedding::EmbeddingProvider;
 use crate::models::{HADITH_SEARCH_FIELDS, HadithSearchResult, NarratorSearchResult};
 
 /// Result from search::rrf() — contains id and fused score.
@@ -91,11 +92,11 @@ pub async fn search_hadiths_text(
 /// (not `SELECT *`) to avoid pulling the embedding column through the result set.
 pub async fn search_hadiths_semantic(
     db: &Surreal<Db>,
-    embedder: &Embedder,
+    embedder: &dyn EmbeddingProvider,
     query: &str,
     limit: usize,
 ) -> Result<Vec<HadithSearchResult>> {
-    let query_vec = embedder.embed_single(query)?;
+    let query_vec = embedder.embed_query(query).await?;
 
     let sql = format!(
         "SELECT {HADITH_SEARCH_FIELDS}, vector::similarity::cosine(embedding, $query_vec) AS score \
@@ -114,13 +115,13 @@ pub async fn search_hadiths_semantic(
 /// full hadith records for the top-ranked IDs.
 pub async fn search_hadiths_hybrid(
     db: &Surreal<Db>,
-    embedder: &Embedder,
+    embedder: &dyn EmbeddingProvider,
     query: &str,
     limit: usize,
     _offset: usize,
     reranker: Option<&RerankerBackend>,
 ) -> Result<Vec<HadithSearchResult>> {
-    let query_vec = embedder.embed_single(query)?;
+    let query_vec = embedder.embed_query(query).await?;
     // TODO(surrealdb#7199): use bind variables instead of inline literals
     let safe_q = escape_surql(query);
 

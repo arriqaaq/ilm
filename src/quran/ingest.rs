@@ -3,7 +3,7 @@ use surrealdb::Surreal;
 use surrealdb::types::{RecordId, SurrealValue};
 
 use crate::db::Db;
-use crate::embed::Embedder;
+use crate::embedding::EmbeddingProvider;
 use crate::ingest::batch::{Batch, batch_size_from_env};
 
 fn rid(table: &str, key: &str) -> RecordId {
@@ -54,7 +54,11 @@ struct CsvAyah {
     tafsir_en: String,
 }
 
-pub async fn ingest(db: &Surreal<Db>, csv_path: &str, embedder: Option<&Embedder>) -> Result<()> {
+pub async fn ingest(
+    db: &Surreal<Db>,
+    csv_path: &str,
+    embedder: Option<&dyn EmbeddingProvider>,
+) -> Result<()> {
     // 1. Create surah records from hardcoded metadata
     println!("📖 Creating surah records...");
     create_surahs(db).await?;
@@ -153,7 +157,7 @@ struct AyahForEmbed {
     text_en: Option<String>,
 }
 
-async fn embed_all_ayahs(db: &Surreal<Db>, embedder: &Embedder) -> Result<()> {
+async fn embed_all_ayahs(db: &Surreal<Db>, embedder: &dyn EmbeddingProvider) -> Result<()> {
     let mut response = db
         .query("SELECT id, surah_number, ayah_number, text_ar, text_en FROM ayah WHERE embedding IS NONE")
         .await?;
@@ -195,7 +199,7 @@ async fn embed_all_ayahs(db: &Surreal<Db>, embedder: &Embedder) -> Result<()> {
             .collect();
 
         let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
-        let embeddings = embedder.embed(&text_refs)?;
+        let embeddings = embedder.embed_passages(&text_refs).await?;
 
         let futs: Vec<_> = chunk
             .iter()

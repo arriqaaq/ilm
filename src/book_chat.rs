@@ -14,7 +14,7 @@ use std::time::Instant;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::rag::OllamaClient;
+use crate::llm::{ChatOptions, LlmProvider};
 
 /// Truncate a string at a char boundary, not in the middle of a multi-byte character.
 fn truncate_str(s: &str, max_bytes: usize) -> &str {
@@ -352,7 +352,7 @@ const BATCH_TOKEN_BUDGET: usize = 80_000;
 /// Navigate the book tree to pick line ranges relevant to `question`.
 /// Single LLM call when the TOC fits, else N parallel calls merged.
 pub async fn navigate(
-    ollama: &OllamaClient,
+    provider: &dyn LlmProvider,
     book: &BookTree,
     question: &str,
 ) -> Result<Vec<SectionRange>> {
@@ -368,7 +368,7 @@ pub async fn navigate(
             total_tokens / 1000,
             book.name_en
         );
-        return navigate_once(ollama, book, question, &full_toc, &valid_lines).await;
+        return navigate_once(provider, book, question, &full_toc, &valid_lines).await;
     }
 
     let slabs = split_toc_into_slabs(&book.structure, BATCH_TOKEN_BUDGET);
@@ -382,7 +382,7 @@ pub async fn navigate(
     let results = futures::future::join_all(
         slabs
             .iter()
-            .map(|slab| navigate_once(ollama, book, question, slab, &valid_lines)),
+            .map(|slab| navigate_once(provider, book, question, slab, &valid_lines)),
     )
     .await;
 
@@ -399,7 +399,7 @@ pub async fn navigate(
 }
 
 async fn navigate_once(
-    ollama: &OllamaClient,
+    provider: &dyn LlmProvider,
     book: &BookTree,
     question: &str,
     toc: &str,
@@ -417,8 +417,9 @@ async fn navigate_once(
         name = book.name_en,
     );
 
-    let result = ollama
-        .chat_json(&system, question, None)
+    let opts = ChatOptions::default();
+    let result = provider
+        .chat_json(&system, question, &opts)
         .await
         .context("navigate_once (LLM range selection) failed")?;
 

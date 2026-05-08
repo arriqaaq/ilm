@@ -325,7 +325,7 @@ pub async fn ingest(
     csv_path: &str,
     selected_books: &HashSet<String>,
     limit_per_book: Option<usize>,
-    embedder: Option<&crate::embed::Embedder>,
+    embedder: Option<&dyn crate::embedding::EmbeddingProvider>,
 ) -> Result<()> {
     let path = Path::new(csv_path);
     if !path.exists() {

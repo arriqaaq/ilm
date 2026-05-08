@@ -7,8 +7,9 @@ use std::collections::HashMap;
 use surrealdb::types::SurrealValue;
 
 use super::AppState;
+use super::sse::token_stream_to_sse;
 use crate::book_chat;
-use crate::rag::ChatChunk;
+use crate::llm::ChatOptions;
 
 // ── Response types ──
 
@@ -710,8 +711,8 @@ pub async fn book_chat(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    let ollama = state.ollama.as_ref().ok_or_else(|| {
-        tracing::error!("Ollama client not configured");
+    let llm = state.llm.as_ref().ok_or_else(|| {
+        tracing::error!("LLM provider not configured");
         StatusCode::SERVICE_UNAVAILABLE
     })?;
 
@@ -725,7 +726,7 @@ pub async fn book_chat(
         StatusCode::NOT_FOUND
     })?;
 
-    let ollama = ollama.clone();
+    let llm = llm.clone();
     let book = book.clone();
     let nav_cache = state.nav_cache.clone();
 
@@ -743,7 +744,7 @@ pub async fn book_chat(
             tracing::info!("Nav cache hit for book {} q={}", book.book_id, &question[..question.len().min(40)]);
             cached
         } else {
-            match book_chat::navigate(&ollama, &book, &question).await {
+            match book_chat::navigate(llm.as_ref(), &book, &question).await {
                 Ok(r) => {
                     // Only cache non-empty results
                     if !r.is_empty() {
@@ -794,11 +795,12 @@ pub async fn book_chat(
             serde_json::to_string(&serde_json::json!({"sources": sources})).unwrap()
         )));
 
-        // Step 3: Stream answer
+        // Step 3: Stream answer (provider-agnostic)
         let answer_prompt = book_chat::build_answer_prompt(&book.name_en, &sections);
+        let opts = ChatOptions::default();
 
-        let byte_stream = match ollama
-            .chat_stream(&answer_prompt, &question, None)
+        let token_stream = match llm
+            .chat_stream(&answer_prompt, &question, &opts)
             .await
         {
             Ok(s) => s,
@@ -812,43 +814,9 @@ pub async fn book_chat(
             }
         };
 
-        let mut byte_stream = std::pin::pin!(byte_stream);
-        while let Some(chunk) = byte_stream.next().await {
-            match chunk {
-                Ok(raw) => {
-                    let mut sse = String::new();
-                    for line in raw.split(|&b| b == b'\n') {
-                        if line.is_empty() {
-                            continue;
-                        }
-                        if let Ok(parsed) = serde_json::from_slice::<ChatChunk>(line) {
-                            if let Some(msg) = parsed.message
-                                && !msg.content.is_empty()
-                            {
-                                sse.push_str(&format!(
-                                    "data: {}\n\n",
-                                    serde_json::to_string(
-                                        &serde_json::json!({"text": msg.content})
-                                    )
-                                    .unwrap()
-                                ));
-                            }
-                            if parsed.done {
-                                sse.push_str("data: {\"done\":true}\n\n");
-                            }
-                        }
-                    }
-                    if !sse.is_empty() {
-                        yield Ok(bytes::Bytes::from(sse));
-                    }
-                }
-                Err(e) => {
-                    yield Ok(bytes::Bytes::from(format!(
-                        "data: {}\n\n",
-                        serde_json::json!({"error": e.to_string()})
-                    )));
-                }
-            }
+        let mut sse = std::pin::pin!(token_stream_to_sse(token_stream));
+        while let Some(chunk) = sse.next().await {
+            yield chunk;
         }
     };
 
@@ -1179,8 +1147,8 @@ pub async fn tafsir_ask(
     // extractive verse-aware path.
     let verse = body.verse.ok_or(StatusCode::BAD_REQUEST)?;
 
-    let ollama = state.ollama.as_ref().ok_or_else(|| {
-        tracing::error!("Ollama client not configured");
+    let llm = state.llm.as_ref().ok_or_else(|| {
+        tracing::error!("LLM provider not configured");
         StatusCode::SERVICE_UNAVAILABLE
     })?;
 
@@ -1204,7 +1172,7 @@ pub async fn tafsir_ask(
         .filter_map(|id| book_trees.get(id).cloned())
         .collect();
 
-    let ollama = ollama.clone();
+    let llm = llm.clone();
     let state_for_shortcut = state.clone();
 
     let sse_stream = async_stream::stream! {
@@ -1478,7 +1446,7 @@ pub async fn tafsir_ask(
         let mut in_flight: futures::stream::FuturesUnordered<_> = extract_books
             .into_iter()
             .map(|(bid, name_en, sections)| {
-                let ollama = ollama.clone();
+                let llm = llm.clone();
                 let question = question.clone();
                 async move {
                     let single_book = vec![(bid, name_en.clone(), sections.clone())];
@@ -1498,9 +1466,10 @@ pub async fn tafsir_ask(
                     // Timeouts drop to zero-entry rather than fail the
                     // whole request — other books may still produce
                     // useful extracts.
+                    let opts = ChatOptions::default();
                     let res = tokio::time::timeout(
                         Duration::from_secs(180),
-                        ollama.chat_json(&prompt, &question, None),
+                        llm.chat_json(&prompt, &question, &opts),
                     )
                     .await;
 

@@ -1,7 +1,7 @@
-use std::sync::OnceLock;
+use std::sync::Arc;
 
 use hadith::db::{self, Db};
-use hadith::embed::{EmbedModel, Embedder};
+use hadith::embedding::{EmbeddingProvider, FastembedModelKind};
 use hadith::models::record_id_string;
 use hadith::search;
 use surrealdb::Surreal;
@@ -11,14 +11,14 @@ use tokio::sync::OnceCell;
 // -- Shared test fixtures (initialized once across all tests) --
 
 static DB: OnceCell<Surreal<Db>> = OnceCell::const_new();
-static EMBEDDER: OnceLock<Embedder> = OnceLock::new();
+static EMBEDDER: OnceCell<Arc<dyn EmbeddingProvider>> = OnceCell::const_new();
 
 async fn get_db() -> &'static Surreal<Db> {
     DB.get_or_init(|| async {
         let db = db::connect("db_data")
             .await
             .expect("Failed to connect to db_data/");
-        db::init_schema(&db, EmbedModel::default().dimension())
+        db::init_schema(&db, FastembedModelKind::default().dimension())
             .await
             .expect("Failed to init schema");
         db
@@ -26,9 +26,15 @@ async fn get_db() -> &'static Surreal<Db> {
     .await
 }
 
-fn get_embedder() -> &'static Embedder {
+async fn get_embedder() -> &'static dyn EmbeddingProvider {
     EMBEDDER
-        .get_or_init(|| Embedder::new(EmbedModel::default()).expect("Failed to create embedder"))
+        .get_or_init(|| async {
+            FastembedModelKind::default()
+                .build()
+                .expect("Failed to create embedder")
+        })
+        .await
+        .as_ref()
 }
 
 // -- Helper types for raw queries --
@@ -139,7 +145,7 @@ async fn test_text_search_no_match() {
 #[tokio::test]
 async fn test_semantic_search_returns_results() {
     let db = get_db().await;
-    let embedder = get_embedder();
+    let embedder = get_embedder().await;
     let results = search::search_hadiths_semantic(db, embedder, "fasting during Ramadan", 6)
         .await
         .unwrap();
@@ -152,7 +158,7 @@ async fn test_semantic_search_returns_results() {
 #[tokio::test]
 async fn test_semantic_search_has_scores() {
     let db = get_db().await;
-    let embedder = get_embedder();
+    let embedder = get_embedder().await;
     let results = search::search_hadiths_semantic(db, embedder, "prayer", 6)
         .await
         .unwrap();
@@ -166,7 +172,7 @@ async fn test_semantic_search_has_scores() {
 #[tokio::test]
 async fn test_semantic_search_scores_ordered() {
     let db = get_db().await;
-    let embedder = get_embedder();
+    let embedder = get_embedder().await;
     let results = search::search_hadiths_semantic(db, embedder, "kindness to neighbors", 6)
         .await
         .unwrap();
@@ -186,7 +192,7 @@ async fn test_semantic_search_scores_ordered() {
 #[tokio::test]
 async fn test_hybrid_search_returns_results() {
     let db = get_db().await;
-    let embedder = get_embedder();
+    let embedder = get_embedder().await;
     let results = search::search_hadiths_hybrid(db, embedder, "prayer", 10, 0, None)
         .await
         .unwrap();
@@ -199,7 +205,7 @@ async fn test_hybrid_search_returns_results() {
 #[tokio::test]
 async fn test_hybrid_search_has_scores() {
     let db = get_db().await;
-    let embedder = get_embedder();
+    let embedder = get_embedder().await;
     let results = search::search_hadiths_hybrid(db, embedder, "fasting", 10, 0, None)
         .await
         .unwrap();
@@ -213,7 +219,7 @@ async fn test_hybrid_search_has_scores() {
 #[tokio::test]
 async fn test_hybrid_search_respects_limit() {
     let db = get_db().await;
-    let embedder = get_embedder();
+    let embedder = get_embedder().await;
     let results = search::search_hadiths_hybrid(db, embedder, "prayer", 3, 0, None)
         .await
         .unwrap();

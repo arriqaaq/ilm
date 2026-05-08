@@ -2,6 +2,7 @@ pub mod book_handlers;
 pub mod handlers;
 pub mod note_handlers;
 pub mod quran_handlers;
+pub mod sse;
 
 use std::sync::Arc;
 
@@ -14,40 +15,45 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use crate::book_chat::{BookTree, NavCache};
 use crate::db::Db;
-use crate::embed::{EmbedModel, Embedder, RerankBackendKind, RerankerBackend};
-use crate::rag::OllamaClient;
+use crate::embed::{RerankBackendKind, RerankerBackend};
+use crate::embedding::{EmbedConfig, EmbeddingProvider, build_embedder};
+use crate::llm::{LlmConfig, LlmProvider, build_provider};
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: Surreal<Db>,
-    pub embedder: Option<Arc<Embedder>>,
+    pub embedder: Option<Arc<dyn EmbeddingProvider>>,
     pub reranker: Option<Arc<RerankerBackend>>,
-    pub ollama: Option<Arc<OllamaClient>>,
+    pub llm: Option<Arc<dyn LlmProvider>>,
     pub book_trees: Option<Arc<std::collections::HashMap<u64, BookTree>>>,
     pub nav_cache: Arc<NavCache>,
     pub advanced_enabled: bool,
 }
 
-pub async fn serve(
-    db: Surreal<Db>,
-    port: u16,
-    ollama_url: Option<String>,
-    ollama_model: Option<String>,
-    embed_model: EmbedModel,
-    rerank_backend: Option<RerankBackendKind>,
-    reranker_ollama_model: Option<String>,
-    pageindex_dir: Option<String>,
-) -> Result<()> {
-    let embedder = if cfg!(feature = "advanced") {
-        Some(Arc::new(Embedder::new(embed_model)?))
+pub struct ServeConfig {
+    pub port: u16,
+    pub llm: LlmConfig,
+    pub embed: EmbedConfig,
+    pub rerank_backend: Option<RerankBackendKind>,
+    pub reranker_model: Option<String>,
+    pub pageindex_dir: Option<String>,
+}
+
+pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
+    let advanced_enabled = cfg!(feature = "advanced");
+
+    let embedder = if advanced_enabled
+        || cfg.embed.provider != crate::embedding::EmbedProviderKind::Fastembed
+    {
+        Some(build_embedder(&cfg.embed)?)
     } else {
         tracing::info!("Advanced features disabled — skipping embedding model");
         None
     };
 
-    let ollama_client = Arc::new(OllamaClient::new(ollama_url, ollama_model.clone()));
+    let llm_client = Arc::clone(&build_provider(&cfg.llm)?);
 
-    let reranker = match rerank_backend {
+    let reranker = match cfg.rerank_backend {
         #[cfg(feature = "advanced")]
         Some(RerankBackendKind::Fastembed) => {
             tracing::info!("Loading fastembed reranker: bge-reranker-v2-m3");
@@ -55,14 +61,17 @@ pub async fn serve(
                 crate::embed::FastembedReranker::new()?,
             )))
         }
-        Some(RerankBackendKind::Ollama) => {
-            let model = reranker_ollama_model
-                .or(ollama_model)
-                .unwrap_or_else(|| ollama_client.model.clone());
-            tracing::info!("Using Ollama reranker model: {model}");
-            Some(Arc::new(RerankerBackend::Ollama {
-                client: ollama_client.clone(),
-                model,
+        Some(RerankBackendKind::Llm) => {
+            tracing::info!(
+                "Using LLM reranker via {} (model: {})",
+                llm_client.provider_name(),
+                cfg.reranker_model
+                    .as_deref()
+                    .unwrap_or(llm_client.default_model())
+            );
+            Some(Arc::new(RerankerBackend::Llm {
+                provider: Arc::clone(&llm_client),
+                model: cfg.reranker_model,
             }))
         }
         #[cfg(not(feature = "advanced"))]
@@ -72,9 +81,10 @@ pub async fn serve(
         }
         None => None,
     };
-    let ollama = Some(ollama_client);
 
-    let book_trees = if let Some(dir) = pageindex_dir {
+    let llm = Some(llm_client);
+
+    let book_trees = if let Some(dir) = cfg.pageindex_dir {
         let path = std::path::Path::new(&dir);
         match crate::book_chat::load_book_trees(path) {
             Ok(trees) => {
@@ -94,10 +104,10 @@ pub async fn serve(
         db,
         embedder,
         reranker,
-        ollama,
+        llm,
         book_trees,
         nav_cache: Arc::new(NavCache::new()),
-        advanced_enabled: cfg!(feature = "advanced"),
+        advanced_enabled,
     };
 
     let cors = CorsLayer::new()
@@ -339,8 +349,8 @@ pub async fn serve(
 
     let app = api.fallback_service(static_files).layer(cors);
 
-    let addr = format!("0.0.0.0:{port}");
-    tracing::info!("Server listening on http://localhost:{port}");
+    let addr = format!("0.0.0.0:{}", cfg.port);
+    tracing::info!("Server listening on http://localhost:{}", cfg.port);
     let listener = TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
 

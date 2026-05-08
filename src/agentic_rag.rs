@@ -95,15 +95,14 @@
 // (vector search → retrieve ayahs + hadiths → LLM synthesizes an answer).
 
 use anyhow::Result;
-use futures::stream::Stream;
 use surrealdb::Surreal;
 
-use crate::classify::QueryIntent;
+use crate::classify::{QueryIntent, classify};
 use crate::db::Db;
-use crate::embed::Embedder;
+use crate::embedding::EmbeddingProvider;
+use crate::llm::{ChatOptions, LlmProvider, TokenStream};
 use crate::models::HadithSearchResult;
 use crate::quran::models::AyahSearchResult;
-use crate::rag::OllamaClient;
 use crate::tools::{self, ApiNarratorSource};
 
 /// Which corpus the caller wants the Ask pipeline scoped to.
@@ -123,7 +122,7 @@ pub enum AgenticResult {
     Structured {
         narrator_sources: Vec<ApiNarratorSource>,
         hadith_sources: Vec<HadithSearchResult>,
-        byte_stream: Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send + Unpin>,
+        token_stream: TokenStream,
     },
     /// Fallback to scope-appropriate semantic RAG. Empty source vecs for
     /// corpora outside the requested scope (e.g. `ayah_sources = vec![]`
@@ -131,7 +130,7 @@ pub enum AgenticResult {
     Semantic {
         ayah_sources: Vec<AyahSearchResult>,
         hadith_sources: Vec<HadithSearchResult>,
-        byte_stream: Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send + Unpin>,
+        token_stream: TokenStream,
     },
 }
 
@@ -141,184 +140,144 @@ These numbers are exact counts from the database — do not estimate, round, or 
 Cite specific data points (names, numbers, generations) from the results.\n\
 If the data doesn't answer the question, say so honestly.\n\n";
 
-impl OllamaClient {
-    /// Agentic RAG: classify intent, run structured queries or fall back to semantic RAG.
-    ///
-    /// See the module-level comment for a full walkthrough of the Abu Huraira example.
-    pub async fn ask_agentic(
-        &self,
-        db: &Surreal<Db>,
-        embedder: &Embedder,
-        question: &str,
-        model_override: Option<&str>,
-        scope: AskScope,
-    ) -> Result<AgenticResult> {
-        // Quran scope: none of the current structured intents apply to ayahs,
-        // so skip classification (saves ~500ms) and go straight to the
-        // Quran-only semantic fallback.
-        if scope == AskScope::Quran {
-            return self
-                .fallback_semantic(db, embedder, question, model_override, scope)
-                .await;
-        }
-
-        // Phase 1: Classify the user's question into a structured intent.
-        // e.g. "How many hadiths did Abu Huraira narrate?"
-        //    → NarratorCount { name: "Abu Huraira", book: None }
-        // This is a non-streaming Ollama call with format:"json" (~500ms).
-        let intent = match self.classify(question, model_override).await {
-            Ok(intent) => intent,
-            Err(e) => {
-                tracing::warn!("Classification failed, falling back to semantic: {e}");
-                QueryIntent::ContentQuery
-            }
-        };
-
-        // ContentQuery → fall back to existing semantic vector search RAG.
-        // e.g. "What does Islam say about patience?" — no structured query can answer this,
-        // so we retrieve semantically similar ayahs + hadiths and let the LLM synthesize.
-        if matches!(intent, QueryIntent::ContentQuery) {
-            return self
-                .fallback_semantic(db, embedder, question, model_override, scope)
-                .await;
-        }
-
-        // Phase 2: Execute structured DB queries based on the classified intent.
-        // For NarratorCount("Abu Huraira"):
-        //   a) resolve_narrator("Abu Huraira") → finds the narrator record via fuzzy name matching
-        //   b) count_hadiths(narrator) → reads pre-computed hadith_count (5374) — O(1), no scan
-        //   c) Builds a context string with the exact data for the LLM
-        let tool_result = match &intent {
-            QueryIntent::NarratorInfo { name } => {
-                let Some(narrator) = tools::resolve_narrator(db, name).await? else {
-                    tracing::info!("Narrator '{name}' not found, falling back to semantic");
-                    return self
-                        .fallback_semantic(db, embedder, question, model_override, scope)
-                        .await;
-                };
-                tools::narrator_info(db, &narrator).await?
-            }
-            QueryIntent::NarratorCount { name, book } => {
-                let Some(narrator) = tools::resolve_narrator(db, name).await? else {
-                    return self
-                        .fallback_semantic(db, embedder, question, model_override, scope)
-                        .await;
-                };
-                tools::count_hadiths(db, &narrator, book.as_deref()).await?
-            }
-            QueryIntent::NarratorTeachers { name } => {
-                let Some(narrator) = tools::resolve_narrator(db, name).await? else {
-                    return self
-                        .fallback_semantic(db, embedder, question, model_override, scope)
-                        .await;
-                };
-                tools::narrator_teachers(db, &narrator).await?
-            }
-            QueryIntent::NarratorStudents { name } => {
-                let Some(narrator) = tools::resolve_narrator(db, name).await? else {
-                    return self
-                        .fallback_semantic(db, embedder, question, model_override, scope)
-                        .await;
-                };
-                tools::narrator_students(db, &narrator).await?
-            }
-            QueryIntent::NarratorHadiths { name } => {
-                let Some(narrator) = tools::resolve_narrator(db, name).await? else {
-                    return self
-                        .fallback_semantic(db, embedder, question, model_override, scope)
-                        .await;
-                };
-                tools::narrator_hadiths(db, &narrator, 10).await?
-            }
-            QueryIntent::IsnadSearch { narrators, ordered } => {
-                let mut resolved = Vec::new();
-                for name in narrators {
-                    match tools::resolve_narrator(db, name).await? {
-                        Some(n) => resolved.push(n),
-                        None => {
-                            tracing::info!(
-                                "Narrator '{name}' not found in isnad search, falling back"
-                            );
-                            return self
-                                .fallback_semantic(db, embedder, question, model_override, scope)
-                                .await;
-                        }
-                    }
-                }
-                tools::isnad_search_tool(db, &resolved, *ordered, 10).await?
-            }
-            QueryIntent::CommonNarrators { name1, name2 } => {
-                let Some(n1) = tools::resolve_narrator(db, name1).await? else {
-                    return self
-                        .fallback_semantic(db, embedder, question, model_override, scope)
-                        .await;
-                };
-                let Some(n2) = tools::resolve_narrator(db, name2).await? else {
-                    return self
-                        .fallback_semantic(db, embedder, question, model_override, scope)
-                        .await;
-                };
-                tools::common_narrators_tool(db, &n1, &n2).await?
-            }
-            QueryIntent::ContentQuery => unreachable!(),
-        };
-
-        // Phase 3: Stream the LLM answer, grounded in exact database results.
-        // The system prompt contains the structured context (e.g. "Total hadiths: 5374")
-        // and instructs the LLM to cite exact numbers — no estimating or guessing.
-        // The LLM's only job here is to format the data into natural language.
-        let system_prompt = format!("{STRUCTURED_SYSTEM_PREFIX}{}", tool_result.context);
-        let stream = self
-            .chat_stream(&system_prompt, question, model_override)
-            .await?;
-
-        Ok(AgenticResult::Structured {
-            narrator_sources: tool_result.narrator_sources,
-            hadith_sources: tool_result.hadith_sources,
-            byte_stream: Box::new(stream),
-        })
+/// Agentic RAG: classify intent, run structured queries or fall back to semantic RAG.
+///
+/// See the module-level comment for a full walkthrough of the Abu Huraira example.
+pub async fn ask_agentic(
+    provider: &dyn LlmProvider,
+    db: &Surreal<Db>,
+    embedder: &dyn EmbeddingProvider,
+    question: &str,
+    opts: &ChatOptions,
+    scope: AskScope,
+) -> Result<AgenticResult> {
+    // Quran scope: none of the current structured intents apply to ayahs,
+    // so skip classification (saves ~500ms) and go straight to the
+    // Quran-only semantic fallback.
+    if scope == AskScope::Quran {
+        return fallback_semantic(provider, db, embedder, question, opts, scope).await;
     }
 
-    /// Fallback to scope-appropriate semantic RAG.
-    async fn fallback_semantic(
-        &self,
-        db: &Surreal<Db>,
-        embedder: &Embedder,
-        question: &str,
-        model_override: Option<&str>,
-        scope: AskScope,
-    ) -> Result<AgenticResult> {
-        match scope {
-            AskScope::Hadith => {
-                let (hadith_sources, stream) = self
-                    .ask_hadith_only(db, embedder, question, model_override)
-                    .await?;
-                Ok(AgenticResult::Semantic {
-                    ayah_sources: vec![],
-                    hadith_sources,
-                    byte_stream: Box::new(stream),
-                })
+    // Phase 1: Classify the user's question into a structured intent.
+    let intent = match classify(provider, question, opts).await {
+        Ok(intent) => intent,
+        Err(e) => {
+            tracing::warn!("Classification failed, falling back to semantic: {e}");
+            QueryIntent::ContentQuery
+        }
+    };
+
+    // ContentQuery → fall back to existing semantic vector search RAG.
+    if matches!(intent, QueryIntent::ContentQuery) {
+        return fallback_semantic(provider, db, embedder, question, opts, scope).await;
+    }
+
+    // Phase 2: Execute structured DB queries based on the classified intent.
+    let tool_result = match &intent {
+        QueryIntent::NarratorInfo { name } => {
+            let Some(narrator) = tools::resolve_narrator(db, name).await? else {
+                tracing::info!("Narrator '{name}' not found, falling back to semantic");
+                return fallback_semantic(provider, db, embedder, question, opts, scope).await;
+            };
+            tools::narrator_info(db, &narrator).await?
+        }
+        QueryIntent::NarratorCount { name, book } => {
+            let Some(narrator) = tools::resolve_narrator(db, name).await? else {
+                return fallback_semantic(provider, db, embedder, question, opts, scope).await;
+            };
+            tools::count_hadiths(db, &narrator, book.as_deref()).await?
+        }
+        QueryIntent::NarratorTeachers { name } => {
+            let Some(narrator) = tools::resolve_narrator(db, name).await? else {
+                return fallback_semantic(provider, db, embedder, question, opts, scope).await;
+            };
+            tools::narrator_teachers(db, &narrator).await?
+        }
+        QueryIntent::NarratorStudents { name } => {
+            let Some(narrator) = tools::resolve_narrator(db, name).await? else {
+                return fallback_semantic(provider, db, embedder, question, opts, scope).await;
+            };
+            tools::narrator_students(db, &narrator).await?
+        }
+        QueryIntent::NarratorHadiths { name } => {
+            let Some(narrator) = tools::resolve_narrator(db, name).await? else {
+                return fallback_semantic(provider, db, embedder, question, opts, scope).await;
+            };
+            tools::narrator_hadiths(db, &narrator, 10).await?
+        }
+        QueryIntent::IsnadSearch { narrators, ordered } => {
+            let mut resolved = Vec::new();
+            for name in narrators {
+                match tools::resolve_narrator(db, name).await? {
+                    Some(n) => resolved.push(n),
+                    None => {
+                        tracing::info!("Narrator '{name}' not found in isnad search, falling back");
+                        return fallback_semantic(provider, db, embedder, question, opts, scope)
+                            .await;
+                    }
+                }
             }
-            AskScope::Quran => {
-                let (ayah_sources, stream) = self
-                    .ask_quran_only(db, embedder, question, model_override)
-                    .await?;
-                Ok(AgenticResult::Semantic {
-                    ayah_sources,
-                    hadith_sources: vec![],
-                    byte_stream: Box::new(stream),
-                })
-            }
-            AskScope::Both => {
-                let (ayah_sources, hadith_sources, stream) = self
-                    .ask_unified(db, embedder, question, model_override)
-                    .await?;
-                Ok(AgenticResult::Semantic {
-                    ayah_sources,
-                    hadith_sources,
-                    byte_stream: Box::new(stream),
-                })
-            }
+            tools::isnad_search_tool(db, &resolved, *ordered, 10).await?
+        }
+        QueryIntent::CommonNarrators { name1, name2 } => {
+            let Some(n1) = tools::resolve_narrator(db, name1).await? else {
+                return fallback_semantic(provider, db, embedder, question, opts, scope).await;
+            };
+            let Some(n2) = tools::resolve_narrator(db, name2).await? else {
+                return fallback_semantic(provider, db, embedder, question, opts, scope).await;
+            };
+            tools::common_narrators_tool(db, &n1, &n2).await?
+        }
+        QueryIntent::ContentQuery => unreachable!(),
+    };
+
+    // Phase 3: Stream the LLM answer, grounded in exact database results.
+    let system_prompt = format!("{STRUCTURED_SYSTEM_PREFIX}{}", tool_result.context);
+    let token_stream = provider.chat_stream(&system_prompt, question, opts).await?;
+
+    Ok(AgenticResult::Structured {
+        narrator_sources: tool_result.narrator_sources,
+        hadith_sources: tool_result.hadith_sources,
+        token_stream,
+    })
+}
+
+/// Fallback to scope-appropriate semantic RAG.
+async fn fallback_semantic(
+    provider: &dyn LlmProvider,
+    db: &Surreal<Db>,
+    embedder: &dyn EmbeddingProvider,
+    question: &str,
+    opts: &ChatOptions,
+    scope: AskScope,
+) -> Result<AgenticResult> {
+    match scope {
+        AskScope::Hadith => {
+            let (hadith_sources, token_stream) =
+                crate::unified_rag::ask_hadith_only(provider, db, embedder, question, opts).await?;
+            Ok(AgenticResult::Semantic {
+                ayah_sources: vec![],
+                hadith_sources,
+                token_stream,
+            })
+        }
+        AskScope::Quran => {
+            let (ayah_sources, token_stream) =
+                crate::unified_rag::ask_quran_only(provider, db, embedder, question, opts).await?;
+            Ok(AgenticResult::Semantic {
+                ayah_sources,
+                hadith_sources: vec![],
+                token_stream,
+            })
+        }
+        AskScope::Both => {
+            let (ayah_sources, hadith_sources, token_stream) =
+                crate::unified_rag::ask_unified(provider, db, embedder, question, opts).await?;
+            Ok(AgenticResult::Semantic {
+                ayah_sources,
+                hadith_sources,
+                token_stream,
+            })
         }
     }
 }
