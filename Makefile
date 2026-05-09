@@ -1,4 +1,4 @@
-.PHONY: setup doctor build frontend backend server dev stop blog semantic-download semantic-extract semantic-verify semantic-setup ingest ingest-test ingest-full hadith-full hadith-ingest sanadset-download quran-prepare quran-prepare-deps quran-ingest quran-hadith-refs quran-morphology quran-similar quran quran-full quran-check turath-fetch-tafsir turath-fetch-fathulbari turath-fetch-nawawi turath-fetch-tuhfat turath-fetch-nasai turath-fetch-awnmabud turath-fetch-ibnmajah turath-fetch-tahdhib turath-fetch turath-mapping turath-mapping-narrators book-ingest-tafsir book-ingest-fathulbari book-ingest-nawawi book-ingest-tuhfat book-ingest-nasai book-ingest-awnmabud book-ingest-ibnmajah book-ingest-tahdhib book-ingest book-full pageindex-clone pageindex-deps pageindex-build pageindex-build-with-summaries pageindex-build-test pageindex-status analyze analyze-families analyze-transmission pipeline-check pipeline-test pipeline-full clean build-lite backend-lite server-lite dev-lite hadith-lite quran-lite pipeline-lite ingest-test-lite
+.PHONY: setup doctor build frontend backend server dev stop blog semantic-download semantic-extract semantic-verify semantic-setup ingest ingest-test ingest-full hadith-full hadith-ingest sanadset-download quran-prepare quran-prepare-deps quran-ingest quran-hadith-refs quran-morphology quran-similar quran quran-full quran-check turath-fetch-tafsir turath-fetch-fathulbari turath-fetch-nawawi turath-fetch-tuhfat turath-fetch-nasai turath-fetch-awnmabud turath-fetch-ibnmajah turath-fetch-tahdhib turath-fetch-grading turath-fetch turath-mapping turath-mapping-narrators book-ingest-tafsir book-ingest-fathulbari book-ingest-nawawi book-ingest-tuhfat book-ingest-nasai book-ingest-awnmabud book-ingest-ibnmajah book-ingest-tahdhib book-ingest-grading-books extract-grading book-ingest-grading-rows grading-full book-ingest book-full pageindex-clone pageindex-deps pageindex-build pageindex-build-with-summaries pageindex-build-test pageindex-status analyze analyze-families analyze-transmission pipeline-check pipeline-test pipeline-full clean build-lite backend-lite server-lite dev-lite hadith-lite quran-lite pipeline-lite ingest-test-lite
 
 # SurrealDB HNSW index traversal needs extra stack space
 export RUST_MIN_STACK=8388608
@@ -407,6 +407,52 @@ book-ingest: book-ingest-tafsir book-ingest-tabari book-ingest-fathulbari book-i
 # retrieval trees in data/pageindex/{book_id}.json (one per book in index_books.py's BOOKS).
 book-full: turath-fetch turath-mapping turath-mapping-narrators book-ingest pageindex-build
 
+# === Hadith grading pipeline ===
+# Per-hadith verdicts from Albani's Sunan series + Silsilatān + Jami al-Saghir
+# + Daraqutni Ilal + Talkhis al-Habir + source Sunan Ibn Majah. Books are
+# ingested into book/book_page (so the in-app reader can open them) and
+# grading rows are extracted and loaded into hadith_grading.
+
+# 1. Fetch all 13 grading books from turath.io into data/<slug>_pages.json
+turath-fetch-grading:
+	python3 scripts/fetch_grading_books.py --pages
+
+# 2. Ingest each fetched book into book/book_page via ingest-turath
+book-ingest-grading-books:
+	bash scripts/ingest_grading_books.sh
+
+# 3. Extract hadith verdicts from the page JSONs.
+#    One script per Turath book (each book has its own format quirks):
+#      1147 / 1148 — Albani Sahih/Daif Sunan al-Nasa'i (tabular)
+#      1216        — Albani Daif Sunan al-Tirmidhi (tabular, inline-collapsed)
+#      25881/5914  — Albani Sahih/Daif Abu Dawud al-Umm (prose with قلت verdicts)
+#      10757       — Albani Sahih al-Jami al-Saghir (Sunan cross-refs)
+#      1663        — Albani Daif al-Jami al-Saghir (Suyuti numbering; reader-only)
+#    Each script outputs data/grading_book_<id>.json.
+extract-grading:
+	python3 scripts/extract_book_1147_sahih_nasai.py
+	python3 scripts/extract_book_1148_daif_nasai.py
+	python3 scripts/extract_book_1216_daif_tirmidhi.py
+	python3 scripts/extract_book_25881_sahih_abi_dawud.py
+	python3 scripts/extract_book_5914_daif_abi_dawud.py
+	python3 scripts/extract_book_10757_sahih_jami_saghir.py
+	python3 scripts/extract_book_1663_daif_jami_saghir.py
+
+# 4. Ingest extracted grading rows into hadith_grading
+book-ingest-grading-rows:
+	cargo run $(CARGO_FEATURES) -- ingest-grading \
+		--hadith-file data/grading_book_1147.json \
+		--hadith-file data/grading_book_1148.json \
+		--hadith-file data/grading_book_1216.json \
+		--hadith-file data/grading_book_25881.json \
+		--hadith-file data/grading_book_5914.json \
+		--hadith-file data/grading_book_10757.json \
+		--hadith-file data/grading_book_1663.json
+
+# Full grading pipeline (runs after hadith-full so the (hadith_number,collection_id)
+# joins resolve)
+grading-full: turath-fetch-grading book-ingest-grading-books extract-grading book-ingest-grading-rows
+
 # Check required turath data files
 turath-check:
 	@echo "Checking turath data files..."
@@ -531,6 +577,7 @@ pipeline-full: data/semantic_hadith.json pageindex-clone pipeline-check
 	$(MAKE) hadith-full
 	$(MAKE) quran-full
 	$(MAKE) book-full
+	$(MAKE) grading-full
 	@echo ""
 	@echo "✓ Full pipeline complete. Run: make server"
 
@@ -575,6 +622,7 @@ pipeline-lite: data/semantic_hadith.json pageindex-clone pipeline-check
 	$(MAKE) hadith-lite
 	$(MAKE) quran-lite
 	$(MAKE) book-full
+	$(MAKE) grading-full
 	@echo ""
 	@echo "Lite pipeline complete. Run: make server-lite"
 

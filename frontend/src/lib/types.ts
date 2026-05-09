@@ -177,12 +177,22 @@ export interface PivotNarrator {
   is_bottleneck: boolean | null;
 }
 
-export interface NarratorAssessment {
-  scholar: string;
-  work: string;
-  citation_text: string;
-  rating: string | null;
-  source_locator: string | null;
+export interface HadithGrading {
+  scholar_key: string;
+  scholar_ar: string;
+  grade: string;
+  grade_normalized: 'sahih' | 'hasan' | 'daif' | 'mawdu' | 'other' | null;
+  source_book_id: number | null;
+  source_page_index: number | null;
+  source_vol: string | null;
+  source_page_num: number | null;
+  raw_text: string | null;
+  notes: string | null;
+}
+
+export interface HadithGradingsResponse {
+  hadith_id: string;
+  gradings: HadithGrading[];
 }
 
 export interface MustalahFamilyResponse {

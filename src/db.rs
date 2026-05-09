@@ -556,6 +556,59 @@ pub async fn init_book_schema(db: &Surreal<Db>) -> Result<()> {
     Ok(())
 }
 
+// ── Grading Schema ──
+//
+// Per-hadith verdicts from multiple muhaddiths (Albani, Daraqutni, Ibn Hajar, etc.).
+// Provenance-tagged: every row carries the source book/page so a verdict can be
+// traced back to the original Turath page in the in-app reader.
+//
+// Narrator-level reliability is intentionally NOT stored as a derived score —
+// the user navigates to the narrator and reads Tahdhib (or other classical
+// books) directly. Synthesizing a numeric reliability would impose our own
+// judgment over the classical sources, which is exactly what NOTES.md warns
+// against.
+
+const GRADING_SCHEMA: &str = r#"
+DEFINE TABLE IF NOT EXISTS hadith_grading SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS hadith_id         ON hadith_grading TYPE record<hadith>;
+DEFINE FIELD IF NOT EXISTS scholar_key       ON hadith_grading TYPE string;
+DEFINE FIELD IF NOT EXISTS scholar_ar        ON hadith_grading TYPE string;
+DEFINE FIELD IF NOT EXISTS grade             ON hadith_grading TYPE string;
+DEFINE FIELD IF NOT EXISTS grade_normalized  ON hadith_grading TYPE option<string>;
+DEFINE FIELD IF NOT EXISTS source_book_id    ON hadith_grading TYPE option<int>;
+DEFINE FIELD IF NOT EXISTS source_page_index ON hadith_grading TYPE option<int>;
+DEFINE FIELD IF NOT EXISTS source_vol        ON hadith_grading TYPE option<string>;
+DEFINE FIELD IF NOT EXISTS source_page_num   ON hadith_grading TYPE option<int>;
+DEFINE FIELD IF NOT EXISTS raw_text          ON hadith_grading TYPE option<string>;
+DEFINE FIELD IF NOT EXISTS notes             ON hadith_grading TYPE option<string>;
+-- NOT unique on (hadith_id, scholar_key, source_book_id): a single book can
+-- carry multiple verdicts on one hadith (Albani frequently discusses several
+-- chains within one entry, each with its own ruling). Idempotency on re-ingest
+-- is handled by deleting per-source rows before insert.
+DEFINE INDEX IF NOT EXISTS hadith_grading_by_hadith ON hadith_grading FIELDS hadith_id;
+DEFINE INDEX IF NOT EXISTS hadith_grading_by_book ON hadith_grading FIELDS source_book_id
+"#;
+
+pub async fn init_grading_schema(db: &Surreal<Db>) -> Result<()> {
+    for (i, stmt) in GRADING_SCHEMA
+        .split(';')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty() && !s.starts_with("--"))
+        .enumerate()
+    {
+        let sql = format!("{stmt};");
+        if let Err(e) = db.query(&sql).await.and_then(|r| r.check()) {
+            tracing::error!(
+                "Grading schema statement {i} failed: {e}\n  SQL: {}",
+                stmt.chars().take(120).collect::<String>()
+            );
+            return Err(e.into());
+        }
+    }
+    tracing::info!("Grading schema initialized");
+    Ok(())
+}
+
 /// Pre-compute hadith_count on every narrator record.
 ///
 /// This avoids expensive `count(->narrates->hadith)` graph traversals on every

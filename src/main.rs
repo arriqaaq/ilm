@@ -172,6 +172,18 @@ enum Commands {
         #[arg(long, default_value = "db_data")]
         db_path: String,
     },
+    /// Ingest hadith grading rows from extractor JSON files.
+    /// Loads into the hadith_grading table; one row per (hadith, scholar, source book).
+    IngestGrading {
+        /// One or more hadith-grading JSON files (extract_albani_sunan_grades.py,
+        /// extract_jami_cross_refs.py output). Pass each as --hadith-file repeatedly.
+        #[arg(long = "hadith-file", num_args = 0..)]
+        hadith_files: Vec<String>,
+
+        /// Path to SurrealDB data directory
+        #[arg(long, default_value = "db_data")]
+        db_path: String,
+    },
     /// Start the web server
     Serve {
         /// Port to listen on
@@ -578,6 +590,19 @@ async fn async_main() -> Result<()> {
 
             tracing::info!("Book ingestion complete for book {book_id}");
         }
+        Commands::IngestGrading {
+            hadith_files,
+            db_path,
+        } => {
+            let db = db::connect(&db_path).await?;
+            db::init_grading_schema(&db).await?;
+
+            for f in &hadith_files {
+                tracing::info!("Loading hadith gradings from {f}");
+                ingest::grading::ingest_hadith_grading(&db, f).await?;
+            }
+            tracing::info!("Grading ingestion complete");
+        }
         Commands::Serve {
             port,
             db_path,
@@ -634,6 +659,7 @@ async fn async_main() -> Result<()> {
             db::init_quran_similar_schema(&db).await?;
             db::init_reciter_schema(&db).await?;
             db::init_book_schema(&db).await?;
+            db::init_grading_schema(&db).await?;
             db::init_user_note_schema(&db).await?;
             db::init_link_preview_schema(&db).await?;
             db::init_notebook_schema(&db).await?;

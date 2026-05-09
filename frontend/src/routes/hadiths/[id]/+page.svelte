@@ -1,12 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { getHadith, getChainGraph, getHadithSharhPages } from '$lib/api';
-  import type { HadithDetailResponse, GraphData, SharhPageRef } from '$lib/types';
+  import { getHadith, getChainGraph, getHadithSharhPages, getHadithGradings } from '$lib/api';
+  import type { HadithDetailResponse, GraphData, SharhPageRef, HadithGrading } from '$lib/types';
   import { stripHtml } from '$lib/utils';
   import { language } from '$lib/stores/language';
   import NarratorChip from '$lib/components/narrator/NarratorChip.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import ChainView from '$lib/components/graph/ChainView.svelte';
+  import GradingPanel from '$lib/components/hadith/GradingPanel.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import NoteModal from '$lib/components/notes/NoteModal.svelte';
   import SavePopover from '$lib/components/notes/SavePopover.svelte';
@@ -14,6 +15,7 @@
 
   let data: HadithDetailResponse | null = $state(null);
   let graphData: GraphData | null = $state(null);
+  let gradings: HadithGrading[] = $state([]);
   let loading = $state(true);
   let showNotePanel = $state(false);
   let showSavePopover = $state(false);
@@ -27,9 +29,10 @@
     if (!id) return;
     loading = true;
     sharhPage = null;
-    Promise.all([getHadith(id), getChainGraph(id)])
-      .then(([d, g]) => {
-        data = d; graphData = g;
+    gradings = [];
+    Promise.all([getHadith(id), getChainGraph(id), getHadithGradings(id)])
+      .then(([d, g, gr]) => {
+        data = d; graphData = g; gradings = gr.gradings;
         // Fetch sharh mapping for this hadith
         if (d.hadith.hadith_number && d.hadith.collection_id) {
           getHadithSharhPages(d.hadith.collection_id, [d.hadith.hadith_number])
@@ -68,9 +71,6 @@
         {/if}
         {#if data.hadith.hadith_type}
           <Badge text={data.hadith.hadith_type} variant="default" />
-        {/if}
-        {#if data.hadith.grade}
-          <Badge text={data.hadith.grade} variant="success" />
         {/if}
         <button
           class="note-btn"
@@ -145,6 +145,8 @@
       <h2>Narrator Chain</h2>
       <ChainView data={graphData} />
     </section>
+
+    <GradingPanel {gradings} />
 
     {#if data.linked_ayahs && data.linked_ayahs.length > 0}
       <section class="section">

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { getFamily, getMatnDiff, getMustalahFamily, getNarratorAssessments } from '$lib/api';
-  import type { FamilyDetailResponse, ApiMatnDiff, MustalahFamilyResponse, NarratorAssessment } from '$lib/types';
+  import { getFamily, getMatnDiff, getMustalahFamily } from '$lib/api';
+  import type { FamilyDetailResponse, ApiMatnDiff, MustalahFamilyResponse } from '$lib/types';
   import HadithCard from '$lib/components/hadith/HadithCard.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import GlossaryTooltip from '$lib/components/hadith/GlossaryTooltip.svelte';
@@ -17,8 +17,6 @@
   let diffB = $state('');
   let diffLoading = $state(false);
 
-  // Cache for narrator assessments (narrator_id → assessments[])
-  let narratorAssessments: Record<string, NarratorAssessment[]> = $state({});
   let expandedChains: Set<number> = $state(new Set());
 
   let id = $derived(page.params.id);
@@ -55,25 +53,12 @@
     return map[value] ?? null;
   }
 
-  async function toggleChain(idx: number, narratorIds: string[] | null) {
+  function toggleChain(idx: number, _narratorIds: string[] | null) {
     if (expandedChains.has(idx)) {
       expandedChains = new Set([...expandedChains].filter(i => i !== idx));
       return;
     }
     expandedChains = new Set([...expandedChains, idx]);
-    // Fetch assessments for any narrators we haven't loaded yet
-    if (narratorIds) {
-      for (const nid of narratorIds) {
-        if (!(nid in narratorAssessments)) {
-          try {
-            const resp = await getNarratorAssessments(nid);
-            narratorAssessments = { ...narratorAssessments, [nid]: resp.assessments };
-          } catch {
-            narratorAssessments = { ...narratorAssessments, [nid]: [] };
-          }
-        }
-      }
-    }
   }
 
   async function runDiff() {
@@ -175,7 +160,6 @@
                         <tr>
                           <th>#</th>
                           <th>Narrator</th>
-                          <th>Scholarly Assessments</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -183,22 +167,6 @@
                           <tr>
                             <td class="pos">{nIdx + 1}</td>
                             <td><a href="/narrators/{nid}">{nid}</a></td>
-                            <td class="assessments-cell">
-                              {#if narratorAssessments[nid]}
-                                {#if narratorAssessments[nid].length === 0}
-                                  <span class="no-data">No scholarly assessment</span>
-                                {:else}
-                                  {#each narratorAssessments[nid] as ev}
-                                    <span class="assessment">
-                                      <span class="scholar-name">{ev.scholar}:</span>
-                                      <span class="citation-text" dir="rtl">{ev.citation_text}</span>
-                                    </span>
-                                  {/each}
-                                {/if}
-                              {:else}
-                                <span class="loading-text">Loading...</span>
-                              {/if}
-                            </td>
                           </tr>
                         {/each}
                       </tbody>
@@ -333,12 +301,6 @@
   .chain-narrators { border-top: 1px solid var(--border); }
   .chain-narrators table { font-size: 0.85rem; }
   .chain-narrators th { font-size: 0.75rem; }
-  .assessments-cell { display: flex; flex-wrap: wrap; gap: 8px; }
-  .assessment { display: inline-flex; align-items: baseline; gap: 4px; padding: 2px 8px; background: var(--bg-primary); border-radius: var(--radius); font-size: 0.82rem; }
-  .scholar-name { color: var(--text-secondary); font-size: 0.75rem; white-space: nowrap; }
-  .citation-text { color: var(--text-primary); font-family: var(--font-arabic-text); }
-  .no-data { color: var(--text-muted); font-size: 0.8rem; font-style: italic; }
-  .loading-text { color: var(--text-muted); font-size: 0.8rem; }
 
   @media (max-width: 768px) {
   }

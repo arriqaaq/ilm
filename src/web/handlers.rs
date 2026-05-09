@@ -908,13 +908,111 @@ pub async fn family_detail(
     })))
 }
 
-pub async fn narrator_reliability(Path(id): Path<String>) -> impl IntoResponse {
-    // Evidence/grading data removed — SemanticHadith grading was unreliable (see NOTES.md).
-    // This endpoint kept for API compatibility; returns empty assessments.
+// ── Hadith gradings (multi-scholar verdicts) ──
+//
+// Returns one row per scholar per source book. For Bukhari/Muslim a synthetic
+// "consensus sahih" row is prepended. The user explores narrator-level
+// reliability by clicking through to each narrator's Tahdhib bio page — there
+// is intentionally no automatic suspect-narrator surfacing here.
+
+#[derive(Debug, SurrealValue)]
+struct HadithGradingRow {
+    scholar_key: String,
+    scholar_ar: String,
+    grade: String,
+    grade_normalized: Option<String>,
+    source_book_id: Option<i64>,
+    source_page_index: Option<i64>,
+    source_vol: Option<String>,
+    source_page_num: Option<i64>,
+    raw_text: Option<String>,
+    notes: Option<String>,
+}
+
+#[derive(Debug, SurrealValue)]
+struct CollectionIdRow {
+    collection_id: i64,
+}
+
+pub async fn hadith_gradings(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let hrid = rid("hadith", &id);
+
+    let collection_id: i64 = match state
+        .db
+        .query("SELECT collection_id FROM $rid")
+        .bind(("rid", hrid.clone()))
+        .await
+    {
+        Ok(mut r) => {
+            let row: Option<CollectionIdRow> = r.take(0).unwrap_or(None);
+            row.map(|r| r.collection_id).unwrap_or(0)
+        }
+        Err(e) => {
+            tracing::warn!("hadith_gradings: collection lookup failed: {e}");
+            0
+        }
+    };
+
+    let stored: Vec<HadithGradingRow> = match state
+        .db
+        .query(
+            "SELECT scholar_key, scholar_ar, grade, grade_normalized, \
+             source_book_id, source_page_index, source_vol, source_page_num, \
+             raw_text, notes FROM hadith_grading WHERE hadith_id = $rid",
+        )
+        .bind(("rid", hrid))
+        .await
+    {
+        Ok(mut r) => r.take(0).unwrap_or_default(),
+        Err(e) => {
+            tracing::warn!("hadith_gradings: gradings query failed: {e}");
+            vec![]
+        }
+    };
+
+    let mut out: Vec<serde_json::Value> = Vec::with_capacity(stored.len() + 1);
+
+    if collection_id == 1 || collection_id == 2 {
+        let (key, ar) = if collection_id == 1 {
+            ("bukhari", "البخاري")
+        } else {
+            ("muslim", "مسلم")
+        };
+        out.push(serde_json::json!({
+            "scholar_key": key,
+            "scholar_ar": ar,
+            "grade": "صحيح",
+            "grade_normalized": "sahih",
+            "source_book_id": null,
+            "source_page_index": null,
+            "source_vol": null,
+            "source_page_num": null,
+            "raw_text": null,
+            "notes": "consensus sahih",
+        }));
+    }
+
+    for r in stored {
+        out.push(serde_json::json!({
+            "scholar_key": r.scholar_key,
+            "scholar_ar": r.scholar_ar,
+            "grade": r.grade,
+            "grade_normalized": r.grade_normalized,
+            "source_book_id": r.source_book_id,
+            "source_page_index": r.source_page_index,
+            "source_vol": r.source_vol,
+            "source_page_num": r.source_page_num,
+            "raw_text": r.raw_text,
+            "notes": r.notes,
+        }));
+    }
+
     Json(serde_json::json!({
-        "narrator_id": id,
-        "assessments": [],
-        "sources_count": 0,
+        "hadith_id": id,
+        "gradings": out,
     }))
 }
 

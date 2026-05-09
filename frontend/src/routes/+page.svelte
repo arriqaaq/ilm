@@ -191,7 +191,7 @@
       </div>
       <div class="feat-text">
         <h3>Narrator Networks</h3>
-        <p>Interactive graph visualization of 18K+ narrators. Trace isnad chains, explore teacher-student relationships, and check Ibn Hajar reliability grades.</p>
+        <p>Interactive graph visualization of 18K+ narrators. Trace isnad chains, explore teacher-student relationships, and read each narrator's biographical entry in Tahdhib al-Tahdhib.</p>
         <a href="/narrators" class="feat-link">View Narrators &rarr;</a>
       </div>
     </div>
@@ -266,7 +266,7 @@
         <div class="source-card animate-on-scroll stagger-2" use:inview>
           <div class="source-num">18K</div>
           <h4>AR-Sanad</h4>
-          <p>Narrators with Ibn Hajar's reliability classifications</p>
+          <p>Narrators with full biographical entries from Tahdhib al-Tahdhib</p>
         </div>
         <div class="source-card animate-on-scroll stagger-3" use:inview>
           <div class="source-num">&#x2726;</div>

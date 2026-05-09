@@ -74,6 +74,29 @@ pub struct Collection {
     pub name_ar: Option<String>,
 }
 
+// ── Grading types ──
+//
+// Per-hadith verdicts (from Albani, Daraqutni, Ibn Hajar, etc.). Always carries
+// the source so the user can jump to the original Turath page. Narrator-level
+// reliability is intentionally NOT stored — the user reads Tahdhib directly via
+// the existing narrator_book_map / narrator detail page.
+
+#[derive(Debug, SurrealValue, Serialize, Clone)]
+pub struct HadithGrading {
+    pub id: Option<RecordId>,
+    pub hadith_id: RecordId,
+    pub scholar_key: String,
+    pub scholar_ar: String,
+    pub grade: String,
+    pub grade_normalized: Option<String>,
+    pub source_book_id: Option<i64>,
+    pub source_page_index: Option<i64>,
+    pub source_vol: Option<String>,
+    pub source_page_num: Option<i64>,
+    pub raw_text: Option<String>,
+    pub notes: Option<String>,
+}
+
 // ── Analysis types ──
 
 #[derive(Debug, SurrealValue, Serialize, Clone)]

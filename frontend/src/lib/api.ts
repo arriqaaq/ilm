@@ -151,8 +151,8 @@ export async function getNarratorIsnadRole(id: string): Promise<import('./types'
   return get(`/narrators/${encodeURIComponent(id)}/isnad-role`);
 }
 
-export async function getNarratorAssessments(id: string): Promise<{ narrator_id: string; assessments: import('./types').NarratorAssessment[]; sources_count: number }> {
-  return get(`/narrators/${encodeURIComponent(id)}/reliability`);
+export async function getHadithGradings(id: string): Promise<import('./types').HadithGradingsResponse> {
+  return get(`/hadiths/${encodeURIComponent(id)}/gradings`);
 }
 
 export async function getMatnDiff(a: string, b: string): Promise<ApiMatnDiff> {

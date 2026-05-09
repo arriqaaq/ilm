@@ -198,8 +198,8 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
             axum::routing::get(handlers::mustalah_stats),
         )
         .route(
-            "/api/narrators/{id}/reliability",
-            axum::routing::get(handlers::narrator_reliability),
+            "/api/hadiths/{id}/gradings",
+            axum::routing::get(handlers::hadith_gradings),
         )
         .route(
             "/api/families/{id}/mustalah",
