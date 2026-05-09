@@ -4,6 +4,7 @@
   import type { HadithDetailResponse, GraphData, SharhPageRef, HadithGrading } from '$lib/types';
   import { stripHtml } from '$lib/utils';
   import { language } from '$lib/stores/language';
+  import { preferences, proseArabicFontSize } from '$lib/stores/preferences';
   import NarratorChip from '$lib/components/narrator/NarratorChip.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import ChainView from '$lib/components/graph/ChainView.svelte';
@@ -113,17 +114,17 @@
     <div class="text-section">
       {#if $language === 'en'}
         {#if data.hadith.text_en}
-          <div class="text-en">
+          <div class="text-en" style="font-size: {$preferences.englishFontSize}rem">
             {stripHtml(data.hadith.text_en)}
           </div>
         {:else if data.hadith.text_ar}
-          <div class="text-ar arabic" dir="rtl">
+          <div class="text-ar arabic" dir="rtl" style="font-size: {$proseArabicFontSize}rem">
             {@html highlightMatn(data.hadith.text_ar)}
           </div>
         {/if}
       {:else}
         {#if data.hadith.text_ar}
-          <div class="text-ar arabic" dir="rtl">
+          <div class="text-ar arabic" dir="rtl" style="font-size: {$proseArabicFontSize}rem">
             {@html highlightMatn(data.hadith.text_ar)}
           </div>
         {/if}
@@ -141,12 +142,16 @@
       </section>
     {/if}
 
-    <section class="section">
-      <h2>Narrator Chain</h2>
-      <ChainView data={graphData} />
-    </section>
+    <div class="chain-with-panel">
+      <section class="section chain-col">
+        <h2>Narrator Chain</h2>
+        <ChainView data={graphData} />
+      </section>
 
-    <GradingPanel {gradings} />
+      <aside class="grading-col">
+        <GradingPanel {gradings} />
+      </aside>
+    </div>
 
     {#if data.linked_ayahs && data.linked_ayahs.length > 0}
       <section class="section">
@@ -157,9 +162,9 @@
               <div class="ayah-meta">
                 <span class="ayah-ref">{ayah.surah_number}:{ayah.ayah_number}</span>
               </div>
-              <div class="ayah-text arabic" dir="rtl">{ayah.text_ar}</div>
+              <div class="ayah-text arabic" dir="rtl" style="font-size: {$preferences.arabicFontSize}rem">{ayah.text_ar}</div>
               {#if ayah.text_en}
-                <div class="ayah-text-en">{ayah.text_en}</div>
+                <div class="ayah-text-en" style="font-size: {$preferences.englishFontSize}rem">{ayah.text_en}</div>
               {/if}
             </a>
           {/each}
@@ -181,7 +186,7 @@
               {#if similar.text_en}
                 <div class="similar-text">{similar.text_en.slice(0, 150)}...</div>
               {:else if similar.text_ar}
-                <div class="similar-text arabic" dir="rtl">{similar.text_ar.slice(0, 150)}...</div>
+                <div class="similar-text arabic" dir="rtl" style="font-size: {$proseArabicFontSize}rem">{similar.text_ar.slice(0, 150)}...</div>
               {/if}
             </a>
           {/each}
@@ -224,7 +229,27 @@
 {/if}
 
 <style>
-  .hadith-view { padding: 24px; max-width: 900px; }
+  .hadith-view { padding: 24px; max-width: 1200px; }
+
+  /* Two-column layout: narrator chain on the left, scholar rulings as a
+     sticky panel on the right. Falls back to vertical stacking on narrow
+     viewports (<= 900px) so mobile stays readable. */
+  .chain-with-panel {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  .chain-col { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+  .grading-col {
+    flex: 0 0 340px;
+    position: sticky;
+    top: 16px;
+  }
+  @media (max-width: 900px) {
+    .chain-with-panel { flex-direction: column; }
+    .grading-col { flex: 1 1 auto; position: static; }
+  }
   .view-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
   .badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   .note-btn {
@@ -261,7 +286,6 @@
   /* English text — matn only, entirely in green bold italic blockquote */
   .text-en {
     font-family: var(--font-serif);
-    font-size: 1.1rem;
     line-height: 1.9;
     color: var(--success);
     font-weight: 600;
@@ -273,7 +297,7 @@
     letter-spacing: 0.01em;
   }
 
-  /* Arabic text with highlighted matn */
+  /* Arabic text — font-size set inline via proseArabicFontSize */
   .text-ar {
     padding: 24px 28px;
     background: var(--bg-surface);
@@ -281,7 +305,6 @@
     border-radius: var(--radius);
     color: var(--text-secondary);
     font-family: var(--font-arabic-text);
-    font-size: 1.3em;
     line-height: 2.4;
   }
 
@@ -292,7 +315,12 @@
   }
 
   .section { margin-bottom: 24px; }
-  .section h2 { margin-bottom: 12px; }
+  .section h2 {
+    font-size: 1.15rem;
+    margin: 0 0 0.75rem 0;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chapter-name {
     color: var(--text-secondary);

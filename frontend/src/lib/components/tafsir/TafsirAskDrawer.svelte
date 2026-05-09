@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { MultiBookSource } from '$lib/types';
+  import { proseArabicFontSize } from '$lib/stores/preferences';
 
   let { open, verse, onclose }: {
     open: boolean;
@@ -382,7 +383,7 @@
                     <li>
                       <a
                         class="src-link"
-                        href="/tafsir/{src.book_id}?page={src.line}"
+                        href="/books/{src.book_id}?page={src.line}"
                         target="_blank"
                         rel="noopener"
                         title="Open in full reader"
@@ -419,7 +420,7 @@
                       <header class="card-attribution">
                         <a
                           class="card-link"
-                          href="/tafsir/{entry.book_id}?page={entry.page_index}"
+                          href="/books/{entry.book_id}?page={entry.page_index}"
                           target="_blank"
                           rel="noopener"
                           title="Open in full reader"
@@ -430,7 +431,7 @@
                           <span class="card-arrow" aria-hidden="true">→</span>
                         </a>
                       </header>
-                      <blockquote class="arabic-verbatim" dir="rtl" lang="ar">{entry.arabic_quote}</blockquote>
+                      <blockquote class="arabic-verbatim" dir="rtl" lang="ar" style="font-size: {$proseArabicFontSize}rem">{entry.arabic_quote}</blockquote>
                       {#if entry.english_note}
                         <p class="english-note">{entry.english_note}</p>
                       {/if}
@@ -454,7 +455,7 @@
                     {#each msg.availablePages as p}
                       <li>
                         <a
-                          href="/tafsir/{p.book_id}?page={p.page_index}"
+                          href="/books/{p.book_id}?page={p.page_index}"
                           target="_blank"
                           rel="noopener"
                         >
@@ -715,7 +716,6 @@
     direction: rtl;
     text-align: right;
     font-family: var(--font-arabic-text);
-    font-size: 1.05rem;
     line-height: 2;
     color: var(--text-primary);
     margin: 0;

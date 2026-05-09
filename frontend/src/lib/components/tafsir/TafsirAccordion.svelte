@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { AllTafsirsEntry, InlineEnglishTafsir } from '$lib/types';
   import { convertPageToHtml } from '$lib/utils';
+  import { proseArabicFontSize, preferences } from '$lib/stores/preferences';
 
   let { entries, english }: {
     entries: AllTafsirsEntry[];
@@ -76,13 +77,13 @@
             {#if entry.heading}
               <div class="body-heading" dir="rtl">{entry.heading}</div>
             {/if}
-            <article class="body-text" dir="rtl">
+            <article class="body-text" dir="rtl" style="font-size: {$proseArabicFontSize}rem">
               {@html convertPageToHtml(entry.text)}
             </article>
             <div class="body-footer">
               <a
                 class="reader-link"
-                href="/tafsir/{entry.book_id}?page={entry.page_index}"
+                href="/books/{entry.book_id}?page={entry.page_index}"
               >Open in full reader →</a>
             </div>
           </div>
@@ -108,7 +109,7 @@
         </button>
         {#if isOpen}
           <div class="accordion-body">
-            <div class="body-text english">
+            <div class="body-text english" style="font-size: {$preferences.englishFontSize}rem">
               {@html english.body}
             </div>
           </div>
@@ -222,23 +223,23 @@
     padding-bottom: 6px;
     border-bottom: 1px solid var(--border-subtle);
   }
+  /* Arabic body — font-size set inline via proseArabicFontSize */
   .body-text {
     font-family: var(--font-arabic-text);
-    font-size: 1.1rem;
     line-height: 2.1;
     color: var(--text-primary);
   }
+  /* English body — font-size set inline via englishFontSize */
   .body-text.english {
     direction: ltr;
     text-align: left;
     font-family: var(--font-serif);
-    font-size: 0.92rem;
     line-height: 1.75;
     color: var(--text-secondary);
   }
   .body-text :global(span[data-type="title"]) {
     display: block;
-    font-size: 1.3rem;
+    font-size: 1.15em;
     font-weight: 700;
     text-align: center;
     margin: 1.2rem 0;
@@ -248,7 +249,7 @@
     margin-bottom: 0.5rem;
   }
   .body-text :global(.footnotes) {
-    font-size: 0.9rem;
+    font-size: 0.85em;
     color: var(--text-muted);
     margin-top: 1rem;
     padding-top: 0.5rem;
@@ -257,7 +258,7 @@
   }
   .body-text.english :global(p) { margin: 8px 0; }
   .body-text.english :global(h2.title) {
-    font-size: 1rem;
+    font-size: 1.1em;
     font-weight: 700;
     color: var(--text-primary);
     margin: 16px 0 8px;
@@ -268,7 +269,7 @@
     direction: rtl;
     text-align: right;
     font-family: var(--font-arabic-text), serif;
-    font-size: 1.1rem;
+    font-size: 1em;
     color: var(--text-primary);
     margin: 8px 0;
     padding: 8px;

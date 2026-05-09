@@ -19,14 +19,14 @@
   .chip {
     display: inline-flex;
     align-items: center;
-    padding: 4px 12px;
+    padding: 6px 14px;
     background: var(--accent-muted);
     color: var(--accent);
     border-radius: 20px;
-    font-size: 0.8rem;
+    font-size: 1rem;
     font-weight: 500;
     transition: all var(--transition);
-    max-width: 250px;
+    max-width: 280px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

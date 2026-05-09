@@ -397,8 +397,12 @@ export async function getBooksConfig(): Promise<BooksConfig> {
   return get('/books/config');
 }
 
-export async function getBooksList(): Promise<Book[]> {
-  return get('/books/list');
+export async function getBooksList(category?: string, bookType?: string): Promise<Book[]> {
+  const sp = new URLSearchParams();
+  if (category) sp.set('category', category);
+  if (bookType) sp.set('book_type', bookType);
+  const qs = sp.toString();
+  return get(qs ? `/books?${qs}` : '/books');
 }
 
 export async function getBook(bookId: number): Promise<BookDetail> {
@@ -411,7 +415,7 @@ export async function getBookPages(bookId: number, start: number, size: number):
 
 export async function getSurahTafsirPages(surahNumber: number, bookId?: number): Promise<TafsirSurahMappings> {
   const q = bookId ? `?book_id=${bookId}` : '';
-  return get(`/quran/surah/${surahNumber}/tafsir-pages${q}`);
+  return get(`/quran/surahs/${surahNumber}/tafsir-pages${q}`);
 }
 
 export async function getAyahTafsir(
@@ -419,14 +423,14 @@ export async function getAyahTafsir(
   ayah: number,
   bookId: number,
 ): Promise<AyahTafsirResponse> {
-  return get(`/quran/ayah/${surah}/${ayah}/tafsir?book_id=${bookId}`);
+  return get(`/quran/ayahs/${surah}/${ayah}/tafsir?book_id=${bookId}`);
 }
 
 export async function getAllTafsirsForAyah(
   surah: number,
   ayah: number,
 ): Promise<AllTafsirsResponse> {
-  return get(`/tafsir/ayah/${surah}/${ayah}/all`);
+  return get(`/quran/ayahs/${surah}/${ayah}/tafsirs`);
 }
 
 export async function getNarratorBooks(narratorId: string): Promise<NarratorBookRef[]> {

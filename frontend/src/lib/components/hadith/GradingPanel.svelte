@@ -20,7 +20,7 @@
   function sourceHref(g: HadithGrading): string | null {
     if (g.source_book_id == null) return null;
     const page = g.source_page_index ?? 0;
-    return `/tafsir/${g.source_book_id}?page=${page}`;
+    return `/books/${g.source_book_id}?page=${page}`;
   }
 </script>
 
@@ -46,13 +46,13 @@
 
 <style>
   .grading-panel {
-    margin-top: 1.5rem;
+    margin-top: 0;
   }
 
   .grading-panel h2 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-    color: var(--text-secondary);
+    margin: 0 0 0.75rem 0;
+    font-size: 1.15rem;
+    color: var(--text-primary);
     font-weight: 600;
   }
 
@@ -62,7 +62,7 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
 
   .grading-row {
@@ -78,7 +78,8 @@
 
   .scholar {
     font-weight: 600;
-    min-width: 7ch;
+    min-width: 6ch;
+    font-size: 0.95rem;
     color: var(--text-primary);
   }
 
@@ -87,7 +88,7 @@
     align-items: center;
     padding: 2px 10px;
     border-radius: var(--radius-sm);
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     font-weight: 500;
   }
 

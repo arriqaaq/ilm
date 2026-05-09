@@ -96,7 +96,7 @@ make sanadset-download    # Download to data/sanadset.csv
 **URL**: https://github.com/somaia02/Narrator-Disambiguation
 **Paper**: https://www.mdpi.com/2078-2489/13/2/55
 
-Contains 18,298 narrators with Ibn Hajar's reliability classifications from Taqrib al-Tahdhib. Not currently used (SemanticHadith provides narrator bios directly). Available for future reliability rating enrichment.
+Contains 18,298 narrators with Ibn Hajar's reliability classifications from Taqrib al-Tahdhib. Not used by this project: narrator-level grading is read directly from Tahdhib al-Tahdhib in-app rather than synthesized into a numeric score (see NOTES.md).
 
 ### Other Potential Sources
 

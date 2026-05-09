@@ -25,7 +25,7 @@ Rust backend serving a SvelteKit SPA, with SurrealDB as a unified graph + vector
 
 - **Quran Reader** — 114 surahs with Tajweed Arabic, Sahih International translation, expandable Tafsir Ibn Kathir per ayah
 - **Hadith Explorer** — 34K+ hadiths from 926 books across the 6 canonical collections
-- **Narrator Networks** — 18K+ narrators with interactive Cytoscape.js graph visualization, Ibn Hajar reliability grades
+- **Narrator Networks** — 18K+ narrators with interactive graph visualization; click any narrator to read their full biographical entry in Tahdhib al-Tahdhib
 - **Hybrid Search** — BM25 full-text + 1024-dim semantic vectors fused with Reciprocal Rank Fusion
 - **Ask AI (GraphRAG)** — Natural language Q&A grounded in Quran and Hadith via local Ollama, with isnad-aware context and narrator chain citations
 - **Early Manuscripts** — Per-ayah high-resolution manuscript images from Corpus Coranicum (Berlin-Brandenburg Academy), viewable with zoom

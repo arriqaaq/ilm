@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 
 export type Theme = 'light' | 'dark' | 'brown';
 export type QuranFontMode = 'uthmani' | 'madani' | 'tajweed';
@@ -46,6 +46,12 @@ function load(): QuranPreferences {
 }
 
 export const preferences = writable<QuranPreferences>(load());
+
+// Arabic prose surfaces (hadith, tafsir, book reader) render at 60% of the
+// Quran ayah size so they stay readable at body length while still scaling
+// with the user's Arabic font-size stepper. Default 2.4 → 1.44rem.
+export const PROSE_ARABIC_RATIO = 0.6;
+export const proseArabicFontSize = derived(preferences, ($p) => $p.arabicFontSize * PROSE_ARABIC_RATIO);
 
 preferences.subscribe((v) => {
   if (typeof localStorage !== 'undefined') {

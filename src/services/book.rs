@@ -82,28 +82,39 @@ struct CountRow {
 
 // ── Services ───────────────────────────────────────────────────────────────
 
-/// All ingested books, optionally filtered by `category`.
-pub async fn list(state: &AppState, category: Option<&str>) -> Result<Vec<BookSummary>> {
-    let rows: Vec<BookRow> = match category {
-        Some(cat) => state
-            .db
-            .query(
-                "SELECT book_id, name_ar, name_en, author_ar, total_pages, headings \
-                     FROM book WHERE category = $cat",
-            )
-            .bind(("cat", cat.to_string()))
-            .await
-            .context("book list query failed")?
-            .take(0)
-            .unwrap_or_default(),
-        None => state
-            .db
-            .query("SELECT book_id, name_ar, name_en, author_ar, total_pages, headings FROM book")
-            .await
-            .context("book list query failed")?
-            .take(0)
-            .unwrap_or_default(),
-    };
+/// All ingested books, optionally filtered by `category` (coarse domain) and
+/// `book_type` (genre/role). Both filters narrow when supplied together.
+pub async fn list(
+    state: &AppState,
+    category: Option<&str>,
+    book_type: Option<&str>,
+) -> Result<Vec<BookSummary>> {
+    let mut sql =
+        String::from("SELECT book_id, name_ar, name_en, author_ar, total_pages, headings FROM book");
+    let mut clauses: Vec<&str> = Vec::new();
+    if category.is_some() {
+        clauses.push("category = $cat");
+    }
+    if book_type.is_some() {
+        clauses.push("book_type = $btype");
+    }
+    if !clauses.is_empty() {
+        sql.push_str(" WHERE ");
+        sql.push_str(&clauses.join(" AND "));
+    }
+
+    let mut q = state.db.query(&sql);
+    if let Some(cat) = category {
+        q = q.bind(("cat", cat.to_string()));
+    }
+    if let Some(bt) = book_type {
+        q = q.bind(("btype", bt.to_string()));
+    }
+    let rows: Vec<BookRow> = q
+        .await
+        .context("book list query failed")?
+        .take(0)
+        .unwrap_or_default();
     Ok(rows
         .into_iter()
         .map(|b| BookSummary {

@@ -373,7 +373,7 @@ OLLAMA_MODEL=hadith-scholar make server
 cargo run -- serve --model hadith-scholar
 
 # Option C: Per-request (frontend supports model selection)
-# POST /api/ask {"question": "...", "model": "hadith-scholar"}
+# POST /v1/ask/all {"question": "...", "model": "hadith-scholar"}
 ```
 
 ---

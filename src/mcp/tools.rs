@@ -209,9 +209,13 @@ pub struct RootArgs {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ListBooksArgs {
-    /// Filter by category: tafsir, hadith_sharh, hadith_grading, hadith_collection, biography.
+    /// Coarse domain filter: quran, hadith, narrator, hadith_grading, hadith_collection.
     #[serde(default)]
     pub category: Option<String>,
+    /// Genre/role filter: tafsir, sharh, collection, biography, grading.
+    /// Combined with `category` if both are supplied.
+    #[serde(default)]
+    pub book_type: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -969,9 +973,13 @@ impl McpServer {
         &self,
         Parameters(args): Parameters<ListBooksArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let books = services::book::list(&self.state, args.category.as_deref())
-            .await
-            .map_err(mcp_err)?;
+        let books = services::book::list(
+            &self.state,
+            args.category.as_deref(),
+            args.book_type.as_deref(),
+        )
+        .await
+        .map_err(mcp_err)?;
         Ok(CallToolResult::success(vec![Content::json(books)?]))
     }
 

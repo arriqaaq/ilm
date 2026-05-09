@@ -2,6 +2,7 @@
   import { getSurah, getHadith, getNarrator } from '$lib/api';
   import { language } from '$lib/stores/language';
   import { stripHtml } from '$lib/utils';
+  import { preferences, proseArabicFontSize } from '$lib/stores/preferences';
 
   let { refType, refId }: {
     refType: 'ayah' | 'hadith' | 'narrator';
@@ -106,10 +107,10 @@
       {/if}
       <div class="hadith-body">
         {#if textEn}
-          <div class="hadith-en">{truncate(textEn, 400)}</div>
+          <div class="hadith-en" style="font-size: {$preferences.englishFontSize}rem">{truncate(textEn, 400)}</div>
         {/if}
         {#if textAr}
-          <div class="hadith-ar" dir="rtl">{truncate(textAr, 500)}</div>
+          <div class="hadith-ar" dir="rtl" style="font-size: {$proseArabicFontSize}rem">{truncate(textAr, 500)}</div>
         {/if}
       </div>
       <div class="hadith-footer">
@@ -130,10 +131,10 @@
     {:else}
       <div class="ayah-badge">{label}</div>
       {#if textAr}
-        <div class="ayah-ar" dir="rtl">{textAr}</div>
+        <div class="ayah-ar" dir="rtl" style="font-size: {$preferences.arabicFontSize}rem">{textAr}</div>
       {/if}
       {#if textEn}
-        <div class="ayah-en">{textEn}</div>
+        <div class="ayah-en" style="font-size: {$preferences.englishFontSize}rem">{textEn}</div>
       {/if}
     {/if}
   </a>
@@ -180,15 +181,14 @@
     gap: 24px;
     margin-bottom: 16px;
   }
+  /* English / Arabic body — font-size set inline via preferences */
   .hadith-en {
     font-family: var(--font-serif);
-    font-size: 0.92rem;
     line-height: 1.8;
     color: var(--text-secondary);
   }
   .hadith-ar {
     font-family: var(--font-arabic-text);
-    font-size: 1.05rem;
     line-height: 2.2;
     color: var(--text-primary);
     text-align: right;
@@ -241,16 +241,15 @@
     border-radius: 10px;
     border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
   }
+  /* Embedded ayah — font-size set inline via preferences */
   .ayah-ar {
     font-family: var(--font-arabic-text);
-    font-size: 1.2rem;
     line-height: 2.4;
     color: var(--text-primary);
     margin-bottom: 12px;
   }
   .ayah-en {
     font-family: var(--font-serif);
-    font-size: 0.9rem;
     line-height: 1.7;
     color: var(--text-secondary);
     font-style: italic;

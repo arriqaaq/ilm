@@ -265,7 +265,7 @@
 
           {#if selectedBookRef}
             <div class="bio-full-link">
-              <a href="/tafsir/{selectedBookRef.book_id}?page={bioCurrentIndex}">Open full reader &#x2197;</a>
+              <a href="/books/{selectedBookRef.book_id}?page={bioCurrentIndex}">Open full reader &#x2197;</a>
             </div>
           {/if}
         </div>

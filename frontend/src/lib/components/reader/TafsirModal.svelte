@@ -273,7 +273,7 @@
 
     <!-- Full reader link -->
     <div class="panel-link-bar">
-      <a href="/tafsir/{bookId}?page={currentIndex}" class="full-reader-link">Open full reader &#x2197;</a>
+      <a href="/books/{bookId}?page={currentIndex}" class="full-reader-link">Open full reader &#x2197;</a>
     </div>
   </div>
 </div>

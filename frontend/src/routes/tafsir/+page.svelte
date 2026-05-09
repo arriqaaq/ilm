@@ -9,6 +9,7 @@
   import TafsirAskDrawer from '$lib/components/tafsir/TafsirAskDrawer.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import { appConfig } from '$lib/stores/config';
+  import { preferences } from '$lib/stores/preferences';
 
   let current = $derived.by(() => {
     const raw = page.url.searchParams.get('verse') ?? '1:1';
@@ -108,9 +109,9 @@
       <span class="ref-label">{surah}:{ayah}</span>
     </div>
     {#if currentAyah}
-      <p class="ayah-ar">{currentAyah.text_ar}</p>
+      <p class="ayah-ar" style="font-size: {$preferences.arabicFontSize}rem">{currentAyah.text_ar}</p>
       {#if currentAyah.text_en}
-        <p class="ayah-en" dir="ltr">{currentAyah.text_en}</p>
+        <p class="ayah-en" dir="ltr" style="font-size: {$preferences.englishFontSize}rem">{currentAyah.text_en}</p>
       {/if}
     {:else if surahLoading}
       <div class="context-placeholder"><LoadingSpinner /></div>
@@ -213,9 +214,9 @@
     padding: 2px 8px;
     border-radius: 10px;
   }
+  /* Arabic + English ayah — font-size set inline via preferences */
   .ayah-ar {
     font-family: var(--font-arabic-text);
-    font-size: 1.4rem;
     line-height: 2.2;
     color: var(--text-primary);
     margin: 0;
@@ -223,7 +224,6 @@
   .ayah-en {
     margin: 12px 0 0;
     font-family: var(--font-serif);
-    font-size: 0.92rem;
     line-height: 1.7;
     color: var(--text-secondary);
   }

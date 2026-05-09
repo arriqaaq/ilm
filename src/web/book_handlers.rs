@@ -35,11 +35,17 @@ pub struct PaginationParams {
 
 #[derive(Deserialize, IntoParams)]
 pub struct BooksListParams {
-    /// Filter by `book.category` (e.g. `tafsir`, `hadith_sharh`, `hadith_grading`,
-    /// `hadith_collection`, `biography`). The `hadith_grading` category lists
-    /// the source books (Albani's series, Daraqutni Ilal, Ibn Hajar Talkhis,
-    /// etc.) that back the per-hadith verdicts at `/v1/hadiths/{id}/gradings`.
+    /// Coarse domain filter on `book.category` — values in use are `quran`,
+    /// `hadith`, `narrator`, `hadith_grading`, `hadith_collection`. Most
+    /// existing books were ingested with one of the first three; the latter
+    /// two are used by the per-hadith grading source books (Albani's series,
+    /// Daraqutni Ilal, Ibn Hajar Talkhis, etc.).
     pub category: Option<String>,
+    /// Genre / role filter on `book.book_type` — values in use are `tafsir`,
+    /// `sharh`, `collection`, `biography`, `grading`. This is the more
+    /// useful filter for a user-facing library page (e.g. "all tafsir books"
+    /// across categories). Combined with `category` if both supplied.
+    pub book_type: Option<String>,
 }
 
 // ── Sharh response types ──
@@ -266,7 +272,13 @@ pub async fn list_books(
     State(state): State<AppState>,
     Query(params): Query<BooksListParams>,
 ) -> impl IntoResponse {
-    match crate::services::book::list(&state, params.category.as_deref()).await {
+    match crate::services::book::list(
+        &state,
+        params.category.as_deref(),
+        params.book_type.as_deref(),
+    )
+    .await
+    {
         Ok(books) => Json(books).into_response(),
         Err(e) => {
             tracing::error!("Failed to list books: {e}");

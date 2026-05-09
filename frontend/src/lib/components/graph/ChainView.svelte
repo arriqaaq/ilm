@@ -112,7 +112,7 @@
   .position { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-muted); color: var(--accent); font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
   .chain-card.first .position { background: rgba(184,134,11,0.15); color: var(--accent-secondary); }
   .names { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .name-label { font-size: 1rem; line-height: 1.6; color: var(--text-primary); }
+  .name-label { font-size: 1.15rem; line-height: 1.6; color: var(--text-primary); }
   .connector { display: flex; flex-direction: column; align-items: center; height: 28px; color: var(--border); }
   .line { width: 1.5px; flex: 1; background: var(--border); }
   .arrow { font-size: 0.5rem; line-height: 1; color: var(--text-muted); }

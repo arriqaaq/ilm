@@ -1,21 +1,22 @@
 <script lang="ts">
   import type { BookPage } from '$lib/types';
   import { convertPageToHtml } from '$lib/utils';
+  import { proseArabicFontSize } from '$lib/stores/preferences';
 
   let { page }: { page: BookPage } = $props();
 
   let html = $derived(convertPageToHtml(page.text));
 </script>
 
-<article class="reader-page" dir="rtl">
+<article class="reader-page" dir="rtl" style="font-size: {$proseArabicFontSize}rem">
   {@html html}
   <p class="page-label">{page.vol} / {page.page_num}</p>
 </article>
 
 <style>
+  /* Reader body — font-size set inline via proseArabicFontSize */
   .reader-page {
     font-family: var(--font-arabic-text);
-    font-size: 1.35rem;
     line-height: 2.5;
     color: var(--text-primary);
     padding: 1.75rem 0;
@@ -23,10 +24,10 @@
     text-align: right;
   }
 
-  /* Title spans from turath (chapter/section headings) */
+  /* Title spans from turath (chapter/section headings) — em-relative so they scale */
   .reader-page :global(span[data-type="title"]) {
     display: block;
-    font-size: 1.6rem;
+    font-size: 1.2em;
     font-weight: 700;
     text-align: center;
     margin: 2rem 0;
@@ -41,7 +42,7 @@
 
   /* Footnotes section */
   .reader-page :global(.footnotes) {
-    font-size: 0.9rem;
+    font-size: 0.7em;
     color: var(--text-muted);
     margin-top: 1rem;
     padding-top: 0.5rem;
@@ -65,12 +66,8 @@
 
   @media (max-width: 640px) {
     .reader-page {
-      font-size: 1.15rem;
       line-height: 2.2;
       padding: 1.25rem 0;
-    }
-    .reader-page :global(span[data-type="title"]) {
-      font-size: 1.3rem;
     }
   }
 </style>
