@@ -140,7 +140,7 @@
     scrollToBottom(true);
 
     try {
-      const res = await fetch('/api/tafsir/ask', {
+      const res = await fetch('/v1/ask/tafsir', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question, verse }),

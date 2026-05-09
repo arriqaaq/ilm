@@ -43,9 +43,9 @@
 
   function getEndpoint(): string {
     switch (sourceMode) {
-      case 'quran': return '/api/quran/ask';
-      case 'hadith': return '/api/ask';
-      case 'both': return '/api/unified/ask';
+      case 'quran': return '/v1/ask/quran';
+      case 'hadith': return '/v1/ask/hadith';
+      case 'both': return '/v1/ask/all';
     }
   }
 

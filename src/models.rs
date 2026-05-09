@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::types::{RecordId, RecordIdKey, SurrealValue};
+use utoipa::ToSchema;
 
 /// Format a RecordId's key as a string (for URLs, graph IDs, etc.)
 pub fn record_id_key_string(id: &RecordId) -> String {
@@ -106,7 +107,7 @@ pub struct HadithFamily {
     pub variant_count: Option<i64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiHadithFamily {
     pub id: String,
     pub family_label: Option<String>,
@@ -147,7 +148,7 @@ pub struct NarratorSearchResult {
 
 // ── Graph data for Cytoscape.js ──
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct GraphData {
     pub nodes: Vec<GraphNode>,
     pub edges: Vec<GraphEdge>,
@@ -157,12 +158,12 @@ pub struct GraphData {
     pub total_students: Option<usize>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct GraphNode {
     pub data: GraphNodeData,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct GraphNodeData {
     pub id: String,
     pub label: String,
@@ -172,12 +173,12 @@ pub struct GraphNodeData {
     pub generation: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct GraphEdge {
     pub data: GraphEdgeData,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct GraphEdgeData {
     pub id: String,
     pub source: String,
@@ -189,7 +190,7 @@ pub struct GraphEdgeData {
 
 // ── API response types (RecordId flattened to String) ──
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiNarrator {
     pub id: String,
     pub name_ar: Option<String>,
@@ -228,7 +229,7 @@ impl From<Narrator> for ApiNarrator {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiHadith {
     pub id: String,
     pub hadith_number: i64,
@@ -267,7 +268,7 @@ impl From<Hadith> for ApiHadith {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiCollection {
     pub id: String,
     pub collection_id: i64,
@@ -286,7 +287,7 @@ impl From<Collection> for ApiCollection {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiNarratorWithCount {
     pub id: String,
     pub name_ar: Option<String>,
@@ -298,7 +299,7 @@ pub struct ApiNarratorWithCount {
     pub hadith_count: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiHadithSearchResult {
     pub id: String,
     pub hadith_number: i64,
@@ -323,7 +324,7 @@ impl From<HadithSearchResult> for ApiHadithSearchResult {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiNarratorSearchResult {
     pub id: String,
     pub name_ar: Option<String>,
@@ -344,23 +345,49 @@ impl From<NarratorSearchResult> for ApiNarratorSearchResult {
     }
 }
 
+/// Generic envelope returned by every list endpoint. Not derived as
+/// `ToSchema` itself — utoipa 5 doesn't support generic schema parameters
+/// cleanly without per-instantiation aliases, so handlers expose paginated
+/// responses as `serde_json::Value` in the OpenAPI spec and document the
+/// shape in their description.
 #[derive(Debug, Serialize)]
 pub struct PaginatedResponse<T: Serialize> {
     pub data: Vec<T>,
     pub page: usize,
+    pub limit: usize,
     pub has_more: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total: Option<u64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct StatsResponse {
     pub hadith_count: i64,
     pub narrator_count: i64,
     pub book_count: i64,
 }
 
+/// Uniform error envelope. `code` is a stable machine-readable identifier
+/// (e.g. `not_found`, `invalid_request`, `rate_limited`); `message` is a
+/// human-readable explanation.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ApiError {
+    pub code: String,
+    pub message: String,
+}
+
+impl ApiError {
+    pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            code: code.into(),
+            message: message.into(),
+        }
+    }
+}
+
 // ── User Notes ──
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct NoteRef {
     pub ref_type: String,
     pub ref_id: String,
@@ -384,7 +411,7 @@ pub struct UserNote {
     pub updated_at: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiUserNote {
     pub id: String,
     pub ref_type: String,
@@ -433,7 +460,7 @@ pub struct Notebook {
     pub created_at: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiNotebook {
     pub id: String,
     pub name: String,
@@ -469,7 +496,7 @@ pub struct LinkPreview {
     pub fetched_at: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiLinkPreview {
     pub url: String,
     pub title: Option<String>,
@@ -492,7 +519,7 @@ impl From<LinkPreview> for ApiLinkPreview {
 
 // ── Isnad Search ──
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct IsnadSearchResponse {
     pub narrators: Vec<ApiNarratorSearchResult>,
     pub hadiths: Vec<ApiHadithSearchResult>,
@@ -500,9 +527,83 @@ pub struct IsnadSearchResponse {
     pub total: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct CommonNarratorsResponse {
     pub narrator1: ApiNarratorSearchResult,
     pub narrator2: ApiNarratorSearchResult,
     pub common: Vec<ApiNarratorWithCount>,
+}
+
+// ── Hadith Gradings ──
+//
+// Multi-scholar verdicts. Always carries the `source_book_id` + `source_page_index`
+// link back to the original Turath page. For Bukhari/Muslim hadiths, the
+// handler prepends a synthetic `consensus sahih` row with `source_book_id=null`.
+
+/// Normalised verdict bucket. Free-text Arabic verdicts (`grade`) are mapped to
+/// one of these by the extractor scripts; rows that don't fit cleanly stay as
+/// `null`.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum GradeNormalized {
+    Sahih,
+    Hasan,
+    Daif,
+    Mawdu,
+    Other,
+}
+
+impl GradeNormalized {
+    /// Parse the lowercase string written by the extractor scripts.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "sahih" => Some(Self::Sahih),
+            "hasan" => Some(Self::Hasan),
+            "daif" => Some(Self::Daif),
+            "mawdu" => Some(Self::Mawdu),
+            "other" => Some(Self::Other),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ApiHadithGrading {
+    /// Stable scholar identifier (e.g. `bukhari`, `muslim`, `albani`,
+    /// `daraqutni`, `ibn_hajar`).
+    pub scholar_key: String,
+    /// Display name in Arabic (e.g. `البخاري`).
+    pub scholar_ar: String,
+    /// Verbatim Arabic verdict from the source (e.g. `صحيح`, `حسن صحيح`).
+    pub grade: String,
+    /// Normalised bucket — `null` when the free-text verdict can't be mapped
+    /// cleanly to one of the standard categories.
+    pub grade_normalized: Option<GradeNormalized>,
+    /// `book.book_id` for the source book. `null` for the synthetic Bukhari /
+    /// Muslim consensus row.
+    pub source_book_id: Option<i64>,
+    /// 0-indexed page within the source book. Add 1 when calling
+    /// `GET /v1/books/{source_book_id}/pages?page=...`.
+    pub source_page_index: Option<i64>,
+    pub source_vol: Option<String>,
+    pub source_page_num: Option<i64>,
+    /// Raw extracted text snippet from the source page.
+    pub raw_text: Option<String>,
+    /// Free-text annotation (e.g. `consensus sahih`, scholar-specific qualifier).
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ApiHadithGradingsResponse {
+    pub hadith_id: String,
+    pub gradings: Vec<ApiHadithGrading>,
+}
+
+/// One row of `GET /v1/scholars` — distinct scholars who have at least one
+/// stored verdict, with a verdict count for ranking.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ApiScholar {
+    pub scholar_key: String,
+    pub scholar_ar: String,
+    pub count: i64,
 }

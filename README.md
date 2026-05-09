@@ -9,7 +9,7 @@
 
 ---
 
-> **[Methodology & Algorithms](docs/METHODOLOGY.md)** — Mustalah al-hadith isnad analysis &nbsp;|&nbsp; **[Data Sources](docs/DATA_SOURCES.md)** — Dataset documentation
+> **[API Reference](docs/API.md)** — Versioned `/v1/*` REST API + OpenAPI spec at `/openapi.json` &nbsp;|&nbsp; **[Methodology & Algorithms](docs/METHODOLOGY.md)** — Mustalah al-hadith isnad analysis &nbsp;|&nbsp; **[Data Sources](docs/DATA_SOURCES.md)** — Dataset documentation
 >
 > See also Barmaver's [*Dismantling Orientalist Narratives*](https://www.academia.edu/143038577/Dismantling_Orientalist_Narratives_A_Critique_of_Orientalists_Approach_to_Hadith_with_special_focus_on_Juynboll) (2025, free on Academia.edu).
 
@@ -31,6 +31,7 @@ Rust backend serving a SvelteKit SPA, with SurrealDB as a unified graph + vector
 - **Early Manuscripts** — Per-ayah high-resolution manuscript images from Corpus Coranicum (Berlin-Brandenburg Academy), viewable with zoom
 - **Isnad Analysis** — Hadith family clustering, mustalah-based chain grading (sahih/hasan/da'eef), transmission breadth (mutawatir/mashhur/aziz/gharib), corroboration detection (mutaba'at/shawahid), word-level matn diffing
 - **Personal Study Notes** — Annotate any ayah or hadith, collect evidence by topic with @mentions that embed Quran verses and hadiths inline, tag-based organization, color-coded highlights, and full-text search across your notes
+- **Public REST API** — Versioned `/v1/*` surface with OpenAPI spec; interactive docs at `/docs` (Scalar). Hadith, narrators, isnad chains, mustalah analysis, multi-scholar gradings, Quran ayah/word/root/similar/tafsir, and streaming GraphRAG. See [docs/API.md](docs/API.md).
 
 ## Quick Start
 

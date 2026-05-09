@@ -34,7 +34,7 @@
     loading = true;
 
     try {
-      const res = await fetch('/api/quran/ask', {
+      const res = await fetch('/v1/ask/quran', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question }),

@@ -26,7 +26,7 @@ export async function loadAppConfig() {
   if (loaded) return;
   loaded = true;
   try {
-    const res = await fetch('/api/config');
+    const res = await fetch('/v1/config');
     if (res.ok) appConfig.set(await res.json());
   } catch (e) {
     console.warn('Failed to load app config:', e);

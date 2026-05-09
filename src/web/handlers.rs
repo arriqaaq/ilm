@@ -6,6 +6,7 @@ use futures::StreamExt;
 use serde::Deserialize;
 use std::collections::HashSet;
 use surrealdb::types::{RecordId, SurrealValue};
+use utoipa::{IntoParams, ToSchema};
 
 use super::sse::token_stream_to_sse;
 use crate::analysis;
@@ -24,6 +25,16 @@ fn rid(table: &str, key: &str) -> RecordId {
     RecordId::new(table, key)
 }
 
+/// Server capabilities — which optional features are wired up at runtime.
+///
+/// Useful for clients to know which providers (LLM, embedder, reranker) are
+/// available before calling search/ask endpoints.
+#[utoipa::path(
+    get,
+    path = "/config",
+    tag = "Meta",
+    responses((status = 200, description = "Capability flags", body = serde_json::Value))
+)]
 pub async fn app_config(State(state): State<AppState>) -> impl IntoResponse {
     Json(serde_json::json!({
         "advanced_enabled": state.advanced_enabled,
@@ -37,10 +48,13 @@ pub async fn app_config(State(state): State<AppState>) -> impl IntoResponse {
 
 // ── Query parameter types ──
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct SearchParams {
+    /// Free-text query. Empty/missing returns an empty result set.
     pub q: Option<String>,
+    /// Search mode: `text` (BM25), `semantic` (vector), or `hybrid` (RRF). Defaults to `hybrid`.
     #[serde(rename = "type")]
+    #[param(rename = "type")]
     pub search_type: Option<String>,
     pub limit: Option<usize>,
     pub page: Option<usize>,
@@ -49,43 +63,59 @@ pub struct SearchParams {
     pub rerank: Option<bool>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct ListParams {
+    /// Numeric `collection_id` (1=Bukhari, 2=Muslim, 3=Abu Dawud, 4=Tirmidhi, 5=Nasai, 6=Ibn Majah).
     pub book: Option<i64>,
+    /// Filter by `hadith_number` within a collection.
     pub number: Option<i64>,
     pub page: Option<usize>,
     pub limit: Option<usize>,
+    /// Free-text substring filter on Arabic / English text.
     pub q: Option<String>,
+    /// Filter by narrator generation (tabaqah).
     pub generation: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct AskRequest {
     pub question: String,
+    /// Optional model override (e.g. `llama3.2`, `gpt-4o-mini`). Defaults to the server's configured model.
     pub model: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct AutocompleteParams {
     pub q: String,
     pub limit: Option<usize>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct IsnadSearchRequest {
+    /// Narrator IDs that must appear in the chain.
     pub narrator_ids: Vec<String>,
+    /// `loose` (default) — narrators may appear in any order; `strict` — narrators must form a contiguous sub-chain.
     pub mode: Option<String>,
     pub limit: Option<usize>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct CommonNarratorsParams {
+    /// First narrator ID.
     pub a: String,
+    /// Second narrator ID.
     pub b: String,
 }
 
 // ── API Handlers ──
 
+/// Top-line counts (hadiths, narrators, collections).
+#[utoipa::path(
+    get,
+    path = "/stats",
+    tag = "Meta",
+    responses((status = 200, body = StatsResponse))
+)]
 pub async fn stats(State(state): State<AppState>) -> impl IntoResponse {
     let result = state
         .db
@@ -120,6 +150,15 @@ pub async fn stats(State(state): State<AppState>) -> impl IntoResponse {
     })
 }
 
+/// List the canonical hadith collections (Kutub al-Sittah). Stable IDs come
+/// from `src/ingest/books.rs` — `bukhari` (1), `muslim` (2), `abudawud` (3),
+/// `tirmidhi` (4), `nasai` (5), `ibnmajah` (6).
+#[utoipa::path(
+    get,
+    path = "/collections",
+    tag = "Hadith",
+    responses((status = 200, body = Vec<ApiCollection>))
+)]
 pub async fn books(State(state): State<AppState>) -> impl IntoResponse {
     let books: Vec<Collection> = match state
         .db
@@ -141,6 +180,19 @@ pub async fn books(State(state): State<AppState>) -> impl IntoResponse {
     )
 }
 
+/// Search hadiths and narrators in a single call.
+///
+/// `type=text` uses BM25 full-text; `type=semantic` uses HNSW vector search;
+/// `type=hybrid` (default) fuses both via Reciprocal Rank Fusion. Set
+/// `?rerank=true` to apply a cross-encoder reranker on hybrid results when the
+/// server is configured with `--reranker`.
+#[utoipa::path(
+    get,
+    path = "/search/hadith",
+    tag = "Search",
+    params(SearchParams),
+    responses((status = 200, description = "Hadith + narrator search results", body = serde_json::Value))
+)]
 pub async fn search(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
@@ -199,6 +251,14 @@ pub async fn search(
     }))
 }
 
+/// Paginated list of hadiths with optional filters.
+#[utoipa::path(
+    get,
+    path = "/hadiths",
+    tag = "Hadith",
+    params(ListParams),
+    responses((status = 200, description = "{ data: ApiHadith[], page, limit, has_more, total? }", body = serde_json::Value))
+)]
 pub async fn hadith_list(
     State(state): State<AppState>,
     Query(params): Query<ListParams>,
@@ -236,10 +296,20 @@ pub async fn hadith_list(
     Json(PaginatedResponse {
         data: hadiths.into_iter().map(ApiHadith::from).collect(),
         page,
+        limit,
         has_more,
+        total: None,
     })
 }
 
+/// Single hadith with its narrators, linked Quran ayahs, and similar hadiths.
+#[utoipa::path(
+    get,
+    path = "/hadiths/{id}",
+    tag = "Hadith",
+    params(("id" = String, Path, description = "Hadith slug, e.g. `bukhari:1`")),
+    responses((status = 200, description = "Hadith + narrators + linked ayahs + similar hadiths", body = serde_json::Value))
+)]
 pub async fn hadith_detail(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -299,6 +369,19 @@ pub async fn hadith_detail(
     })))
 }
 
+/// Paginated list of narrators. Supports free-text and generation filters.
+#[utoipa::path(
+    get,
+    path = "/narrators",
+    tag = "Narrators",
+    params(
+        ("q" = Option<String>, Query, description = "Free-text name filter"),
+        ("generation" = Option<String>, Query, description = "Tabaqah filter (e.g. `1` for Sahabah)"),
+        ("page" = Option<usize>, Query, description = "1-indexed page (default 1)"),
+        ("limit" = Option<usize>, Query, description = "Page size (default 50)"),
+    ),
+    responses((status = 200, description = "{ data: ApiNarratorWithCount[], page, limit, has_more, total? }", body = serde_json::Value))
+)]
 pub async fn narrator_list(
     State(state): State<AppState>,
     Query(params): Query<ListParams>,
@@ -366,10 +449,20 @@ pub async fn narrator_list(
     Json(PaginatedResponse {
         data: api_narrators,
         page,
+        limit,
         has_more,
+        total: None,
     })
 }
 
+/// Single narrator with biographical fields, sample hadiths, teachers, and students.
+#[utoipa::path(
+    get,
+    path = "/narrators/{id}",
+    tag = "Narrators",
+    params(("id" = String, Path, description = "Narrator ID")),
+    responses((status = 200, description = "Narrator + hadiths + teachers + students", body = serde_json::Value))
+)]
 pub async fn narrator_detail(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -433,6 +526,15 @@ pub async fn narrator_detail(
     })))
 }
 
+/// Cytoscape-shaped isnad graph for a hadith — nodes for each narrator in the
+/// chain plus edges marked with `chain_position`.
+#[utoipa::path(
+    get,
+    path = "/hadiths/{id}/chain",
+    tag = "Hadith",
+    params(("id" = String, Path, description = "Hadith slug, e.g. `bukhari:1`")),
+    responses((status = 200, body = GraphData))
+)]
 pub async fn chain_graph_data(
     State(state): State<AppState>,
     Path(hadith_id): Path<String>,
@@ -507,6 +609,15 @@ pub async fn chain_graph_data(
     Json(graph)
 }
 
+/// Cytoscape-shaped narrator network — the centre narrator plus their
+/// immediate teachers (incoming) and students (outgoing). Capped at 25 nodes.
+#[utoipa::path(
+    get,
+    path = "/narrators/{id}/graph",
+    tag = "Narrators",
+    params(("id" = String, Path)),
+    responses((status = 200, body = GraphData))
+)]
 pub async fn narrator_graph_data(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -643,6 +754,18 @@ pub async fn narrator_graph_data(
     Json(graph)
 }
 
+/// Hadith-grounded GraphRAG question answering.
+///
+/// **Streaming response** (SSE, `text/event-stream`): the first event carries
+/// `{narrator_sources, hadith_sources}`; subsequent events stream tokens from
+/// the LLM. Rate-limited to ~10 req/min per IP because each call hits the LLM.
+#[utoipa::path(
+    post,
+    path = "/ask/hadith",
+    tag = "Ask",
+    request_body = AskRequest,
+    responses((status = 200, description = "SSE token stream with sources prefix", body = serde_json::Value, content_type = "text/event-stream"))
+)]
 pub async fn ask(
     State(state): State<AppState>,
     Json(body): Json<AskRequest>,
@@ -847,6 +970,17 @@ pub async fn update_translation(
 
 // ── Analysis endpoints ──
 
+/// Paginated list of hadith families (variant clusters), sorted by variant count.
+#[utoipa::path(
+    get,
+    path = "/families",
+    tag = "Families",
+    params(
+        ("page" = Option<usize>, Query, description = "1-indexed page (default 1)"),
+        ("limit" = Option<usize>, Query, description = "Page size (default 20)"),
+    ),
+    responses((status = 200, description = "{ data: ApiHadithFamily[], page, limit, has_more, total? }", body = serde_json::Value))
+)]
 pub async fn family_list(
     State(state): State<AppState>,
     Query(params): Query<ListParams>,
@@ -877,10 +1011,20 @@ pub async fn family_list(
     Json(PaginatedResponse {
         data,
         page,
+        limit,
         has_more,
+        total: None,
     })
 }
 
+/// One hadith family with all variants.
+#[utoipa::path(
+    get,
+    path = "/families/{id}",
+    tag = "Families",
+    params(("id" = String, Path)),
+    responses((status = 200, description = "Family + variants", body = serde_json::Value))
+)]
 pub async fn family_detail(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -934,10 +1078,30 @@ struct CollectionIdRow {
     collection_id: i64,
 }
 
+/// Multi-scholar verdicts on this hadith.
+///
+/// One row per scholar per source book. For Bukhari and Muslim hadiths the
+/// response **prepends a synthetic `consensus sahih` row** with
+/// `source_book_id=null`. Stored rows include the source `book_id` and
+/// `page_index` so consumers can fetch the original Arabic via
+/// `GET /v1/books/{source_book_id}/pages?page={source_page_index+1}`.
+///
+/// Multiple rows per `(hadith, scholar, source_book)` are intentional —
+/// scholars like Albani regularly issue distinct verdicts on different chains
+/// within a single book entry.
+#[utoipa::path(
+    get,
+    path = "/hadiths/{id}/gradings",
+    tag = "Hadith",
+    params(("id" = String, Path, description = "Hadith slug, e.g. `bukhari:1`")),
+    responses((status = 200, body = crate::models::ApiHadithGradingsResponse))
+)]
 pub async fn hadith_gradings(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
+    use crate::models::{ApiHadithGrading, ApiHadithGradingsResponse, GradeNormalized};
+
     let hrid = rid("hadith", &id);
 
     let collection_id: i64 = match state
@@ -973,7 +1137,7 @@ pub async fn hadith_gradings(
         }
     };
 
-    let mut out: Vec<serde_json::Value> = Vec::with_capacity(stored.len() + 1);
+    let mut gradings: Vec<ApiHadithGrading> = Vec::with_capacity(stored.len() + 1);
 
     if collection_id == 1 || collection_id == 2 {
         let (key, ar) = if collection_id == 1 {
@@ -981,43 +1145,103 @@ pub async fn hadith_gradings(
         } else {
             ("muslim", "مسلم")
         };
-        out.push(serde_json::json!({
-            "scholar_key": key,
-            "scholar_ar": ar,
-            "grade": "صحيح",
-            "grade_normalized": "sahih",
-            "source_book_id": null,
-            "source_page_index": null,
-            "source_vol": null,
-            "source_page_num": null,
-            "raw_text": null,
-            "notes": "consensus sahih",
-        }));
+        gradings.push(ApiHadithGrading {
+            scholar_key: key.to_string(),
+            scholar_ar: ar.to_string(),
+            grade: "صحيح".to_string(),
+            grade_normalized: Some(GradeNormalized::Sahih),
+            source_book_id: None,
+            source_page_index: None,
+            source_vol: None,
+            source_page_num: None,
+            raw_text: None,
+            notes: Some("consensus sahih".to_string()),
+        });
     }
 
     for r in stored {
-        out.push(serde_json::json!({
-            "scholar_key": r.scholar_key,
-            "scholar_ar": r.scholar_ar,
-            "grade": r.grade,
-            "grade_normalized": r.grade_normalized,
-            "source_book_id": r.source_book_id,
-            "source_page_index": r.source_page_index,
-            "source_vol": r.source_vol,
-            "source_page_num": r.source_page_num,
-            "raw_text": r.raw_text,
-            "notes": r.notes,
-        }));
+        let grade_normalized = r
+            .grade_normalized
+            .as_deref()
+            .and_then(GradeNormalized::parse);
+        gradings.push(ApiHadithGrading {
+            scholar_key: r.scholar_key,
+            scholar_ar: r.scholar_ar,
+            grade: r.grade,
+            grade_normalized,
+            source_book_id: r.source_book_id,
+            source_page_index: r.source_page_index,
+            source_vol: r.source_vol,
+            source_page_num: r.source_page_num,
+            raw_text: r.raw_text,
+            notes: r.notes,
+        });
     }
 
-    Json(serde_json::json!({
-        "hadith_id": id,
-        "gradings": out,
-    }))
+    Json(ApiHadithGradingsResponse {
+        hadith_id: id,
+        gradings,
+    })
+}
+
+// ── Distinct list of scholars who have at least one stored verdict ──
+
+#[derive(Debug, SurrealValue)]
+struct ScholarRow {
+    scholar_key: String,
+    scholar_ar: String,
+    count: i64,
+}
+
+/// Distinct scholars who have at least one stored verdict, with verdict count.
+///
+/// Useful as a filter UI source for clients building scholar-leaderboard or
+/// per-scholar exploration pages.
+#[utoipa::path(
+    get,
+    path = "/scholars",
+    tag = "Hadith",
+    responses((status = 200, body = Vec<crate::models::ApiScholar>))
+)]
+pub async fn list_scholars(State(state): State<AppState>) -> impl IntoResponse {
+    use crate::models::ApiScholar;
+
+    let rows: Vec<ScholarRow> = match state
+        .db
+        .query(
+            "SELECT scholar_key, scholar_ar, count() AS count FROM hadith_grading \
+             GROUP BY scholar_key, scholar_ar ORDER BY count DESC",
+        )
+        .await
+    {
+        Ok(mut r) => r.take(0).unwrap_or_default(),
+        Err(e) => {
+            tracing::warn!("list_scholars: query failed: {e}");
+            vec![]
+        }
+    };
+
+    Json(
+        rows.into_iter()
+            .map(|r| ApiScholar {
+                scholar_key: r.scholar_key,
+                scholar_ar: r.scholar_ar,
+                count: r.count,
+            })
+            .collect::<Vec<_>>(),
+    )
 }
 
 // ── Mustalah API handlers ──
 
+/// Aggregate counts across mustalah breadth classifications
+/// (mutawatir / mashhur / aziz / gharib) for all analyzed families.
+#[utoipa::path(
+    get,
+    path = "/mustalah/stats",
+    tag = "Mustalah",
+    responses((status = 200, description = "Per-class family counts", body = serde_json::Value))
+)]
 pub async fn mustalah_stats(State(state): State<AppState>) -> impl IntoResponse {
     let mut res = state
         .db
@@ -1049,6 +1273,19 @@ pub async fn mustalah_stats(State(state): State<AppState>) -> impl IntoResponse 
     }))
 }
 
+/// Full mustalah analysis for one hadith family.
+///
+/// Bundles `isnad_analysis` (breadth, bottleneck tabaqah, sahabi/mutabaat/shawahid
+/// counts, ilal flags), per-chain `chain_assessment` rows, and the
+/// `narrator_pivot` rows that mark *madar al-isnad* — the key narrators every
+/// chain runs through.
+#[utoipa::path(
+    get,
+    path = "/families/{id}/mustalah",
+    tag = "Mustalah",
+    params(("id" = String, Path)),
+    responses((status = 200, description = "Family-level isnad analysis bundle", body = serde_json::Value))
+)]
 pub async fn mustalah_family_analysis(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -1130,6 +1367,14 @@ pub async fn mustalah_family_analysis(
     })))
 }
 
+/// How often this narrator acts as a pivot or bottleneck across families.
+#[utoipa::path(
+    get,
+    path = "/narrators/{id}/isnad-role",
+    tag = "Narrators",
+    params(("id" = String, Path)),
+    responses((status = 200, description = "Pivot / bottleneck counts + family list", body = serde_json::Value))
+)]
 pub async fn narrator_isnad_role(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -1165,6 +1410,15 @@ pub async fn narrator_isnad_role(
     }))
 }
 
+/// Word-level matn diff between two hadiths. Useful for studying narrator
+/// paraphrases across variants of the same family.
+#[utoipa::path(
+    get,
+    path = "/hadiths/diff",
+    tag = "Hadith",
+    params(DiffParams),
+    responses((status = 200, description = "Diff result with highlighted text spans", body = serde_json::Value))
+)]
 pub async fn matn_diff_handler(
     State(state): State<AppState>,
     Query(params): Query<DiffParams>,
@@ -1207,12 +1461,32 @@ pub async fn matn_diff_handler(
     Ok(Json(result))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct DiffParams {
+    /// First hadith ID (e.g. `bukhari:1`).
     pub a: Option<String>,
+    /// Second hadith ID.
     pub b: Option<String>,
 }
 
+/// Export a complete family analysis bundle.
+///
+/// `?format=json` (default) returns a structured `ArtifactBundle`;
+/// `?format=md` returns a single human-readable Markdown document with
+/// `Content-Disposition: attachment`.
+#[utoipa::path(
+    get,
+    path = "/families/{id}/export",
+    tag = "Families",
+    params(
+        ("id" = String, Path),
+        ExportParams,
+    ),
+    responses(
+        (status = 200, description = "ArtifactBundle JSON or Markdown document", body = serde_json::Value),
+        (status = 404, description = "Family not found")
+    )
+)]
 pub async fn export_family(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -1248,8 +1522,9 @@ pub async fn export_family(
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct ExportParams {
+    /// `json` (default) — structured ArtifactBundle; `md` — single Markdown document.
     pub format: Option<String>,
 }
 
@@ -1302,6 +1577,14 @@ struct HeardFromEdge {
 
 // ── Isnad Search endpoints ──
 
+/// Typeahead autocomplete over narrator names (English, Arabic, kunya, aliases).
+#[utoipa::path(
+    get,
+    path = "/narrators/autocomplete",
+    tag = "Narrators",
+    params(AutocompleteParams),
+    responses((status = 200, body = Vec<ApiNarratorWithCount>))
+)]
 pub async fn narrator_autocomplete(
     State(state): State<AppState>,
     Query(params): Query<AutocompleteParams>,
@@ -1354,6 +1637,18 @@ pub async fn narrator_autocomplete(
     )
 }
 
+/// Find hadiths whose isnad chain contains the given narrators.
+///
+/// `mode: "loose"` (default) — narrators may appear in any order anywhere in
+/// the chain. `mode: "strict"` — narrators must form a contiguous sub-chain in
+/// the order provided.
+#[utoipa::path(
+    post,
+    path = "/isnad/search",
+    tag = "Isnad",
+    request_body = IsnadSearchRequest,
+    responses((status = 200, body = IsnadSearchResponse))
+)]
 pub async fn isnad_search(
     State(state): State<AppState>,
     Json(body): Json<IsnadSearchRequest>,
@@ -1497,6 +1792,14 @@ async fn filter_strict_chains(
     Ok(result)
 }
 
+/// Narrators who appear in chains of hadiths narrated by both `a` and `b`.
+#[utoipa::path(
+    get,
+    path = "/narrators/common",
+    tag = "Narrators",
+    params(CommonNarratorsParams),
+    responses((status = 200, body = CommonNarratorsResponse))
+)]
 pub async fn common_narrators(
     State(state): State<AppState>,
     Query(params): Query<CommonNarratorsParams>,
@@ -1658,6 +1961,14 @@ pub async fn common_narrators(
 
 // ── Unified Quran & Sunnah endpoints ──
 
+/// Cross-domain search across both Quran ayahs and Hadiths in one call.
+#[utoipa::path(
+    get,
+    path = "/search/all",
+    tag = "Search",
+    params(SearchParams),
+    responses((status = 200, description = "Mixed Quran + Hadith results with separate counts", body = serde_json::Value))
+)]
 pub async fn unified_search(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
@@ -1732,6 +2043,18 @@ pub async fn unified_search(
     }
 }
 
+/// Cross-domain GraphRAG question answering over Quran + Hadith.
+///
+/// **Streaming response** (SSE). Sources event includes Quran ayahs OR
+/// hadiths (and narrator chains) depending on the classifier output.
+/// Rate-limited harder than read endpoints.
+#[utoipa::path(
+    post,
+    path = "/ask/all",
+    tag = "Ask",
+    request_body = AskRequest,
+    responses((status = 200, description = "SSE token stream with sources prefix", body = serde_json::Value, content_type = "text/event-stream"))
+)]
 pub async fn unified_ask(
     State(state): State<AppState>,
     Json(body): Json<AskRequest>,

@@ -1,5 +1,6 @@
 use serde::Serialize;
 use surrealdb::types::{RecordId, SurrealValue};
+use utoipa::ToSchema;
 
 use crate::models::record_id_key_string;
 
@@ -51,7 +52,7 @@ pub struct AyahSearchResult {
 
 // ── API response types (RecordId flattened to String) ──
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiSurah {
     pub id: String,
     pub surah_number: i64,
@@ -76,7 +77,7 @@ impl From<Surah> for ApiSurah {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiAyah {
     pub id: String,
     pub surah_number: i64,
@@ -99,7 +100,7 @@ impl From<Ayah> for ApiAyah {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiAyahSearchResult {
     pub id: String,
     pub surah_number: i64,
@@ -126,22 +127,23 @@ impl From<AyahSearchResult> for ApiAyahSearchResult {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct QuranSearchResponse {
     pub query: String,
     pub search_type: String,
     pub ayahs: Vec<ApiAyahSearchResult>,
     pub page: usize,
+    pub limit: usize,
     pub has_more: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct QuranStatsResponse {
     pub surah_count: i64,
     pub ayah_count: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SurahDetailResponse {
     pub surah: ApiSurah,
     pub ayahs: Vec<ApiAyah>,
@@ -166,7 +168,7 @@ pub struct QuranWord {
     pub segments: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiQuranWord {
     pub id: String,
     pub surah_number: i64,
@@ -178,7 +180,11 @@ pub struct ApiQuranWord {
     pub lemma: Option<String>,
     pub translation: Option<String>,
     pub transliteration: Option<String>,
+    /// Free-form morphological feature flags (gender, number, case, mood, ...).
+    #[schema(value_type = Object, additional_properties = true)]
     pub features: Option<serde_json::Value>,
+    /// JSON-encoded morpheme segments.
+    #[schema(value_type = Object, additional_properties = true)]
     pub segments: Option<serde_json::Value>,
 }
 
@@ -201,7 +207,7 @@ impl From<QuranWord> for ApiQuranWord {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RootSearchResponse {
     pub root: String,
     pub occurrences: Vec<ApiQuranWord>,
@@ -220,7 +226,7 @@ pub struct Reciter {
     pub bitrate: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiReciter {
     pub id: String,
     pub name_en: String,
@@ -255,7 +261,7 @@ pub struct QuranPhrase {
     pub chapters_count: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiQuranPhrase {
     pub id: String,
     pub text_ar: String,
@@ -284,23 +290,28 @@ pub struct SimilarAyahEdge {
     pub matched_positions: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiSimilarAyah {
+    /// Composite key in `surah:ayah` form (legacy; v1 still emits it inside the
+    /// payload for client convenience even though path params switched to two
+    /// segments).
     pub ayah_key: String,
     pub score: i64,
     pub coverage: i64,
+    /// Word-level match positions, JSON-encoded.
+    #[schema(value_type = Object, additional_properties = true)]
     pub matched_positions: Option<serde_json::Value>,
     pub text_ar: Option<String>,
     pub text_en: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AyahSimilarResponse {
     pub similar: Vec<ApiSimilarAyah>,
     pub phrases: Vec<ApiPhraseWithAyahs>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiPhraseWithAyahs {
     pub id: String,
     pub text_ar: String,

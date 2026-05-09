@@ -108,7 +108,7 @@
     loading = true;
 
     try {
-      const res = await fetch(`/api/books/${bookId}/chat`, {
+      const res = await fetch(`/v1/books/${bookId}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question }),

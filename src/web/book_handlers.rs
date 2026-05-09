@@ -5,6 +5,7 @@ use axum::response::{IntoResponse, Json, Response};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use surrealdb::types::SurrealValue;
+use utoipa::{IntoParams, ToSchema};
 
 use super::AppState;
 use super::sse::token_stream_to_sse;
@@ -13,7 +14,7 @@ use crate::llm::ChatOptions;
 
 // ── Response types ──
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct BookSummary {
     pub book_id: u64,
     pub name_ar: String,
@@ -22,7 +23,7 @@ pub struct BookSummary {
     pub total_pages: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct BookDetail {
     pub book_id: u64,
     pub name_ar: String,
@@ -32,14 +33,14 @@ pub struct BookDetail {
     pub headings: Vec<BookHeading>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct BookHeading {
     pub title: String,
     pub level: u32,
     pub page_index: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct BookPage {
     pub page_index: u64,
     pub text: String,
@@ -47,7 +48,7 @@ pub struct BookPage {
     pub page_num: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct BookPagesResponse {
     pub pages: Vec<BookPage>,
     pub total: u64,
@@ -55,48 +56,61 @@ pub struct BookPagesResponse {
     pub size: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct TafsirPageRef {
     pub page_index: u64,
     pub heading: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct TafsirSurahMappings {
     pub mappings: HashMap<String, TafsirPageRef>,
 }
 
 // ── Query params ──
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct PaginationParams {
+    /// 0-indexed page offset.
     pub start: Option<u64>,
+    /// Page size; capped server-side.
     pub size: Option<u64>,
+}
+
+#[derive(Deserialize, IntoParams)]
+pub struct BooksListParams {
+    /// Filter by `book.category` (e.g. `tafsir`, `hadith_sharh`, `hadith_grading`,
+    /// `hadith_collection`, `biography`). The `hadith_grading` category lists
+    /// the source books (Albani's series, Daraqutni Ilal, Ibn Hajar Talkhis,
+    /// etc.) that back the per-hadith verdicts at `/v1/hadiths/{id}/gradings`.
+    pub category: Option<String>,
 }
 
 // ── Sharh response types ──
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SharhPageRef {
     pub book_id: u64,
     pub page_index: u64,
     pub book_name: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SharhBatchResponse {
     pub mappings: HashMap<String, SharhPageRef>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct SharhBatchParams {
+    /// Numeric `collection_id` (1=Bukhari, 2=Muslim, ...).
     pub book: Option<u64>,
-    pub numbers: Option<String>, // comma-separated hadith numbers
+    /// Comma-separated list of hadith numbers within that collection.
+    pub numbers: Option<String>,
 }
 
 // ── Books config response ──
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct BookConfigEntry {
     pub book_id: u64,
     pub name_ar: String,
@@ -107,7 +121,7 @@ pub struct BookConfigEntry {
     pub default_questions: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct TafsirBookEntry {
     pub book_id: u64,
     pub slug: String,
@@ -116,7 +130,7 @@ pub struct TafsirBookEntry {
     pub is_default: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct BooksConfigResponse {
     pub books: Vec<BookConfigEntry>,
     pub tafsir_books: Vec<TafsirBookEntry>,
@@ -192,7 +206,7 @@ struct NarratorBookRow {
     book_name: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct NarratorBookRef {
     pub book_id: u64,
     pub page_index: u64,
@@ -239,6 +253,15 @@ struct CountResult {
 
 /// GET /api/books/config
 /// Returns book metadata with categories, types, chat status, and default questions.
+/// Book reader configuration. Lists all books with chat-enabled flags + the
+/// curated set of tafsir books surfaced in the multi-tafsir picker (Ibn Kathir
+/// is the historical default).
+#[utoipa::path(
+    get,
+    path = "/books/config",
+    tag = "Books",
+    responses((status = 200, body = BooksConfigResponse))
+)]
 pub async fn books_config(State(state): State<AppState>) -> impl IntoResponse {
     let result: Result<Vec<ConfigBookRow>, _> = state
         .db
@@ -297,12 +320,36 @@ pub async fn books_config(State(state): State<AppState>) -> impl IntoResponse {
     }
 }
 
-pub async fn list_books(State(state): State<AppState>) -> impl IntoResponse {
-    let result: Result<Vec<BookRow>, _> = state
-        .db
-        .query("SELECT book_id, name_ar, name_en, author_ar, total_pages FROM book")
-        .await
-        .and_then(|mut r| r.take(0));
+/// All ingested books, optionally filtered by `category` (e.g.
+/// `tafsir`, `hadith_sharh`, `hadith_grading`, `hadith_collection`,
+/// `biography`). The `hadith_grading` category is the discovery path for
+/// the source books that back per-hadith verdicts at
+/// `/v1/hadiths/{id}/gradings` (Albani's Sahih/Daif series, Daraqutni Ilal,
+/// Talkhis al-Habir, etc.).
+#[utoipa::path(
+    get,
+    path = "/books",
+    tag = "Books",
+    params(BooksListParams),
+    responses((status = 200, body = Vec<BookSummary>))
+)]
+pub async fn list_books(
+    State(state): State<AppState>,
+    Query(params): Query<BooksListParams>,
+) -> impl IntoResponse {
+    let result: Result<Vec<BookRow>, _> = match params.category {
+        Some(cat) => state
+            .db
+            .query("SELECT book_id, name_ar, name_en, author_ar, total_pages FROM book WHERE category = $cat")
+            .bind(("cat", cat))
+            .await
+            .and_then(|mut r| r.take(0)),
+        None => state
+            .db
+            .query("SELECT book_id, name_ar, name_en, author_ar, total_pages FROM book")
+            .await
+            .and_then(|mut r| r.take(0)),
+    };
 
     match result {
         Ok(books) => {
@@ -325,6 +372,17 @@ pub async fn list_books(State(state): State<AppState>) -> impl IntoResponse {
     }
 }
 
+/// One book's metadata + table-of-contents headings.
+#[utoipa::path(
+    get,
+    path = "/books/{book_id}",
+    tag = "Books",
+    params(("book_id" = u64, Path)),
+    responses(
+        (status = 200, body = BookDetail),
+        (status = 404, description = "Book not found")
+    )
+)]
 pub async fn get_book(
     State(state): State<AppState>,
     Path(book_id): Path<u64>,
@@ -362,6 +420,21 @@ pub async fn get_book(
     }
 }
 
+/// Paginated page bodies for a book.
+///
+/// `start` is a 0-indexed page offset, `size` is the page size (capped at 100).
+/// To follow a `source_page_index` returned from the gradings endpoint, pass
+/// `start = source_page_index, size = 1`.
+#[utoipa::path(
+    get,
+    path = "/books/{book_id}/pages",
+    tag = "Books",
+    params(
+        ("book_id" = u64, Path),
+        PaginationParams,
+    ),
+    responses((status = 200, body = BookPagesResponse))
+)]
 pub async fn get_pages(
     State(state): State<AppState>,
     Path(book_id): Path<u64>,
@@ -417,11 +490,23 @@ pub async fn get_pages(
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct TafsirQuery {
+    /// Tafsir book id. Defaults to Ibn Kathir (`23604`).
     pub book_id: Option<u64>,
 }
 
+/// Per-ayah → tafsir-page index for a surah, for one tafsir book.
+#[utoipa::path(
+    get,
+    path = "/quran/surahs/{number}/tafsir-pages",
+    tag = "Quran",
+    params(
+        ("number" = u64, Path, description = "Surah number 1-114"),
+        TafsirQuery,
+    ),
+    responses((status = 200, body = TafsirSurahMappings))
+)]
 pub async fn surah_tafsir_pages(
     State(state): State<AppState>,
     Path(surah_number): Path<u64>,
@@ -479,7 +564,7 @@ struct AyahTafsirPage {
     page_num: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AyahTafsirResponse {
     pub book_id: u64,
     pub surah: u64,
@@ -491,9 +576,24 @@ pub struct AyahTafsirResponse {
     pub text: String,
 }
 
-/// GET /api/quran/ayah/{surah}/{ayah}/tafsir?book_id=<id>
-/// Returns the tafsir body for one ayah from one book in a single response.
+/// Tafsir body for one ayah from one tafsir book.
+///
+/// Defaults to Ibn Kathir (`book_id=23604`) when `?book_id` is not provided.
 /// The `(surah, ayah)` anchor stays constant while the UI switches `book_id`.
+#[utoipa::path(
+    get,
+    path = "/quran/ayahs/{surah}/{ayah}/tafsir",
+    tag = "Quran",
+    params(
+        ("surah" = u64, Path),
+        ("ayah" = u64, Path),
+        TafsirQuery,
+    ),
+    responses(
+        (status = 200, body = AyahTafsirResponse),
+        (status = 404, description = "No tafsir mapping for this ayah in the requested book")
+    )
+)]
 pub async fn ayah_tafsir(
     State(state): State<AppState>,
     Path((surah, ayah)): Path<(u64, u64)>,
@@ -569,6 +669,17 @@ pub async fn ayah_tafsir(
 
 /// Batch lookup: hadith numbers -> sharh page references.
 /// GET /api/hadiths/sharh-pages?book=1&numbers=1,2,3,4,5
+/// Batch lookup of hadith → sharh (commentary) page mappings.
+///
+/// Pass `?book=1&numbers=1,2,3` to look up sharh pages for those hadith
+/// numbers in Bukhari. Map keys are the requested hadith numbers as strings.
+#[utoipa::path(
+    get,
+    path = "/hadiths/sharh-pages",
+    tag = "Hadith",
+    params(SharhBatchParams),
+    responses((status = 200, body = SharhBatchResponse))
+)]
 pub async fn hadith_sharh_pages(
     State(state): State<AppState>,
     Query(params): Query<SharhBatchParams>,
@@ -646,6 +757,14 @@ pub async fn hadith_sharh_pages(
 
 /// Get all book references for a narrator.
 /// GET /api/narrators/:id/books
+/// Biographical-book references (e.g. Tahdhib al-Tahdhib entries) for a narrator.
+#[utoipa::path(
+    get,
+    path = "/narrators/{id}/books",
+    tag = "Narrators",
+    params(("id" = String, Path)),
+    responses((status = 200, body = Vec<NarratorBookRef>))
+)]
 pub async fn narrator_books(
     State(state): State<AppState>,
     Path(narrator_id): Path<String>,
@@ -692,7 +811,7 @@ pub async fn narrator_books(
 
 // ── Book Chat (PageIndex-style agentic retrieval) ──
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct BookChatRequest {
     pub question: String,
 }
@@ -701,6 +820,19 @@ pub struct BookChatRequest {
 ///
 /// Streams an SSE response immediately — the user sees "navigating" status
 /// while the LLM processes. Uses two-phase navigation and caching.
+/// Agentic question-answering over a single book using PageIndex two-phase retrieval.
+///
+/// **Streaming response** (SSE). Status events fire while navigating →
+/// reading → extracting → answering. Requires the server to be started with
+/// `--pageindex-dir`. Rate-limited harder than read endpoints.
+#[utoipa::path(
+    post,
+    path = "/books/{book_id}/ask",
+    tag = "Ask",
+    params(("book_id" = u64, Path)),
+    request_body = BookChatRequest,
+    responses((status = 200, description = "SSE stream of status, sources, and answer tokens", body = serde_json::Value, content_type = "text/event-stream"))
+)]
 pub async fn book_chat(
     State(state): State<AppState>,
     Path(book_id): Path<u64>,
@@ -849,7 +981,7 @@ struct AyahTafsirEnRow {
     tafsir_en: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AllTafsirsEntry {
     pub book_id: u64,
     pub name_en: String,
@@ -862,12 +994,12 @@ pub struct AllTafsirsEntry {
     pub text: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct InlineEnglishTafsir {
     pub body: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AllTafsirsResponse {
     pub surah: u64,
     pub ayah: u64,
@@ -879,6 +1011,21 @@ pub struct AllTafsirsResponse {
 /// Returns every available tafsir for this ayah in one response:
 ///   - One Arabic entry per ingested book (book_type="tafsir") with page_index + full page text.
 ///   - The inline English Ibn Kathir from ayah.tafsir_en, if present.
+/// Every available tafsir for one ayah in a single response.
+///
+/// Returns one Arabic entry per ingested tafsir book (sorted with the default
+/// Ibn Kathir first), plus the inline English Ibn Kathir from `ayah.tafsir_en`
+/// if present. Useful for side-by-side study.
+#[utoipa::path(
+    get,
+    path = "/quran/ayahs/{surah}/{ayah}/tafsirs",
+    tag = "Quran",
+    params(
+        ("surah" = u64, Path),
+        ("ayah" = u64, Path)
+    ),
+    responses((status = 200, body = AllTafsirsResponse))
+)]
 pub async fn ayah_tafsirs_all(
     State(state): State<AppState>,
     Path((surah, ayah)): Path<(u64, u64)>,
@@ -1026,7 +1173,7 @@ async fn tafsir_book_ids(state: &AppState) -> Vec<u64> {
 
 // ── Request shape ─────────────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct TafsirAskRequest {
     pub question: String,
     /// Verse anchor. Required — the handler rejects requests without it
@@ -1035,7 +1182,7 @@ pub struct TafsirAskRequest {
     pub verse: Option<TafsirVerseAnchor>,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, ToSchema)]
 pub struct TafsirVerseAnchor {
     pub surah: u64,
     pub ayah: u64,
@@ -1135,6 +1282,19 @@ const MAX_VERSE_WINDOW_PAGES: i64 = 20;
 /// - `{"result": {"overview": ..., "entries": [...], "dropped": N}}` (terminal)
 /// - `{"status": "no_valid_extraction", "available_pages": [...]}` (terminal fallback)
 /// - `{"done": true}` | `{"error": "..."}` (always terminal)
+/// Verse-anchored extractive Q&A across multiple tafsir books.
+///
+/// **Streaming response** (SSE) with granular per-book events:
+/// `loading_verse`, `book_skipped`, `sources`, `reading`, `extracting`,
+/// `book_extracted`, `result` / `no_valid_extraction`, `done`. The `verse`
+/// anchor in the request body is required.
+#[utoipa::path(
+    post,
+    path = "/ask/tafsir",
+    tag = "Ask",
+    request_body = TafsirAskRequest,
+    responses((status = 200, description = "SSE event stream", body = serde_json::Value, content_type = "text/event-stream"))
+)]
 pub async fn tafsir_ask(
     State(state): State<AppState>,
     Json(body): Json<TafsirAskRequest>,

@@ -224,7 +224,9 @@ pub async fn list_notes(
     Ok(Json(PaginatedResponse {
         data: notes.into_iter().map(ApiUserNote::from).collect(),
         page,
+        limit,
         has_more,
+        total: None,
     }))
 }
 

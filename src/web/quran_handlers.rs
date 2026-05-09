@@ -4,6 +4,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Json, Response};
 use futures::StreamExt;
 use serde::Deserialize;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::llm::ChatOptions;
 use crate::models::{ApiHadith, ApiHadithSearchResult};
@@ -18,36 +19,49 @@ use super::sse::token_stream_to_sse;
 
 // ── Query parameter types ──
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct AyahHadithParams {
+    /// When true, also return semantically-related hadiths in addition to the
+    /// curated `references_hadith` edges from Quran.com.
     pub include_semantic: Option<bool>,
     pub semantic_limit: Option<usize>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct QuranSearchParams {
     pub q: Option<String>,
+    /// Search mode: `text` (BM25, default), `semantic`, or `hybrid`.
     #[serde(rename = "type")]
+    #[param(rename = "type")]
     pub search_type: Option<String>,
     pub limit: Option<usize>,
     pub page: Option<usize>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct QuranBrowseParams {
+    /// Limit results to a specific surah (1-114).
     pub surah: Option<i64>,
     pub page: Option<usize>,
     pub limit: Option<usize>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct QuranAskRequest {
     pub question: String,
+    /// Optional model override.
     pub model: Option<String>,
 }
 
 // ── Handlers ──
 
+/// Quran-wide counts (number of surahs and ayahs).
+#[utoipa::path(
+    get,
+    path = "/quran/meta",
+    tag = "Quran",
+    responses((status = 200, body = QuranStatsResponse))
+)]
 pub async fn quran_stats(State(state): State<AppState>) -> impl IntoResponse {
     let mut res = state
         .db
@@ -73,6 +87,13 @@ struct CountResult {
     count: i64,
 }
 
+/// All reciters available for ayah-level audio playback.
+#[utoipa::path(
+    get,
+    path = "/quran/reciters",
+    tag = "Quran",
+    responses((status = 200, body = Vec<ApiReciter>))
+)]
 pub async fn reciters(State(state): State<AppState>) -> impl IntoResponse {
     let mut res = state
         .db
@@ -84,6 +105,13 @@ pub async fn reciters(State(state): State<AppState>) -> impl IntoResponse {
     Json(api_reciters)
 }
 
+/// All 114 surahs with metadata (name, ayah count, revelation type).
+#[utoipa::path(
+    get,
+    path = "/quran/surahs",
+    tag = "Quran",
+    responses((status = 200, body = Vec<ApiSurah>))
+)]
 pub async fn surah_list(State(state): State<AppState>) -> impl IntoResponse {
     let mut res = state
         .db
@@ -95,6 +123,14 @@ pub async fn surah_list(State(state): State<AppState>) -> impl IntoResponse {
     Json(api_surahs)
 }
 
+/// One surah plus all its ayahs (Arabic text, English translation, juz/hizb markers).
+#[utoipa::path(
+    get,
+    path = "/quran/surahs/{number}",
+    tag = "Quran",
+    params(("number" = i64, Path, description = "Surah number 1-114")),
+    responses((status = 200, body = SurahDetailResponse))
+)]
 pub async fn surah_detail(
     State(state): State<AppState>,
     Path(number): Path<i64>,
@@ -120,6 +156,17 @@ pub async fn surah_detail(
     }))
 }
 
+/// Search Quran ayahs by free-text query.
+///
+/// `type=text` (default) uses BM25 over Arabic + lemmatized Arabic + English;
+/// `type=semantic` uses vector similarity; `type=hybrid` fuses both.
+#[utoipa::path(
+    get,
+    path = "/search/quran",
+    tag = "Search",
+    params(QuranSearchParams),
+    responses((status = 200, body = QuranSearchResponse))
+)]
 pub async fn quran_search(
     State(state): State<AppState>,
     Query(params): Query<QuranSearchParams>,
@@ -131,6 +178,7 @@ pub async fn quran_search(
             search_type: "text".into(),
             ayahs: vec![],
             page: 1,
+            limit: params.limit.unwrap_or(20),
             has_more: false,
         }));
     }
@@ -168,10 +216,19 @@ pub async fn quran_search(
         search_type: search_type.to_string(),
         ayahs: ayahs.into_iter().map(ApiAyahSearchResult::from).collect(),
         page,
+        limit,
         has_more,
     }))
 }
 
+/// Paginated browse over ayahs, optionally filtered by surah.
+#[utoipa::path(
+    get,
+    path = "/quran/ayahs",
+    tag = "Quran",
+    params(QuranBrowseParams),
+    responses((status = 200, description = "{ data: ApiAyah[], page, limit, has_more, total? }", body = serde_json::Value))
+)]
 pub async fn ayah_browse(
     State(state): State<AppState>,
     Query(params): Query<QuranBrowseParams>,
@@ -209,10 +266,23 @@ pub async fn ayah_browse(
     Json(crate::models::PaginatedResponse {
         data: ayahs.into_iter().map(ApiAyah::from).collect::<Vec<_>>(),
         page,
+        limit,
         has_more,
+        total: None,
     })
 }
 
+/// Quran-grounded GraphRAG question answering.
+///
+/// **Streaming response** (SSE). First event carries `{quran_sources}`;
+/// subsequent events stream LLM tokens. Rate-limited harder than read endpoints.
+#[utoipa::path(
+    post,
+    path = "/ask/quran",
+    tag = "Ask",
+    request_body = QuranAskRequest,
+    responses((status = 200, description = "SSE token stream with sources prefix", body = serde_json::Value, content_type = "text/event-stream"))
+)]
 pub async fn ask_quran(
     State(state): State<AppState>,
     Json(body): Json<QuranAskRequest>,
@@ -308,20 +378,36 @@ pub async fn ask_quran(
 
 // ── Ayah-Hadith reference handlers ──
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, ToSchema)]
 pub struct AyahHadithResponse {
+    /// Curated hadith references for this ayah, sourced from Quran.com.
     pub curated: Vec<ApiHadith>,
+    /// Semantically-related hadiths via vector search; only populated when
+    /// `?include_semantic=true` is passed.
     pub related: Option<Vec<ApiHadithSearchResult>>,
 }
 
+/// Hadiths that reference this ayah.
+///
+/// `curated` are the explicit `references_hadith` edges sourced from
+/// Quran.com. Set `?include_semantic=true` to additionally surface
+/// semantically-related hadiths via vector search.
+#[utoipa::path(
+    get,
+    path = "/quran/ayahs/{surah}/{ayah}/hadiths",
+    tag = "Quran",
+    params(
+        ("surah" = i64, Path),
+        ("ayah" = i64, Path),
+        AyahHadithParams,
+    ),
+    responses((status = 200, body = AyahHadithResponse))
+)]
 pub async fn ayah_hadiths(
     State(state): State<AppState>,
-    Path(ayah_key): Path<String>,
+    Path((surah, ayah)): Path<(i64, i64)>,
     Query(params): Query<AyahHadithParams>,
 ) -> Result<Json<AyahHadithResponse>, StatusCode> {
-    // Parse "surah:ayah" from path
-    let (surah, ayah) = parse_ayah_key(&ayah_key).ok_or(StatusCode::BAD_REQUEST)?;
-
     // Get curated hadiths via relation edges
     let curated = crate::quran::hadith_refs::get_curated_hadiths(&state.db, surah, ayah)
         .await
@@ -356,6 +442,14 @@ pub async fn ayah_hadiths(
     }))
 }
 
+/// Per-ayah curated hadith counts for a surah. Map key = ayah number (string).
+#[utoipa::path(
+    get,
+    path = "/quran/surahs/{number}/hadith-counts",
+    tag = "Quran",
+    params(("number" = i64, Path, description = "Surah number 1-114")),
+    responses((status = 200, body = std::collections::HashMap<String, i64>))
+)]
 pub async fn surah_hadith_counts(
     State(state): State<AppState>,
     Path(number): Path<i64>,
@@ -376,7 +470,15 @@ pub async fn surah_hadith_counts(
     Ok(Json(string_counts))
 }
 
-/// Returns { ayah_number: count } for ayahs in this surah that have similar_to or shares_phrase edges.
+/// Per-ayah counts of `similar_to` + `shares_phrase` edges in this surah —
+/// used by the Quran reader to mark ayahs with mutashabihat connections.
+#[utoipa::path(
+    get,
+    path = "/quran/surahs/{number}/similar-counts",
+    tag = "Quran",
+    params(("number" = i64, Path, description = "Surah number 1-114")),
+    responses((status = 200, body = std::collections::HashMap<String, i64>))
+)]
 pub async fn surah_similar_counts(
     State(state): State<AppState>,
     Path(number): Path<i64>,
@@ -416,6 +518,7 @@ pub async fn surah_similar_counts(
     Ok(Json(counts))
 }
 
+#[allow(dead_code)]
 fn parse_ayah_key(key: &str) -> Option<(i64, i64)> {
     let parts: Vec<&str> = key.split(':').collect();
     if parts.len() == 2 {
@@ -429,17 +532,22 @@ fn parse_ayah_key(key: &str) -> Option<(i64, i64)> {
 
 // ── Word Morphology Handlers ──
 
+/// Word-by-word morphology for one ayah (root, lemma, POS, transliteration,
+/// English gloss). Sourced from corpus.quran.com + QUL.
+#[utoipa::path(
+    get,
+    path = "/quran/ayahs/{surah}/{ayah}/words",
+    tag = "Quran",
+    params(
+        ("surah" = i64, Path, description = "Surah number (1-114)"),
+        ("ayah" = i64, Path, description = "Ayah number within the surah")
+    ),
+    responses((status = 200, body = Vec<ApiQuranWord>))
+)]
 pub async fn ayah_words(
     State(state): State<AppState>,
-    Path(ayah_key): Path<String>,
+    Path((surah, ayah)): Path<(i64, i64)>,
 ) -> Result<Json<Vec<ApiQuranWord>>, (StatusCode, String)> {
-    let (surah, ayah) = parse_ayah_key(&ayah_key).ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            "Invalid ayah key format. Use surah:ayah (e.g., 1:1)".to_string(),
-        )
-    })?;
-
     let mut res = state
         .db
         .query(
@@ -457,6 +565,14 @@ pub async fn ayah_words(
     Ok(Json(words.into_iter().map(ApiQuranWord::from).collect()))
 }
 
+/// Concordance of every Quran occurrence of an Arabic root.
+#[utoipa::path(
+    get,
+    path = "/quran/roots/{root}",
+    tag = "Quran",
+    params(("root" = String, Path, description = "Arabic root, e.g. `ك ت ب` (URL-encoded)")),
+    responses((status = 200, body = RootSearchResponse))
+)]
 pub async fn root_search(
     State(state): State<AppState>,
     Path(root): Path<String>,
@@ -519,17 +635,25 @@ struct AyahKeyRow {
     ayah_number: i64,
 }
 
+/// Similar ayahs (mutashabihat) and shared phrases for one ayah.
+///
+/// `similar` is a ranked list of other ayahs that share enough wording to be
+/// considered parallels; `phrases` lists the shared phrase clusters this ayah
+/// belongs to (each phrase points back to all ayahs containing it).
+#[utoipa::path(
+    get,
+    path = "/quran/ayahs/{surah}/{ayah}/similar",
+    tag = "Quran",
+    params(
+        ("surah" = i64, Path),
+        ("ayah" = i64, Path)
+    ),
+    responses((status = 200, body = AyahSimilarResponse))
+)]
 pub async fn ayah_similar(
     State(state): State<AppState>,
-    Path(ayah_key): Path<String>,
+    Path((surah, ayah)): Path<(i64, i64)>,
 ) -> Result<Json<AyahSimilarResponse>, (StatusCode, String)> {
-    let (surah, ayah) = parse_ayah_key(&ayah_key).ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            "Invalid ayah key format. Use surah:ayah (e.g., 2:255)".to_string(),
-        )
-    })?;
-
     let ayah_id = RecordId::new("ayah", format!("{surah}_{ayah}"));
 
     // 1. Query similar ayahs
@@ -636,6 +760,18 @@ pub async fn ayah_similar(
     Ok(Json(AyahSimilarResponse { similar, phrases }))
 }
 
+/// One shared-phrase cluster — the Arabic text of the phrase plus every ayah
+/// that contains it.
+#[utoipa::path(
+    get,
+    path = "/quran/phrases/{id}",
+    tag = "Quran",
+    params(("id" = String, Path)),
+    responses(
+        (status = 200, body = ApiPhraseWithAyahs),
+        (status = 404, description = "Phrase not found")
+    )
+)]
 pub async fn phrase_detail(
     State(state): State<AppState>,
     Path(id): Path<String>,

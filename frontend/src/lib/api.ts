@@ -41,10 +41,20 @@ import type {
 } from './types';
 import { getDeviceId } from './stores/deviceId';
 
-const BASE = '/api';
+// Public, documented v1 API. Spec at /openapi.json, interactive docs at /docs.
+const BASE = '/v1';
+// SvelteKit-only: notes, notebooks, link-preview cache, admin writes. Not in
+// the OpenAPI spec.
+const INTERNAL_BASE = '/internal';
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+async function getInternal<T>(path: string): Promise<T> {
+  const res = await fetch(`${INTERNAL_BASE}${path}`);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -64,7 +74,7 @@ export async function searchAll(
   rerank = false
 ): Promise<SearchResponse> {
   const suffix = rerank ? '&rerank=true' : '';
-  return get(`/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}${suffix}`);
+  return get(`/search/hadith?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}${suffix}`);
 }
 
 export async function getHadiths(params: {
@@ -104,7 +114,7 @@ export async function getNarrator(id: string): Promise<NarratorDetailResponse> {
 }
 
 export async function getChainGraph(hadithId: string): Promise<GraphData> {
-  return get(`/chain/${encodeURIComponent(hadithId)}`);
+  return get(`/hadiths/${encodeURIComponent(hadithId)}/chain`);
 }
 
 export async function getNarratorGraph(id: string): Promise<GraphData> {
@@ -115,7 +125,8 @@ export async function updateNarrator(
   id: string,
   data: Record<string, unknown>
 ): Promise<void> {
-  const res = await fetch(`${BASE}/narrators/${encodeURIComponent(id)}`, {
+  // Admin write — kept on the private /internal/* surface.
+  const res = await fetch(`${INTERNAL_BASE}/narrators/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -140,7 +151,7 @@ export async function getFamily(id: string): Promise<FamilyDetailResponse> {
 }
 
 export async function getMustalahStats(): Promise<import('./types').MustalahStatsResponse> {
-  return get('/analysis/stats');
+  return get('/mustalah/stats');
 }
 
 export async function getMustalahFamily(id: string): Promise<import('./types').MustalahFamilyResponse> {
@@ -156,13 +167,13 @@ export async function getHadithGradings(id: string): Promise<import('./types').H
 }
 
 export async function getMatnDiff(a: string, b: string): Promise<ApiMatnDiff> {
-  return get(`/diff?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+  return get(`/hadiths/diff?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
 }
 
 // ── Quran API ──
 
 export async function getQuranStats(): Promise<QuranStatsResponse> {
-  return get('/quran/stats');
+  return get('/quran/meta');
 }
 
 export async function getSurahs(): Promise<ApiSurah[]> {
@@ -179,7 +190,7 @@ export async function searchQuran(
   limit = 20,
   page = 1
 ): Promise<QuranSearchResponse> {
-  return get(`/quran/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}&page=${page}`);
+  return get(`/search/quran?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}&page=${page}`);
 }
 
 export async function getAyahHadiths(
@@ -192,7 +203,7 @@ export async function getAyahHadiths(
   if (includeSemantic) sp.set('include_semantic', 'true');
   if (semanticLimit !== 5) sp.set('semantic_limit', String(semanticLimit));
   const query = sp.toString() ? `?${sp}` : '';
-  return get(`/quran/ayah/${surah}:${ayah}/hadiths${query}`);
+  return get(`/quran/ayahs/${surah}/${ayah}/hadiths${query}`);
 }
 
 export async function getSurahHadithCounts(
@@ -217,17 +228,17 @@ export async function searchUnified(
   rerank = false
 ): Promise<UnifiedSearchResponse> {
   const suffix = rerank ? '&rerank=true' : '';
-  return get(`/unified/search?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}&page=${page}${suffix}`);
+  return get(`/search/all?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}&page=${page}${suffix}`);
 }
 
 // ── Quran Word Morphology API ──
 
 export async function getAyahWords(surah: number, ayah: number): Promise<ApiQuranWord[]> {
-  return get<ApiQuranWord[]>(`/quran/ayah/${surah}:${ayah}/words`);
+  return get<ApiQuranWord[]>(`/quran/ayahs/${surah}/${ayah}/words`);
 }
 
 export async function searchByRoot(root: string): Promise<RootSearchResponse> {
-  return get<RootSearchResponse>(`/quran/search/root/${encodeURIComponent(root)}`);
+  return get<RootSearchResponse>(`/quran/roots/${encodeURIComponent(root)}`);
 }
 
 // ── Quran Recitation API ──
@@ -248,7 +259,7 @@ export async function getAyahManuscripts(surah: number, ayah: number): Promise<i
 // ── Similar Ayahs / Mutashabihat API ──
 
 export async function getAyahSimilar(surah: number, ayah: number): Promise<AyahSimilarResponse> {
-  return get<AyahSimilarResponse>(`/quran/ayah/${surah}:${ayah}/similar`);
+  return get<AyahSimilarResponse>(`/quran/ayahs/${surah}/${ayah}/similar`);
 }
 
 export async function getPhraseDetail(id: string): Promise<ApiPhraseWithAyahs> {
@@ -262,7 +273,7 @@ function deviceHeaders(): HeadersInit {
 }
 
 async function getWithDevice<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: deviceHeaders() });
+  const res = await fetch(`${INTERNAL_BASE}${path}`, { headers: deviceHeaders() });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -272,7 +283,7 @@ async function mutateWithDevice<T>(
   path: string,
   data?: unknown,
 ): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${INTERNAL_BASE}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', ...deviceHeaders() },
     body: data ? JSON.stringify(data) : undefined,
@@ -386,7 +397,7 @@ export async function deleteNotebook(id: string): Promise<void> {
 }
 
 export async function fetchLinkPreview(url: string): Promise<LinkPreview> {
-  return get(`/link-preview?url=${encodeURIComponent(url)}`);
+  return getInternal(`/link-preview?url=${encodeURIComponent(url)}`);
 }
 
 // ── Book Viewer ──
