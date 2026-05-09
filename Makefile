@@ -33,18 +33,28 @@ backend:
 
 # Start server (foreground) with command-r7b-arabic
 server: build
-	cargo run $(CARGO_FEATURES) -- serve --port 3000 --ollama-model command-r7b-arabic
+	cargo run $(CARGO_FEATURES) -- serve --port 3000 --llm-model command-r7b-arabic
 
 # Build everything and start server in background with command-r7b-arabic
 dev: build
 	@echo "Starting server on http://localhost:3000..."
-	@cargo run $(CARGO_FEATURES) -- serve --port 3000 --ollama-model command-r7b-arabic &
+	@cargo run $(CARGO_FEATURES) -- serve --port 3000 --llm-model command-r7b-arabic &
 	@sleep 2
 	@echo "Server running at http://localhost:3000 (use 'make stop' to shut down)"
 
 # Stop background server
 stop:
 	@pkill -f "target/debug/hadith serve" 2>/dev/null && echo "Server stopped" || echo "No server running"
+
+# Smoke test the MCP HTTP transport while `make dev` (or `make server`) is running.
+# Returns the JSON-RPC `initialize` response — confirms /mcp is live and the
+# 61-tool ServerHandler is wired up.
+mcp-http-check:
+	@curl -s -i http://localhost:3000/mcp -X POST \
+		-H 'content-type: application/json' \
+		-H 'accept: application/json, text/event-stream' \
+		-d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' \
+		| head -20
 
 # === Download pre-built data (skip ingestion) ===
 

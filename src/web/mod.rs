@@ -1,5 +1,6 @@
 pub mod book_handlers;
 pub mod docs;
+pub mod error;
 pub mod handlers;
 pub mod note_handlers;
 pub mod openapi;
@@ -13,7 +14,6 @@ use axum::Router;
 use axum::response::Json;
 use surrealdb::Surreal;
 use tokio::net::TcpListener;
-use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
 use utoipa_axum::router::OpenApiRouter;
@@ -49,15 +49,28 @@ pub struct ServeConfig {
     pub pageindex_dir: Option<String>,
 }
 
-pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
+/// Build an `AppState` from the configured providers.
+///
+/// Shared between the HTTP server (`web::serve`) and the MCP server
+/// (`crate::mcp::serve_stdio`) so both use exactly the same construction
+/// logic. Returns an `Arc`-cheap state that can be cloned freely into
+/// per-request / per-tool handlers.
+pub async fn build_app_state(
+    db: Surreal<Db>,
+    embed_cfg: Option<EmbedConfig>,
+    llm_cfg: Option<LlmConfig>,
+    rerank_backend: Option<RerankBackendKind>,
+    reranker_model: Option<String>,
+    pageindex_dir: Option<String>,
+) -> Result<AppState> {
     let advanced_enabled = cfg!(feature = "advanced");
 
-    let embedder = match cfg.embed.as_ref() {
-        Some(embed_cfg)
+    let embedder = match embed_cfg.as_ref() {
+        Some(ec)
             if advanced_enabled
-                || embed_cfg.provider != crate::embedding::EmbedProviderKind::Fastembed =>
+                || ec.provider != crate::embedding::EmbedProviderKind::Fastembed =>
         {
-            Some(build_embedder(embed_cfg)?)
+            Some(build_embedder(ec)?)
         }
         Some(_) => {
             tracing::info!("Advanced features disabled — skipping embedding model");
@@ -69,15 +82,15 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
         }
     };
 
-    let llm_client = match cfg.llm.as_ref() {
-        Some(llm_cfg) => Some(Arc::clone(&build_provider(llm_cfg)?)),
+    let llm = match llm_cfg.as_ref() {
+        Some(lc) => Some(Arc::clone(&build_provider(lc)?)),
         None => {
             tracing::info!("Lite mode — no LLM configured (Ask endpoints will return 503)");
             None
         }
     };
 
-    let reranker = match (cfg.rerank_backend, llm_client.as_ref()) {
+    let reranker = match (rerank_backend, llm.as_ref()) {
         #[cfg(feature = "advanced")]
         (Some(RerankBackendKind::Fastembed), _) => {
             tracing::info!("Loading fastembed reranker: bge-reranker-v2-m3");
@@ -85,15 +98,15 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
                 crate::embed::FastembedReranker::new()?,
             )))
         }
-        (Some(RerankBackendKind::Llm), Some(llm)) => {
+        (Some(RerankBackendKind::Llm), Some(l)) => {
             tracing::info!(
                 "Using LLM reranker via {} (model: {})",
-                llm.provider_name(),
-                cfg.reranker_model.as_deref().unwrap_or(llm.default_model())
+                l.provider_name(),
+                reranker_model.as_deref().unwrap_or(l.default_model())
             );
             Some(Arc::new(RerankerBackend::Llm {
-                provider: Arc::clone(llm),
-                model: cfg.reranker_model,
+                provider: Arc::clone(l),
+                model: reranker_model,
             }))
         }
         (Some(RerankBackendKind::Llm), None) => {
@@ -108,9 +121,7 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
         (None, _) => None,
     };
 
-    let llm = llm_client;
-
-    let book_trees = if let Some(dir) = cfg.pageindex_dir {
+    let book_trees = if let Some(dir) = pageindex_dir {
         let path = std::path::Path::new(&dir);
         match crate::book_chat::load_book_trees(path) {
             Ok(trees) => {
@@ -126,7 +137,7 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
         None
     };
 
-    let state = AppState {
+    Ok(AppState {
         db,
         embedder,
         reranker,
@@ -134,7 +145,20 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
         book_trees,
         nav_cache: Arc::new(NavCache::new()),
         advanced_enabled,
-    };
+    })
+}
+
+pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
+    let port = cfg.port;
+    let state = build_app_state(
+        db,
+        cfg.embed,
+        cfg.llm,
+        cfg.rerank_backend,
+        cfg.reranker_model,
+        cfg.pageindex_dir,
+    )
+    .await?;
 
     // ── Public v1 API: OpenApiRouter so handlers register themselves into the spec ──
     //
@@ -203,25 +227,6 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
         .routes(routes!(book_handlers::tafsir_ask))
         .routes(routes!(book_handlers::book_chat));
 
-    // Per-IP rate limit: 60 req/min default for read endpoints; 10 req/min for ask endpoints.
-    // tower_governor uses `per_second` + `burst_size`. burst_size sets the
-    // quota refill bucket size; per_second sets the steady-state rate.
-    // 60/min ≈ 1 req/sec with burst of 30 → tolerates short spikes.
-    let read_governor = Arc::new(
-        GovernorConfigBuilder::default()
-            .per_second(1)
-            .burst_size(30)
-            .finish()
-            .expect("valid governor config"),
-    );
-    let ask_governor = Arc::new(
-        GovernorConfigBuilder::default()
-            .per_second(6) // 1 req per 6s ≈ 10/min
-            .burst_size(3)
-            .finish()
-            .expect("valid governor config"),
-    );
-
     // Combine read + ask routers, take the OpenApi document, then attach state.
     let (v1_read_axum, mut openapi_doc) =
         v1_read_router.with_state(state.clone()).split_for_parts();
@@ -246,12 +251,8 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
 
     // Each handler's `#[utoipa::path(path = "...")]` already declares the full
     // sub-path (`/ask/hadith`, `/books/{book_id}/ask`, etc.) so we just merge —
-    // no extra `nest()` needed. The strict rate limit is attached once to the
-    // ask router; the `/books/{book_id}/ask` chat endpoint sits inside it for
-    // exactly that reason.
-    let v1_router = Router::new()
-        .merge(v1_read_axum.layer(GovernorLayer::new(read_governor)))
-        .merge(v1_ask_axum.layer(GovernorLayer::new(ask_governor)));
+    // no extra `nest()` needed.
+    let v1_router = Router::new().merge(v1_read_axum).merge(v1_ask_axum);
 
     // ── Internal API: not in OpenAPI spec, used only by the SvelteKit frontend ──
     let internal_router = Router::new()
@@ -303,7 +304,7 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
             axum::routing::post(handlers::update_translation),
         )
         .route("/link-preview", axum::routing::get(handlers::link_preview))
-        .with_state(state);
+        .with_state(state.clone());
 
     // ── Docs surface: /openapi.json + /docs (Scalar) ──
     let openapi_for_json = openapi_doc.clone();
@@ -324,18 +325,26 @@ pub async fn serve(db: Surreal<Db>, cfg: ServeConfig) -> Result<()> {
     let spa_fallback = ServeFile::new("frontend/build/index.html");
     let static_files = ServeDir::new("frontend/build").not_found_service(spa_fallback);
 
+    // MCP server (Streamable-HTTP) — same process, same AppState, same DB handle.
+    let mcp_router = crate::mcp::http::build_mcp_router(state);
+
     let app = Router::new()
         .nest("/v1", v1_router)
         .nest("/internal", internal_router)
+        .nest_service("/mcp", mcp_router)
         .merge(docs_router)
         .fallback_service(static_files)
         .layer(cors);
 
-    let addr = format!("0.0.0.0:{}", cfg.port);
-    tracing::info!("Server listening on http://localhost:{}", cfg.port);
+    let addr = format!("0.0.0.0:{}", port);
+    tracing::info!("Server listening on http://localhost:{}", port);
     tracing::info!(
         "Interactive docs available at http://localhost:{}/docs",
-        cfg.port
+        port
+    );
+    tracing::info!(
+        "MCP (Streamable-HTTP) available at http://localhost:{}/mcp",
+        port
     );
     let listener = TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;

@@ -191,10 +191,8 @@ DEFINE FIELD IF NOT EXISTS transliteration ON quran_word TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS pos             ON quran_word TYPE string;
 DEFINE FIELD IF NOT EXISTS root            ON quran_word TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS lemma           ON quran_word TYPE option<string>;
-REMOVE FIELD IF EXISTS features ON quran_word;
-DEFINE FIELD features ON quran_word TYPE option<object> FLEXIBLE;
-REMOVE FIELD IF EXISTS segments ON quran_word;
-DEFINE FIELD segments ON quran_word TYPE option<string>;
+DEFINE FIELD IF NOT EXISTS features ON quran_word TYPE option<object> FLEXIBLE;
+DEFINE FIELD IF NOT EXISTS segments ON quran_word TYPE option<string>;
 DEFINE INDEX IF NOT EXISTS quran_word_ayah_idx ON TABLE quran_word FIELDS surah_number, ayah_number;
 DEFINE INDEX IF NOT EXISTS quran_word_root_idx ON TABLE quran_word FIELDS root;
 DEFINE INDEX IF NOT EXISTS quran_word_pos_idx ON TABLE quran_word FIELDS pos
@@ -384,7 +382,6 @@ pub async fn init_fulltext_indexes(db: &Surreal<Db>) -> Result<()> {
 
 const USER_NOTE_SCHEMA: &str = r#"
 DEFINE TABLE IF NOT EXISTS user_note SCHEMAFULL;
-DEFINE FIELD IF NOT EXISTS device_id   ON user_note TYPE string;
 DEFINE FIELD IF NOT EXISTS ref_type    ON user_note TYPE string;
 DEFINE FIELD IF NOT EXISTS ref_id      ON user_note TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS title       ON user_note TYPE option<string>;
@@ -395,8 +392,8 @@ DEFINE FIELD IF NOT EXISTS refs        ON user_note TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS notebook_id ON user_note TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS created_at  ON user_note TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS updated_at  ON user_note TYPE option<string>;
-DEFINE INDEX IF NOT EXISTS note_device_ref ON TABLE user_note FIELDS device_id, ref_type, ref_id;
-DEFINE INDEX IF NOT EXISTS note_notebook_idx ON TABLE user_note FIELDS device_id, notebook_id
+DEFINE INDEX IF NOT EXISTS note_ref_idx      ON TABLE user_note FIELDS ref_type, ref_id;
+DEFINE INDEX IF NOT EXISTS note_notebook_idx ON TABLE user_note FIELDS notebook_id
 "#;
 
 // ── Link Preview Cache Schema ──
@@ -456,13 +453,11 @@ pub async fn init_link_preview_schema(db: &Surreal<Db>) -> Result<()> {
 
 const NOTEBOOK_SCHEMA: &str = r#"
 DEFINE TABLE IF NOT EXISTS notebook SCHEMAFULL;
-DEFINE FIELD IF NOT EXISTS device_id   ON notebook TYPE string;
 DEFINE FIELD IF NOT EXISTS name        ON notebook TYPE string;
 DEFINE FIELD IF NOT EXISTS emoji       ON notebook TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS parent_id   ON notebook TYPE option<string>;
 DEFINE FIELD IF NOT EXISTS sort_order  ON notebook TYPE option<int>;
-DEFINE FIELD IF NOT EXISTS created_at  ON notebook TYPE option<string>;
-DEFINE INDEX IF NOT EXISTS notebook_device_idx ON TABLE notebook FIELDS device_id
+DEFINE FIELD IF NOT EXISTS created_at  ON notebook TYPE option<string>
 "#;
 
 pub async fn init_notebook_schema(db: &Surreal<Db>) -> Result<()> {

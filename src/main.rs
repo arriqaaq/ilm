@@ -3,6 +3,7 @@ use hadith::analysis;
 use hadith::embed::RerankBackendKind;
 use hadith::embedding::{EmbedConfig, EmbedProviderKind, FastembedModelKind};
 use hadith::llm::{LlmConfig, LlmProviderKind};
+use hadith::services;
 use hadith::web::ServeConfig;
 use hadith::{db, embed, ingest, quran, web};
 
@@ -270,14 +271,14 @@ fn main() -> Result<()> {
 }
 
 async fn async_main() -> Result<()> {
+    let cli = Cli::parse();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "hadith=info".into()),
         )
         .init();
-
-    let cli = Cli::parse();
 
     match cli.command {
         Commands::Ingest {
@@ -619,60 +620,16 @@ async fn async_main() -> Result<()> {
             reranker_model,
             pageindex_dir,
         } => {
-            let db = db::connect(&db_path).await?;
-
-            // Embedding config is OPTIONAL. Omit --embed-model for lite mode
-            // (text-only search). When set, build the matching `EmbedConfig`.
-            let embed_cfg: Option<EmbedConfig> = embed_model.map(|model| EmbedConfig {
-                provider: embed_provider,
-                model,
-                base_url: embed_base_url,
-                api_key: embed_api_key,
-                dimensions: embed_dimensions,
-            });
-
-            // The DB schema needs a fixed embedding dim. With no embedder
-            // configured we still default to the lite-mode E5-small dim (384)
-            // — same as the old behaviour, lets text-only search work over
-            // databases that may or may not contain embeddings.
-            let dim = match embed_cfg.as_ref() {
-                None => FastembedModelKind::default().dimension(),
-                Some(cfg) => match (cfg.provider, cfg.dimensions) {
-                    (_, Some(d)) => d,
-                    (EmbedProviderKind::Fastembed, None) => match cfg.model.as_str() {
-                        "bge-m3" => 1024,
-                        _ => 384,
-                    },
-                    (EmbedProviderKind::Openai, None) => match cfg.model.as_str() {
-                        "text-embedding-3-large" => 3072,
-                        _ => 1536,
-                    },
-                    (EmbedProviderKind::Ollama, None) => anyhow::bail!(
-                        "--embed-dimensions / EMBED_DIMENSIONS is required when --embed-provider=ollama"
-                    ),
-                },
-            };
-
-            db::init_schema(&db, dim).await?;
-            db::init_quran_schema(&db, dim).await?;
-            db::init_quran_word_schema(&db).await?;
-            db::init_quran_similar_schema(&db).await?;
-            db::init_reciter_schema(&db).await?;
-            db::init_book_schema(&db).await?;
-            db::init_grading_schema(&db).await?;
-            db::init_user_note_schema(&db).await?;
-            db::init_link_preview_schema(&db).await?;
-            db::init_notebook_schema(&db).await?;
-            quran::audio::init_reciters(&db).await?;
-
-            // LLM config is OPTIONAL. Omit --llm-model for lite mode
-            // (no Ask, no classification, no LLM rerank).
-            let llm_cfg: Option<LlmConfig> = llm_model.map(|model| LlmConfig {
-                provider: llm_provider,
-                model,
-                base_url: llm_base_url,
-                api_key: llm_api_key,
-            });
+            let embed_cfg = build_embed_cfg(
+                embed_provider,
+                embed_model,
+                embed_base_url,
+                embed_api_key,
+                embed_dimensions,
+            );
+            let dim = embedding_dim(embed_cfg.as_ref())?;
+            let db = services::boot::init_database(&db_path, dim).await?;
+            let llm_cfg = build_llm_cfg(llm_provider, llm_model, llm_base_url, llm_api_key);
 
             let serve_cfg = ServeConfig {
                 port,
@@ -688,4 +645,65 @@ async fn async_main() -> Result<()> {
     }
 
     Ok(())
+}
+
+// ── Shared CLI helpers ──────────────────────────────────────────────────────
+
+/// Build the optional `EmbedConfig`. Returns `None` for lite mode (no
+/// `--embed-model`); semantic / hybrid search and embedder-backed reranking
+/// stay disabled in that case.
+fn build_embed_cfg(
+    provider: EmbedProviderKind,
+    model: Option<String>,
+    base_url: Option<String>,
+    api_key: Option<String>,
+    dimensions: Option<usize>,
+) -> Option<EmbedConfig> {
+    model.map(|model| EmbedConfig {
+        provider,
+        model,
+        base_url,
+        api_key,
+        dimensions,
+    })
+}
+
+/// Build the optional `LlmConfig`. Returns `None` for lite mode (no
+/// `--llm-model`); Ask, classification, and LLM rerank are disabled.
+fn build_llm_cfg(
+    provider: LlmProviderKind,
+    model: Option<String>,
+    base_url: Option<String>,
+    api_key: Option<String>,
+) -> Option<LlmConfig> {
+    model.map(|model| LlmConfig {
+        provider,
+        model,
+        base_url,
+        api_key,
+    })
+}
+
+/// Resolve the embedding dimension used to size the HNSW indexes. Defaults to
+/// the lite-mode E5-small dim (384) when no embedder is configured — that
+/// keeps text-only search working over DBs that may or may not contain
+/// embeddings.
+fn embedding_dim(embed_cfg: Option<&EmbedConfig>) -> Result<usize> {
+    Ok(match embed_cfg {
+        None => FastembedModelKind::default().dimension(),
+        Some(cfg) => match (cfg.provider, cfg.dimensions) {
+            (_, Some(d)) => d,
+            (EmbedProviderKind::Fastembed, None) => match cfg.model.as_str() {
+                "bge-m3" => 1024,
+                _ => 384,
+            },
+            (EmbedProviderKind::Openai, None) => match cfg.model.as_str() {
+                "text-embedding-3-large" => 3072,
+                _ => 1536,
+            },
+            (EmbedProviderKind::Ollama, None) => anyhow::bail!(
+                "--embed-dimensions / EMBED_DIMENSIONS is required when --embed-provider=ollama"
+            ),
+        },
+    })
 }

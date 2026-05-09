@@ -1,3 +1,9 @@
+//! Intent classification for natural-language hadith questions.
+//!
+//! Wraps a non-streaming LLM call that maps a free-form question to a
+//! discriminated `QueryIntent` enum. Used by the agentic RAG path in
+//! `services::ask` and exposed directly as an MCP `classify_question` tool.
+
 use anyhow::Result;
 
 use crate::llm::{ChatOptions, LlmProvider};

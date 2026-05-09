@@ -1,12 +1,25 @@
+//! Narrator-domain services.
+//!
+//! Currently absorbs the structured "tools" surface used by the agentic RAG
+//! pipeline (resolve, count, info, teachers, students, hadiths, isnad search,
+//! common narrators). HTTP-handler bodies for narrator browsing/listing will
+//! land here in a later phase.
+
 use std::collections::HashSet;
 
-use anyhow::Result;
+use anyhow::{Context, Result, anyhow};
 use serde::Serialize;
 use surrealdb::Surreal;
 use surrealdb::types::{RecordId, SurrealValue};
 
 use crate::db::Db;
-use crate::models::{HadithSearchResult, Narrator, record_id_key_string, record_id_string};
+use crate::models::{
+    ApiHadith, ApiNarrator, ApiNarratorDetail, ApiNarratorIsnadRole, ApiNarratorSearchResult,
+    ApiNarratorWithCount, CommonNarratorsResponse, HADITH_FIELDS, Hadith, HadithSearchResult,
+    Narrator, NarratorWithCount, PaginatedResponse, make_record_id, record_id_key_string,
+    record_id_string,
+};
+use crate::web::AppState;
 
 /// Output from a structured tool execution, ready for both SSE and LLM context.
 pub struct ToolOutput {
@@ -554,6 +567,480 @@ pub async fn common_narrators_tool(
         narrator_sources: vec![src1, src2],
         hadith_sources: vec![],
     })
+}
+
+// ── HTTP-shaped read services (also drive matching MCP tools) ──────────────
+
+fn narrator_with_count_to_api(n: NarratorWithCount) -> ApiNarratorWithCount {
+    ApiNarratorWithCount {
+        id: n.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+        name_ar: n.name_ar,
+        name_en: n.name_en,
+        generation: n.generation,
+        bio: n.bio,
+        kunya: n.kunya,
+        death_year: n.death_year,
+        hadith_count: n.hadith_count.unwrap_or(0),
+    }
+}
+
+/// Paginated narrator list with optional free-text and generation filters.
+/// Sorted by `hadith_count DESC` so the most-cited narrators surface first.
+pub async fn list(
+    state: &AppState,
+    q: Option<&str>,
+    generation: Option<&str>,
+    page: usize,
+    limit: usize,
+) -> Result<PaginatedResponse<ApiNarratorWithCount>> {
+    let page = page.max(1);
+    let limit = limit.clamp(1, 100);
+    let offset = (page - 1) * limit;
+
+    let mut conditions: Vec<&str> = Vec::new();
+    if q.is_some() {
+        conditions.push(
+            "(string::lowercase(name_en) CONTAINS string::lowercase($q) OR name_ar CONTAINS $q)",
+        );
+    }
+    if generation.is_some() {
+        conditions.push("generation = $generation");
+    }
+    let where_clause = if conditions.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", conditions.join(" AND "))
+    };
+    let sql = format!(
+        "SELECT * FROM narrator {where_clause} \
+         ORDER BY hadith_count DESC LIMIT $limit START $offset"
+    );
+
+    let mut query = state.db.query(&sql);
+    if let Some(qv) = q {
+        query = query.bind(("q", qv.to_string()));
+    }
+    if let Some(g) = generation {
+        query = query.bind(("generation", g.to_string()));
+    }
+    query = query.bind(("limit", limit)).bind(("offset", offset));
+
+    let rows: Vec<NarratorWithCount> = query
+        .await
+        .context("narrator list query failed")?
+        .take(0)
+        .unwrap_or_default();
+    let has_more = rows.len() == limit;
+    Ok(PaginatedResponse {
+        data: rows.into_iter().map(narrator_with_count_to_api).collect(),
+        page,
+        limit,
+        has_more,
+        total: None,
+    })
+}
+
+/// Narrator detail: bio + sample hadiths + (deduped) teachers + (deduped)
+/// students. Returns `Err` with a "not found" marker when the id is missing.
+pub async fn get_detail(state: &AppState, id: &str) -> Result<ApiNarratorDetail> {
+    let nrid = make_record_id("narrator", id);
+
+    let mut res = state
+        .db
+        .query(format!(
+            "SELECT * FROM $rid; \
+             SELECT ->narrates->hadith.{{{HADITH_FIELDS}}} AS hadiths FROM $rid; \
+             SELECT array::distinct(array::filter(->heard_from->narrator.*, |$v| $v IS NOT NONE)) AS teachers FROM $rid; \
+             SELECT array::distinct(array::filter(<-heard_from<-narrator.*, |$v| $v IS NOT NONE)) AS students FROM $rid;"
+        ))
+        .bind(("rid", nrid))
+        .await
+        .context("narrator detail query failed")?;
+
+    let narrator: Narrator = res
+        .take::<Option<Narrator>>(0)
+        .unwrap_or(None)
+        .ok_or_else(|| anyhow!("narrator not found: {id}"))?;
+
+    #[derive(Debug, SurrealValue)]
+    struct HadithsRow {
+        hadiths: Vec<Hadith>,
+    }
+    #[derive(Debug, SurrealValue)]
+    struct TeachersRow {
+        teachers: Vec<Narrator>,
+    }
+    #[derive(Debug, SurrealValue)]
+    struct StudentsRow {
+        students: Vec<Narrator>,
+    }
+    let hadiths = res
+        .take::<Option<HadithsRow>>(1)
+        .unwrap_or(None)
+        .map(|r| r.hadiths)
+        .unwrap_or_default();
+    let teachers = dedup_by_id(
+        res.take::<Option<TeachersRow>>(2)
+            .unwrap_or(None)
+            .map(|r| r.teachers)
+            .unwrap_or_default(),
+    );
+    let students = dedup_by_id(
+        res.take::<Option<StudentsRow>>(3)
+            .unwrap_or(None)
+            .map(|r| r.students)
+            .unwrap_or_default(),
+    );
+
+    Ok(ApiNarratorDetail {
+        narrator: ApiNarrator::from(narrator),
+        hadiths: hadiths.into_iter().map(ApiHadith::from).collect(),
+        teachers: teachers.into_iter().map(ApiNarrator::from).collect(),
+        students: students.into_iter().map(ApiNarrator::from).collect(),
+    })
+}
+
+/// Distinguish narrator-not-found errors so HTTP/MCP can surface 404 /
+/// `invalid_request` instead of 500.
+pub fn is_not_found(e: &anyhow::Error) -> bool {
+    e.to_string().starts_with("narrator not found:")
+}
+
+/// Cytoscape-shaped narrator network — the centre narrator plus their
+/// immediate teachers (incoming) and students (outgoing). Capped at 25 nodes
+/// per side to keep the graph renderable.
+pub async fn get_graph(state: &AppState, id: &str) -> Result<crate::models::GraphData> {
+    use crate::models::{GraphData, GraphEdge, GraphEdgeData, GraphNode, GraphNodeData};
+
+    let nrid = make_record_id("narrator", id);
+
+    #[derive(Debug, SurrealValue)]
+    struct TeachersRow {
+        teachers: Vec<Narrator>,
+    }
+    #[derive(Debug, SurrealValue)]
+    struct StudentsRow {
+        students: Vec<Narrator>,
+    }
+
+    let mut res = state
+        .db
+        .query(
+            "SELECT * FROM $rid; \
+             SELECT array::distinct(array::filter(->heard_from->narrator.*, |$v| $v IS NOT NONE)) AS teachers FROM $rid; \
+             SELECT array::distinct(array::filter(<-heard_from<-narrator.*, |$v| $v IS NOT NONE)) AS students FROM $rid;",
+        )
+        .bind(("rid", nrid))
+        .await
+        .context("narrator graph query failed")?;
+
+    let narrator: Option<Narrator> = res.take(0).unwrap_or(None);
+    let teachers = res
+        .take::<Option<TeachersRow>>(1)
+        .unwrap_or(None)
+        .map(|r| r.teachers)
+        .unwrap_or_default();
+    let students = res
+        .take::<Option<StudentsRow>>(2)
+        .unwrap_or(None)
+        .map(|r| r.students)
+        .unwrap_or_default();
+
+    let teachers = dedup_by_id(teachers);
+    let students = dedup_by_id(students);
+    let total_teachers = teachers.len();
+    let total_students = students.len();
+
+    const MAX_GRAPH_NODES: usize = 25;
+    let teachers: Vec<_> = teachers.into_iter().take(MAX_GRAPH_NODES).collect();
+    let students: Vec<_> = students.into_iter().take(MAX_GRAPH_NODES).collect();
+
+    let mut graph = GraphData {
+        nodes: Vec::new(),
+        edges: Vec::new(),
+        total_teachers: Some(total_teachers),
+        total_students: Some(total_students),
+    };
+
+    let Some(narrator) = narrator else {
+        return Ok(graph);
+    };
+    let Some(nid) = &narrator.id else {
+        return Ok(graph);
+    };
+    let nid_str = record_id_string(nid);
+
+    graph.nodes.push(GraphNode {
+        data: GraphNodeData {
+            id: nid_str.clone(),
+            label: narrator
+                .name_ar
+                .clone()
+                .unwrap_or_else(|| narrator.name_en.clone()),
+            label_en: narrator.name_en.clone(),
+            node_type: "center".into(),
+            generation: narrator.generation.clone(),
+        },
+    });
+
+    for (i, teacher) in teachers.iter().enumerate() {
+        if let Some(tid) = &teacher.id {
+            let tid_str = record_id_string(tid);
+            graph.nodes.push(GraphNode {
+                data: GraphNodeData {
+                    id: tid_str.clone(),
+                    label: teacher
+                        .name_ar
+                        .clone()
+                        .unwrap_or_else(|| teacher.name_en.clone()),
+                    label_en: teacher.name_en.clone(),
+                    node_type: "teacher".into(),
+                    generation: teacher.generation.clone(),
+                },
+            });
+            graph.edges.push(GraphEdge {
+                data: GraphEdgeData {
+                    id: format!("t{i}"),
+                    source: nid_str.clone(),
+                    target: tid_str,
+                    label: "heard from".into(),
+                    chain_position: None,
+                },
+            });
+        }
+    }
+
+    for (i, student) in students.iter().enumerate() {
+        if let Some(sid) = &student.id {
+            let sid_str = record_id_string(sid);
+            graph.nodes.push(GraphNode {
+                data: GraphNodeData {
+                    id: sid_str.clone(),
+                    label: student
+                        .name_ar
+                        .clone()
+                        .unwrap_or_else(|| student.name_en.clone()),
+                    label_en: student.name_en.clone(),
+                    node_type: "student".into(),
+                    generation: student.generation.clone(),
+                },
+            });
+            graph.edges.push(GraphEdge {
+                data: GraphEdgeData {
+                    id: format!("s{i}"),
+                    source: sid_str,
+                    target: nid_str.clone(),
+                    label: "heard from".into(),
+                    chain_position: None,
+                },
+            });
+        }
+    }
+
+    Ok(graph)
+}
+
+/// Find narrators who appear in chains of hadiths shared by both `a` and `b`.
+/// Returns the two anchor narrators plus up to 50 common third-party narrators
+/// ordered by hadith_count DESC. Errors with `narrator not found:<id>` (404)
+/// when either anchor is missing.
+pub async fn list_common(state: &AppState, a: &str, b: &str) -> Result<CommonNarratorsResponse> {
+    use std::collections::HashSet;
+    use surrealdb::types::RecordId;
+
+    let nrid1 = make_record_id("narrator", a);
+    let nrid2 = make_record_id("narrator", b);
+
+    // 1. Resolve both anchors.
+    let mut res = state
+        .db
+        .query("SELECT * FROM $rid1; SELECT * FROM $rid2")
+        .bind(("rid1", nrid1))
+        .bind(("rid2", nrid2))
+        .await
+        .context("common narrators anchor lookup failed")?;
+    let n1: Narrator = res
+        .take::<Option<Narrator>>(0)
+        .unwrap_or(None)
+        .ok_or_else(|| anyhow!("narrator not found: {a}"))?;
+    let n2: Narrator = res
+        .take::<Option<Narrator>>(1)
+        .unwrap_or(None)
+        .ok_or_else(|| anyhow!("narrator not found: {b}"))?;
+    let nid1 = n1.id.as_ref().unwrap().clone();
+    let nid2 = n2.id.as_ref().unwrap().clone();
+
+    let to_search = |n: &Narrator| ApiNarratorSearchResult {
+        id: n.id.as_ref().map(record_id_key_string).unwrap_or_default(),
+        name_ar: n.name_ar.clone(),
+        name_en: n.name_en.clone(),
+        generation: n.generation.clone(),
+        hadith_count: n.hadith_count,
+    };
+
+    // 2. Hadith sets per anchor; intersect.
+    #[derive(Debug, SurrealValue)]
+    struct OutId {
+        out: RecordId,
+    }
+    let mut res = state
+        .db
+        .query(
+            "SELECT out FROM narrates WHERE in = $nid1; \
+             SELECT out FROM narrates WHERE in = $nid2",
+        )
+        .bind(("nid1", nid1.clone()))
+        .bind(("nid2", nid2.clone()))
+        .await
+        .context("common narrators hadith-set query failed")?;
+    let set1: Vec<OutId> = res.take(0).unwrap_or_default();
+    let set2: Vec<OutId> = res.take(1).unwrap_or_default();
+    let ids2: HashSet<String> = set2.iter().map(|r| record_id_string(&r.out)).collect();
+    let shared: Vec<RecordId> = set1
+        .into_iter()
+        .filter(|r| ids2.contains(&record_id_string(&r.out)))
+        .map(|r| r.out)
+        .collect();
+
+    if shared.is_empty() {
+        return Ok(CommonNarratorsResponse {
+            narrator1: to_search(&n1),
+            narrator2: to_search(&n2),
+            common: vec![],
+        });
+    }
+
+    // 3. Other narrators present in those shared hadiths.
+    #[derive(Debug, SurrealValue)]
+    struct NarratorRef {
+        narrator: RecordId,
+    }
+    let refs: Vec<NarratorRef> = state
+        .db
+        .query(
+            "SELECT in AS narrator FROM narrates \
+             WHERE out IN $shared AND in != $nid1 AND in != $nid2",
+        )
+        .bind(("shared", shared))
+        .bind(("nid1", nid1))
+        .bind(("nid2", nid2))
+        .await
+        .context("common narrators traversal query failed")?
+        .take(0)
+        .unwrap_or_default();
+
+    let mut seen = HashSet::new();
+    let unique_ids: Vec<RecordId> = refs
+        .into_iter()
+        .filter(|r| seen.insert(record_id_string(&r.narrator)))
+        .map(|r| r.narrator)
+        .collect();
+
+    let common_rows: Vec<NarratorWithCount> = if unique_ids.is_empty() {
+        vec![]
+    } else {
+        state
+            .db
+            .query("SELECT * FROM narrator WHERE id IN $ids ORDER BY hadith_count DESC LIMIT 50")
+            .bind(("ids", unique_ids))
+            .await
+            .context("common narrators detail query failed")?
+            .take(0)
+            .unwrap_or_default()
+    };
+
+    Ok(CommonNarratorsResponse {
+        narrator1: to_search(&n1),
+        narrator2: to_search(&n2),
+        common: common_rows
+            .into_iter()
+            .map(narrator_with_count_to_api)
+            .collect(),
+    })
+}
+
+/// How often this narrator appears as an isnad pivot or bottleneck across
+/// analyzed families. Use alongside `services::family::analyze_family_mustalah`
+/// to reason about isnad reliability.
+pub async fn get_isnad_role(state: &AppState, id: &str) -> Result<ApiNarratorIsnadRole> {
+    #[derive(Debug, SurrealValue)]
+    struct PivotInfo {
+        family: Option<surrealdb::types::RecordId>,
+        is_bottleneck: Option<bool>,
+    }
+    let rows: Vec<PivotInfo> = state
+        .db
+        .query("SELECT family, is_bottleneck FROM narrator_pivot WHERE narrator = $nid")
+        .bind(("nid", make_record_id("narrator", id)))
+        .await
+        .context("narrator isnad role query failed")?
+        .take(0)
+        .unwrap_or_default();
+
+    let pivot_count = rows.len();
+    let bottleneck_count = rows
+        .iter()
+        .filter(|r| r.is_bottleneck == Some(true))
+        .count();
+    let families: Vec<String> = rows
+        .iter()
+        .filter_map(|r| r.family.as_ref().map(record_id_key_string))
+        .collect();
+
+    Ok(ApiNarratorIsnadRole {
+        narrator_id: id.to_string(),
+        pivot_family_count: pivot_count,
+        bottleneck_family_count: bottleneck_count,
+        families,
+    })
+}
+
+fn dedup_by_id(narrators: Vec<Narrator>) -> Vec<Narrator> {
+    let mut seen = HashSet::new();
+    narrators
+        .into_iter()
+        .filter(|n| {
+            n.id.as_ref()
+                .map(|id| seen.insert(record_id_string(id)))
+                .unwrap_or(false)
+        })
+        .collect()
+}
+
+/// Typeahead autocomplete over narrator names — searches `name_en`, `name_ar`,
+/// `kunya`, `aliases`, and the `search_name` slug. Sorted by `hadith_count`.
+pub async fn autocomplete(
+    state: &AppState,
+    q: &str,
+    limit: usize,
+) -> Result<Vec<ApiNarratorWithCount>> {
+    let q = q.trim();
+    if q.is_empty() {
+        return Ok(Vec::new());
+    }
+    let limit = limit.clamp(1, 50);
+    let slug = crate::quran::ingest::strip_arabic_diacritics(q);
+
+    let sql = "SELECT * FROM narrator \
+        WHERE string::lowercase(name_en) CONTAINS string::lowercase($q) \
+           OR name_ar CONTAINS $q \
+           OR kunya CONTAINS $q \
+           OR search_name CONTAINS $slug \
+           OR $q INSIDE aliases \
+        ORDER BY hadith_count DESC \
+        LIMIT $limit";
+
+    let rows: Vec<NarratorWithCount> = state
+        .db
+        .query(sql)
+        .bind(("q", q.to_string()))
+        .bind(("slug", slug))
+        .bind(("limit", limit))
+        .await
+        .context("narrator autocomplete query failed")?
+        .take(0)
+        .unwrap_or_default();
+    Ok(rows.into_iter().map(narrator_with_count_to_api).collect())
 }
 
 // ── Helpers ──

@@ -16,6 +16,13 @@ pub fn record_id_string(id: &RecordId) -> String {
     format!("{}:{}", id.table.as_str(), record_id_key_string(id))
 }
 
+/// Construct a `RecordId` from a table name and string key. Used by service
+/// functions to convert public IDs (e.g. "bukhari:1") into the typed
+/// `RecordId` SurrealDB expects.
+pub fn make_record_id(table: &str, key: &str) -> RecordId {
+    RecordId::new(table, key)
+}
+
 // ── Database record types ──
 
 #[derive(Debug, SurrealValue, Serialize, Clone)]
@@ -268,6 +275,52 @@ impl From<Hadith> for ApiHadith {
     }
 }
 
+/// Composite response for `GET /v1/hadiths/{id}` — the hadith plus its
+/// transmission chain, linked Quran ayahs, and semantically-similar hadiths.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ApiHadithDetail {
+    pub hadith: ApiHadith,
+    pub narrators: Vec<ApiNarrator>,
+    pub linked_ayahs: Vec<crate::quran::models::ApiAyah>,
+    pub similar_hadiths: Vec<ApiHadith>,
+}
+
+/// Composite response for `GET /v1/narrators/{id}` — the narrator plus their
+/// sample hadiths, teachers, and students.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ApiNarratorDetail {
+    pub narrator: ApiNarrator,
+    pub hadiths: Vec<ApiHadith>,
+    pub teachers: Vec<ApiNarrator>,
+    pub students: Vec<ApiNarrator>,
+}
+
+/// Aggregate "how often is this narrator a pivot / bottleneck" view, used by
+/// the isnad-role page to summarize the narrator's structural importance
+/// across families.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ApiNarratorIsnadRole {
+    pub narrator_id: String,
+    pub pivot_family_count: usize,
+    pub bottleneck_family_count: usize,
+    pub families: Vec<String>,
+}
+
+/// Narrator row that includes the pre-computed `hadith_count` field. Used by
+/// list / autocomplete services that surface the count alongside biography.
+#[derive(Debug, SurrealValue)]
+pub struct NarratorWithCount {
+    pub id: Option<RecordId>,
+    pub name_ar: Option<String>,
+    pub name_en: String,
+    pub search_name: Option<String>,
+    pub generation: Option<String>,
+    pub bio: Option<String>,
+    pub kunya: Option<String>,
+    pub death_year: Option<i64>,
+    pub hadith_count: Option<i64>,
+}
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ApiCollection {
     pub id: String,
@@ -387,7 +440,7 @@ impl ApiError {
 
 // ── User Notes ──
 
-#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema, schemars::JsonSchema)]
 pub struct NoteRef {
     pub ref_type: String,
     pub ref_id: String,
@@ -398,7 +451,6 @@ pub struct NoteRef {
 #[derive(Debug, SurrealValue, Serialize, Clone)]
 pub struct UserNote {
     pub id: Option<RecordId>,
-    pub device_id: String,
     pub ref_type: String,
     pub ref_id: Option<String>,
     pub title: Option<String>,
@@ -452,7 +504,6 @@ impl From<UserNote> for ApiUserNote {
 #[derive(Debug, SurrealValue, Serialize, Clone)]
 pub struct Notebook {
     pub id: Option<RecordId>,
-    pub device_id: String,
     pub name: String,
     pub emoji: Option<String>,
     pub parent_id: Option<String>,

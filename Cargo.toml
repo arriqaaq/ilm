@@ -64,8 +64,14 @@ utoipa = { version = "5.5", features = ["axum_extras"] }
 utoipa-axum = "0.2"
 utoipa-scalar = { version = "0.3", features = ["axum"] }
 
-# Per-IP rate limiting
-tower_governor = "0.8"
+# Model Context Protocol server (HTTP, mounted into the existing axum router)
+rmcp = { version = "1.6", features = [
+    "server",
+    "macros",
+    "transport-streamable-http-server",
+    "tower",
+] }
+schemars = "1.0"
 
 # Optimize dependencies in dev builds — SurrealDB's HNSW and query engine
 # use deep call stacks that overflow when compiled at opt-level 0.

@@ -1,13 +1,183 @@
-use anyhow::Result;
+//! Cross-corpus and per-corpus search services.
+//!
+//! - `search_hadith` / `search_quran` dispatch text / semantic / hybrid search
+//!   modes over the underlying `crate::search` and `crate::quran::search`
+//!   primitives.
+//! - `search_unified` / `search_unified_text_only` interleave Quran + Hadith
+//!   results via cross-source Reciprocal Rank Fusion.
+
+use anyhow::{Result, anyhow};
 use serde::Serialize;
 use surrealdb::Surreal;
-use tracing;
 
 use crate::db::Db;
 use crate::embed::RerankerBackend;
 use crate::embedding::EmbeddingProvider;
-use crate::models::ApiHadithSearchResult;
-use crate::quran::models::ApiAyahSearchResult;
+use crate::models::{ApiHadithSearchResult, ApiNarratorSearchResult, HadithSearchResult};
+use crate::quran::models::{ApiAyahSearchResult, AyahSearchResult};
+
+/// Search modes accepted by `search_hadith` / `search_quran`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchMode {
+    Text,
+    Semantic,
+    Hybrid,
+}
+
+impl SearchMode {
+    /// Parse a user-supplied string. Defaults to `Hybrid` when input is
+    /// `None` / empty.
+    pub fn parse(s: Option<&str>) -> Result<Self> {
+        match s.unwrap_or("hybrid").to_ascii_lowercase().as_str() {
+            "text" => Ok(SearchMode::Text),
+            "semantic" => Ok(SearchMode::Semantic),
+            "hybrid" | "" => Ok(SearchMode::Hybrid),
+            other => Err(anyhow!("unknown search mode: {other}")),
+        }
+    }
+}
+
+/// Hadith corpus search dispatcher (text / semantic / hybrid).
+///
+/// Semantic and hybrid modes require an embedder; text mode does not.
+/// `rerank` only takes effect for hybrid mode and only when a reranker is
+/// configured.
+pub async fn search_hadith(
+    db: &Surreal<Db>,
+    embedder: Option<&dyn EmbeddingProvider>,
+    reranker: Option<&RerankerBackend>,
+    query: &str,
+    mode: SearchMode,
+    limit: usize,
+    offset: usize,
+    rerank: bool,
+) -> Result<Vec<HadithSearchResult>> {
+    match (mode, embedder) {
+        (SearchMode::Text, _) => crate::search::search_hadiths_text(db, query, limit, offset).await,
+        (SearchMode::Semantic, Some(e)) => {
+            crate::search::search_hadiths_semantic(db, e, query, limit).await
+        }
+        (SearchMode::Hybrid, Some(e)) => {
+            crate::search::search_hadiths_hybrid(
+                db,
+                e,
+                query,
+                limit,
+                offset,
+                if rerank { reranker } else { None },
+            )
+            .await
+        }
+        (SearchMode::Semantic | SearchMode::Hybrid, None) => Err(anyhow!(
+            "search mode requires an embedder; server started in lite mode"
+        )),
+    }
+}
+
+/// Combined hadith + narrator search response.
+#[derive(Debug, Serialize)]
+pub struct HadithAndNarratorResults {
+    pub query: String,
+    pub search_type: String,
+    pub hadiths: Vec<ApiHadithSearchResult>,
+    pub narrators: Vec<ApiNarratorSearchResult>,
+}
+
+/// Combined `/search/hadith` shape: dispatch hadith search + narrator search,
+/// merge into a single response. Empty query returns empty arrays.
+pub async fn search_hadith_and_narrators(
+    state: &crate::web::AppState,
+    query: &str,
+    mode: SearchMode,
+    limit: usize,
+    rerank: bool,
+) -> Result<HadithAndNarratorResults> {
+    let mode_str = match mode {
+        SearchMode::Text => "text",
+        SearchMode::Semantic => "semantic",
+        SearchMode::Hybrid => "hybrid",
+    };
+    let query_str = query.to_string();
+    if query.is_empty() {
+        return Ok(HadithAndNarratorResults {
+            query: query_str,
+            search_type: mode_str.to_string(),
+            hadiths: vec![],
+            narrators: vec![],
+        });
+    }
+
+    let embedder = state.embedder.as_deref();
+
+    // Hadith search: degrade to text when embedder is missing in semantic/hybrid modes.
+    let hadiths_raw = match (mode, embedder) {
+        (SearchMode::Text, _) => crate::search::search_hadiths_text(&state.db, query, limit, 0)
+            .await
+            .unwrap_or_default(),
+        (SearchMode::Semantic, Some(e)) => {
+            crate::search::search_hadiths_semantic(&state.db, e, query, limit)
+                .await
+                .unwrap_or_default()
+        }
+        (SearchMode::Hybrid, Some(e)) => {
+            let r = if rerank {
+                state.reranker.as_deref()
+            } else {
+                None
+            };
+            crate::search::search_hadiths_hybrid(&state.db, e, query, limit, 0, r)
+                .await
+                .unwrap_or_default()
+        }
+        (SearchMode::Semantic | SearchMode::Hybrid, None) => {
+            crate::search::search_hadiths_text(&state.db, query, limit, 0)
+                .await
+                .unwrap_or_default()
+        }
+    };
+
+    let narrators_raw = crate::search::search_narrators(&state.db, query, 10, 0)
+        .await
+        .unwrap_or_default();
+
+    Ok(HadithAndNarratorResults {
+        query: query_str,
+        search_type: mode_str.to_string(),
+        hadiths: hadiths_raw
+            .into_iter()
+            .map(ApiHadithSearchResult::from)
+            .collect(),
+        narrators: narrators_raw
+            .into_iter()
+            .map(ApiNarratorSearchResult::from)
+            .collect(),
+    })
+}
+
+/// Quran corpus search dispatcher (text / semantic / hybrid).
+pub async fn search_quran(
+    db: &Surreal<Db>,
+    embedder: Option<&dyn EmbeddingProvider>,
+    query: &str,
+    mode: SearchMode,
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<AyahSearchResult>> {
+    match (mode, embedder) {
+        (SearchMode::Text, _) => {
+            crate::quran::search::search_ayahs_text(db, query, limit, offset).await
+        }
+        (SearchMode::Semantic, Some(e)) => {
+            crate::quran::search::search_ayahs_semantic(db, e, query, limit, offset).await
+        }
+        (SearchMode::Hybrid, Some(e)) => {
+            crate::quran::search::search_ayahs_hybrid(db, e, query, limit, offset).await
+        }
+        (SearchMode::Semantic | SearchMode::Hybrid, None) => Err(anyhow!(
+            "search mode requires an embedder; server started in lite mode"
+        )),
+    }
+}
 
 /// A single item in the unified search results — either a Quran ayah or a Hadith.
 #[derive(Debug, Serialize)]

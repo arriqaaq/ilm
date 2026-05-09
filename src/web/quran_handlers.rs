@@ -9,9 +9,9 @@ use utoipa::{IntoParams, ToSchema};
 use crate::llm::ChatOptions;
 use crate::models::{ApiHadith, ApiHadithSearchResult};
 use crate::quran::models::{
-    AYAH_FIELDS, ApiAyah, ApiAyahSearchResult, ApiPhraseWithAyahs, ApiQuranWord, ApiReciter,
-    ApiSimilarAyah, ApiSurah, Ayah, AyahSimilarResponse, QuranPhrase, QuranSearchResponse,
-    QuranStatsResponse, QuranWord, Reciter, RootSearchResponse, Surah, SurahDetailResponse,
+    ApiAyahSearchResult, ApiPhraseWithAyahs, ApiQuranWord, ApiReciter, ApiSimilarAyah, ApiSurah,
+    AyahSimilarResponse, QuranPhrase, QuranSearchResponse, QuranStatsResponse, RootSearchResponse,
+    SurahDetailResponse,
 };
 
 use super::AppState;
@@ -63,29 +63,19 @@ pub struct QuranAskRequest {
     responses((status = 200, body = QuranStatsResponse))
 )]
 pub async fn quran_stats(State(state): State<AppState>) -> impl IntoResponse {
-    let mut res = state
-        .db
-        .query(
-            "SELECT count() FROM surah GROUP ALL; \
-             SELECT count() FROM ayah GROUP ALL",
-        )
-        .await
-        .unwrap();
-    let surah_count: Option<CountResult> = res.take(0).unwrap_or(None);
-    let ayah_count: Option<CountResult> = res.take(1).unwrap_or(None);
-
-    Json(QuranStatsResponse {
-        surah_count: surah_count.map(|c| c.count).unwrap_or(0),
-        ayah_count: ayah_count.map(|c| c.count).unwrap_or(0),
-    })
+    match crate::services::quran::stats(&state).await {
+        Ok(s) => Json(s),
+        Err(e) => {
+            tracing::error!("Quran stats failed: {e}");
+            Json(QuranStatsResponse {
+                surah_count: 0,
+                ayah_count: 0,
+            })
+        }
+    }
 }
 
 use surrealdb::types::SurrealValue;
-
-#[derive(Debug, SurrealValue)]
-struct CountResult {
-    count: i64,
-}
 
 /// All reciters available for ayah-level audio playback.
 #[utoipa::path(
@@ -95,14 +85,13 @@ struct CountResult {
     responses((status = 200, body = Vec<ApiReciter>))
 )]
 pub async fn reciters(State(state): State<AppState>) -> impl IntoResponse {
-    let mut res = state
-        .db
-        .query("SELECT * FROM reciter ORDER BY name_en ASC")
-        .await
-        .unwrap();
-    let reciters: Vec<Reciter> = res.take(0).unwrap_or_default();
-    let api_reciters: Vec<ApiReciter> = reciters.into_iter().map(ApiReciter::from).collect();
-    Json(api_reciters)
+    match crate::services::quran::list_reciters(&state).await {
+        Ok(rs) => Json(rs),
+        Err(e) => {
+            tracing::error!("Reciters query failed: {e}");
+            Json(Vec::<ApiReciter>::new())
+        }
+    }
 }
 
 /// All 114 surahs with metadata (name, ayah count, revelation type).
@@ -113,14 +102,13 @@ pub async fn reciters(State(state): State<AppState>) -> impl IntoResponse {
     responses((status = 200, body = Vec<ApiSurah>))
 )]
 pub async fn surah_list(State(state): State<AppState>) -> impl IntoResponse {
-    let mut res = state
-        .db
-        .query("SELECT * FROM surah ORDER BY surah_number ASC")
-        .await
-        .unwrap();
-    let surahs: Vec<Surah> = res.take(0).unwrap_or_default();
-    let api_surahs: Vec<ApiSurah> = surahs.into_iter().map(ApiSurah::from).collect();
-    Json(api_surahs)
+    match crate::services::quran::list_surahs(&state).await {
+        Ok(s) => Json(s),
+        Err(e) => {
+            tracing::error!("Surah list query failed: {e}");
+            Json(Vec::<ApiSurah>::new())
+        }
+    }
 }
 
 /// One surah plus all its ayahs (Arabic text, English translation, juz/hizb markers).
@@ -135,25 +123,14 @@ pub async fn surah_detail(
     State(state): State<AppState>,
     Path(number): Path<i64>,
 ) -> Result<Json<SurahDetailResponse>, StatusCode> {
-    // Single multi-statement query instead of 2 sequential round trips
-    let mut res = state
-        .db
-        .query(format!(
-            "SELECT * FROM surah WHERE surah_number = $num LIMIT 1; \
-             SELECT {AYAH_FIELDS} FROM ayah WHERE surah_number = $num ORDER BY ayah_number ASC"
-        ))
-        .bind(("num", number))
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let surah: Option<Surah> = res.take(0).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let surah = surah.ok_or(StatusCode::NOT_FOUND)?;
-    let ayahs: Vec<Ayah> = res.take(1).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    Ok(Json(SurahDetailResponse {
-        surah: ApiSurah::from(surah),
-        ayahs: ayahs.into_iter().map(ApiAyah::from).collect(),
-    }))
+    match crate::services::quran::get_surah(&state, number).await {
+        Ok(resp) => Ok(Json(resp)),
+        Err(e) if crate::services::quran::is_not_found(&e) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            tracing::error!("Surah detail query failed: {e}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }
 
 /// Search Quran ayahs by free-text query.
@@ -235,41 +212,15 @@ pub async fn ayah_browse(
 ) -> impl IntoResponse {
     let limit = params.limit.unwrap_or(50);
     let page = params.page.unwrap_or(1);
-    let offset = (page - 1) * limit;
-
-    let (sql, needs_surah) = if let Some(surah) = params.surah {
-        (
-            format!(
-                "SELECT {AYAH_FIELDS} FROM ayah WHERE surah_number = $surah \
-                 ORDER BY ayah_number ASC LIMIT {limit} START {offset}"
-            ),
-            Some(surah),
-        )
-    } else {
-        (
-            format!(
-                "SELECT {AYAH_FIELDS} FROM ayah ORDER BY surah_number ASC, ayah_number ASC \
-                 LIMIT {limit} START {offset}"
-            ),
-            None,
-        )
-    };
-
-    let mut query = state.db.query(&sql);
-    if let Some(surah) = needs_surah {
-        query = query.bind(("surah", surah));
+    match crate::services::quran::browse_ayahs(&state, params.surah, page, limit).await {
+        Ok(resp) => Json(serde_json::to_value(resp).unwrap()),
+        Err(e) => {
+            tracing::error!("Ayah browse query failed: {e}");
+            Json(serde_json::json!({
+                "data": [], "page": page, "limit": limit, "has_more": false,
+            }))
+        }
     }
-    let mut res = query.await.unwrap();
-    let ayahs: Vec<Ayah> = res.take(0).unwrap_or_default();
-    let has_more = ayahs.len() == limit;
-
-    Json(crate::models::PaginatedResponse {
-        data: ayahs.into_iter().map(ApiAyah::from).collect::<Vec<_>>(),
-        page,
-        limit,
-        has_more,
-        total: None,
-    })
 }
 
 /// Quran-grounded GraphRAG question answering.
@@ -307,13 +258,13 @@ pub async fn ask_quran(
         ..Default::default()
     };
 
-    let result = crate::agentic_rag::ask_agentic(
+    let result = crate::services::ask::ask_agentic(
         llm.as_ref(),
         &state.db,
         embedder.as_ref(),
         &question,
         &opts,
-        crate::agentic_rag::AskScope::Quran,
+        crate::services::ask::AskScope::Quran,
     )
     .await
     .map_err(|e| {
@@ -321,7 +272,7 @@ pub async fn ask_quran(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    use crate::agentic_rag::AgenticResult;
+    use crate::services::ask::AgenticResult;
 
     let (sources_event, token_stream) = match result {
         AgenticResult::Semantic {
@@ -408,38 +359,26 @@ pub async fn ayah_hadiths(
     Path((surah, ayah)): Path<(i64, i64)>,
     Query(params): Query<AyahHadithParams>,
 ) -> Result<Json<AyahHadithResponse>, StatusCode> {
-    // Get curated hadiths via relation edges
-    let curated = crate::quran::hadith_refs::get_curated_hadiths(&state.db, surah, ayah)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to get curated hadiths: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    // Optionally get semantic results
-    let related = if params.include_semantic.unwrap_or(false) {
-        let limit = params.semantic_limit.unwrap_or(5);
-        let results =
-            crate::quran::hadith_refs::find_semantic_hadiths(&state.db, surah, ayah, limit)
-                .await
-                .map_err(|e| {
-                    tracing::error!("Failed to get semantic hadiths: {e}");
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
-        Some(
-            results
-                .into_iter()
-                .map(ApiHadithSearchResult::from)
-                .collect(),
-        )
-    } else {
-        None
-    };
-
-    Ok(Json(AyahHadithResponse {
-        curated: curated.into_iter().map(ApiHadith::from).collect(),
-        related,
-    }))
+    let include_semantic = params.include_semantic.unwrap_or(false);
+    let semantic_limit = params.semantic_limit.unwrap_or(5);
+    match crate::services::quran::get_ayah_hadiths(
+        &state,
+        surah,
+        ayah,
+        include_semantic,
+        semantic_limit,
+    )
+    .await
+    {
+        Ok(resp) => Ok(Json(AyahHadithResponse {
+            curated: resp.curated,
+            related: resp.related,
+        })),
+        Err(e) => {
+            tracing::error!("Ayah-hadith lookup failed: {e}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }
 
 /// Per-ayah curated hadith counts for a surah. Map key = ayah number (string).
@@ -454,20 +393,13 @@ pub async fn surah_hadith_counts(
     State(state): State<AppState>,
     Path(number): Path<i64>,
 ) -> Result<Json<std::collections::HashMap<String, i64>>, StatusCode> {
-    let counts = crate::quran::hadith_refs::get_hadith_counts(&state.db, number)
+    crate::services::quran::get_surah_hadith_counts(&state, number)
         .await
+        .map(Json)
         .map_err(|e| {
             tracing::error!("Failed to get hadith counts: {e}");
             StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    // Convert i64 keys to String keys for JSON
-    let string_counts: std::collections::HashMap<String, i64> = counts
-        .into_iter()
-        .map(|(k, v)| (k.to_string(), v))
-        .collect();
-
-    Ok(Json(string_counts))
+        })
 }
 
 /// Per-ayah counts of `similar_to` + `shares_phrase` edges in this surah —
@@ -483,39 +415,13 @@ pub async fn surah_similar_counts(
     State(state): State<AppState>,
     Path(number): Path<i64>,
 ) -> Result<Json<std::collections::HashMap<String, i64>>, StatusCode> {
-    #[derive(Debug, surrealdb::types::SurrealValue)]
-    struct AyahCount {
-        ayah_number: i64,
-        count: i64,
-    }
-
-    // Use subquery to get ayah IDs first (uses ayah_surah_idx), then filter edges
-    // by indexed `in` field — avoids dereferencing in.surah_number on every edge row.
-    let mut res = state
-        .db
-        .query(
-            "LET $ayah_ids = (SELECT id FROM ayah WHERE surah_number = $s); \
-             SELECT in.ayah_number AS ayah_number, count() AS count \
-             FROM similar_to WHERE in IN $ayah_ids \
-             GROUP BY ayah_number; \
-             SELECT in.ayah_number AS ayah_number, count() AS count \
-             FROM shares_phrase WHERE in IN $ayah_ids \
-             GROUP BY ayah_number",
-        )
-        .bind(("s", number))
+    crate::services::quran::get_surah_similar_counts(&state, number)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let similar: Vec<AyahCount> = res.take(1).unwrap_or_default();
-    let phrases: Vec<AyahCount> = res.take(2).unwrap_or_default();
-
-    // Merge both counts
-    let mut counts = std::collections::HashMap::new();
-    for ac in similar.iter().chain(phrases.iter()) {
-        *counts.entry(ac.ayah_number.to_string()).or_insert(0) += ac.count;
-    }
-
-    Ok(Json(counts))
+        .map(Json)
+        .map_err(|e| {
+            tracing::error!("Surah similar counts failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 #[allow(dead_code)]
@@ -548,21 +454,10 @@ pub async fn ayah_words(
     State(state): State<AppState>,
     Path((surah, ayah)): Path<(i64, i64)>,
 ) -> Result<Json<Vec<ApiQuranWord>>, (StatusCode, String)> {
-    let mut res = state
-        .db
-        .query(
-            "SELECT * FROM quran_word WHERE surah_number = $s AND ayah_number = $a ORDER BY word_position",
-        )
-        .bind(("s", surah))
-        .bind(("a", ayah))
+    crate::services::quran::get_ayah_words(&state, surah, ayah)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    let words: Vec<QuranWord> = res
-        .take(0)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    Ok(Json(words.into_iter().map(ApiQuranWord::from).collect()))
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 /// Concordance of every Quran occurrence of an Arabic root.
@@ -577,31 +472,10 @@ pub async fn root_search(
     State(state): State<AppState>,
     Path(root): Path<String>,
 ) -> Result<Json<RootSearchResponse>, (StatusCode, String)> {
-    let mut res = state
-        .db
-        .query(
-            "SELECT * FROM quran_word WHERE root = $root ORDER BY surah_number, ayah_number, word_position",
-        )
-        .bind(("root", root.clone()))
+    crate::services::quran::search_by_root(&state, &root)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    let words: Vec<QuranWord> = res
-        .take(0)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    // Count unique ayahs
-    let ayah_count = words
-        .iter()
-        .map(|w| (w.surah_number, w.ayah_number))
-        .collect::<std::collections::HashSet<_>>()
-        .len();
-
-    Ok(Json(RootSearchResponse {
-        root,
-        occurrences: words.into_iter().map(ApiQuranWord::from).collect(),
-        ayah_count,
-    }))
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 // ── Similar Ayahs / Mutashabihat Handlers ──

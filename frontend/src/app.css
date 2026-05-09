@@ -10,16 +10,16 @@
 }
 
 :root {
-  --bg-primary: #fdfaf3;
-  --bg-secondary: #f7f1e3;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
   --bg-surface: #ffffff;
-  --bg-hover: #f0e8d4;
-  --bg-active: #e8dec5;
-  --border: #e8dcc0;
-  --border-subtle: #f1e8d3;
-  --text-primary: #2a2418;
-  --text-secondary: #5b4a3a;
-  --text-muted: #998c75;
+  --bg-hover: #f0f1f3;
+  --bg-active: #e8e9ec;
+  --border: #e5e7eb;
+  --border-subtle: #f0f1f3;
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a68;
+  --text-muted: #9ca3af;
   --accent: #c8a96a;
   --accent-hover: #b09050;
   --accent-muted: rgba(200, 169, 106, 0.1);
@@ -34,7 +34,7 @@
   --error: #dc2626;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-arabic: 'UthmanicHafs', 'Amiri', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
-  --font-arabic-text: 'Amiri', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
+  --font-arabic-text: 'UthmanicHafs', 'Amiri', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
   --font-arabic-ui: 'IBM Plex Sans Arabic', 'Noto Naskh Arabic', 'Tahoma', sans-serif;
   --font-mono: 'Menlo', 'Consolas', monospace;
 
@@ -105,7 +105,7 @@
   --btn-font-size: var(--text-xs);
   --btn-font-weight: var(--font-weight-semibold);
   --btn-letter-spacing: var(--tracking-wide);
-  --btn-primary-fg: #fdfaf3;
+  --btn-primary-fg: #ffffff;
 
   /* Card tokens */
   --card-bg: var(--bg-surface);

@@ -13,59 +13,15 @@ use crate::book_chat;
 use crate::llm::ChatOptions;
 
 // ── Response types ──
+//
+// The book / tafsir reading shapes have moved to `crate::services::book` and
+// `crate::services::tafsir`. Re-exported here so existing handlers and
+// utoipa::ToSchema annotations continue to work with the unqualified names.
 
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BookSummary {
-    pub book_id: u64,
-    pub name_ar: String,
-    pub name_en: String,
-    pub author_ar: String,
-    pub total_pages: u64,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BookDetail {
-    pub book_id: u64,
-    pub name_ar: String,
-    pub name_en: String,
-    pub author_ar: String,
-    pub total_pages: u64,
-    pub headings: Vec<BookHeading>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct BookHeading {
-    pub title: String,
-    pub level: u32,
-    pub page_index: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct BookPage {
-    pub page_index: u64,
-    pub text: String,
-    pub vol: String,
-    pub page_num: u64,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BookPagesResponse {
-    pub pages: Vec<BookPage>,
-    pub total: u64,
-    pub start: u64,
-    pub size: u64,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct TafsirPageRef {
-    pub page_index: u64,
-    pub heading: Option<String>,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct TafsirSurahMappings {
-    pub mappings: HashMap<String, TafsirPageRef>,
-}
+pub use crate::services::book::{
+    BookDetail, BookHeading, BookPage, BookPagesResponse, BookSummary,
+};
+pub use crate::services::tafsir::{TafsirPageRef, TafsirSurahMappings};
 
 // ── Query params ──
 
@@ -219,35 +175,8 @@ struct NameRow {
     name_en: String,
 }
 
-#[derive(Debug, SurrealValue)]
-struct BookRow {
-    book_id: i64,
-    name_ar: String,
-    name_en: String,
-    author_ar: String,
-    total_pages: i64,
-    headings: Option<String>,
-}
-
-#[derive(Debug, SurrealValue)]
-struct PageRow {
-    page_index: i64,
-    text: String,
-    vol: String,
-    page_num: i64,
-}
-
-#[derive(Debug, SurrealValue)]
-struct MappingRow {
-    ayah: i64,
-    page_index: i64,
-    heading: Option<String>,
-}
-
-#[derive(Debug, SurrealValue)]
-struct CountResult {
-    c: i64,
-}
+// BookRow / PageRow / MappingRow / CountResult helper rows have moved into
+// the corresponding service modules (services::book, services::tafsir).
 
 // ── Handlers ──
 
@@ -337,34 +266,8 @@ pub async fn list_books(
     State(state): State<AppState>,
     Query(params): Query<BooksListParams>,
 ) -> impl IntoResponse {
-    let result: Result<Vec<BookRow>, _> = match params.category {
-        Some(cat) => state
-            .db
-            .query("SELECT book_id, name_ar, name_en, author_ar, total_pages FROM book WHERE category = $cat")
-            .bind(("cat", cat))
-            .await
-            .and_then(|mut r| r.take(0)),
-        None => state
-            .db
-            .query("SELECT book_id, name_ar, name_en, author_ar, total_pages FROM book")
-            .await
-            .and_then(|mut r| r.take(0)),
-    };
-
-    match result {
-        Ok(books) => {
-            let summaries: Vec<BookSummary> = books
-                .into_iter()
-                .map(|b| BookSummary {
-                    book_id: b.book_id as u64,
-                    name_ar: b.name_ar,
-                    name_en: b.name_en,
-                    author_ar: b.author_ar,
-                    total_pages: b.total_pages as u64,
-                })
-                .collect();
-            Json(summaries).into_response()
-        }
+    match crate::services::book::list(&state, params.category.as_deref()).await {
+        Ok(books) => Json(books).into_response(),
         Err(e) => {
             tracing::error!("Failed to list books: {e}");
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to list books").into_response()
@@ -387,32 +290,11 @@ pub async fn get_book(
     State(state): State<AppState>,
     Path(book_id): Path<u64>,
 ) -> impl IntoResponse {
-    let result: Result<Option<BookRow>, _> = state
-        .db
-        .query("SELECT * FROM book WHERE book_id = $bid LIMIT 1")
-        .bind(("bid", book_id as i64))
-        .await
-        .and_then(|mut r| r.take(0));
-
-    match result {
-        Ok(Some(book)) => {
-            let headings: Vec<BookHeading> = book
-                .headings
-                .as_deref()
-                .and_then(|s| serde_json::from_str(s).ok())
-                .unwrap_or_default();
-
-            Json(BookDetail {
-                book_id: book.book_id as u64,
-                name_ar: book.name_ar,
-                name_en: book.name_en,
-                author_ar: book.author_ar,
-                total_pages: book.total_pages as u64,
-                headings,
-            })
-            .into_response()
+    match crate::services::book::get(&state, book_id).await {
+        Ok(book) => Json(book).into_response(),
+        Err(e) if crate::services::book::is_not_found(&e) => {
+            (StatusCode::NOT_FOUND, "Book not found").into_response()
         }
-        Ok(None) => (StatusCode::NOT_FOUND, "Book not found").into_response(),
         Err(e) => {
             tracing::error!("Failed to get book {book_id}: {e}");
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get book").into_response()
@@ -441,48 +323,9 @@ pub async fn get_pages(
     Query(params): Query<PaginationParams>,
 ) -> impl IntoResponse {
     let start = params.start.unwrap_or(0);
-    let size = params.size.unwrap_or(20).min(100);
-
-    let result = state
-        .db
-        .query(
-            "SELECT page_index, text, vol, page_num FROM book_page \
-             WHERE book_id = $bid AND page_index >= $start AND page_index < $end \
-             ORDER BY page_index ASC",
-        )
-        .bind(("bid", book_id as i64))
-        .bind(("start", start as i64))
-        .bind(("end", (start + size) as i64))
-        .await;
-
-    let total_result: Result<Option<CountResult>, _> = state
-        .db
-        .query("SELECT count() AS c FROM book_page WHERE book_id = $bid GROUP ALL")
-        .bind(("bid", book_id as i64))
-        .await
-        .and_then(|mut r| r.take(0));
-
-    let total = total_result.ok().flatten().map(|c| c.c as u64).unwrap_or(0);
-
-    match result {
-        Ok(mut res) => {
-            let pages: Vec<PageRow> = res.take(0).unwrap_or_default();
-            let response = BookPagesResponse {
-                pages: pages
-                    .into_iter()
-                    .map(|p| BookPage {
-                        page_index: p.page_index as u64,
-                        text: p.text,
-                        vol: p.vol,
-                        page_num: p.page_num as u64,
-                    })
-                    .collect(),
-                total,
-                start,
-                size,
-            };
-            Json(response).into_response()
-        }
+    let size = params.size.unwrap_or(20);
+    match crate::services::book::get_pages(&state, book_id, start, size).await {
+        Ok(resp) => Json(resp).into_response(),
         Err(e) => {
             tracing::error!("Failed to get pages for book {book_id}: {e}");
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get pages").into_response()
@@ -512,32 +355,11 @@ pub async fn surah_tafsir_pages(
     Path(surah_number): Path<u64>,
     Query(q): Query<TafsirQuery>,
 ) -> impl IntoResponse {
-    let book_id = q.book_id.unwrap_or(DEFAULT_TAFSIR_BOOK_ID);
-    let result: Result<Vec<MappingRow>, _> = state
-        .db
-        .query(
-            "SELECT ayah, page_index, heading FROM tafsir_ayah_map \
-             WHERE surah = $surah AND book_id = $book ORDER BY ayah ASC",
-        )
-        .bind(("surah", surah_number as i64))
-        .bind(("book", book_id as i64))
-        .await
-        .and_then(|mut r| r.take(0));
-
-    match result {
-        Ok(rows) => {
-            let mut mappings = HashMap::new();
-            for row in rows {
-                mappings.insert(
-                    row.ayah.to_string(),
-                    TafsirPageRef {
-                        page_index: row.page_index as u64,
-                        heading: row.heading,
-                    },
-                );
-            }
-            Json(TafsirSurahMappings { mappings }).into_response()
-        }
+    let book_id = q
+        .book_id
+        .unwrap_or(crate::services::tafsir::DEFAULT_TAFSIR_BOOK_ID);
+    match crate::services::tafsir::get_surah_tafsir_pages(&state, surah_number, book_id).await {
+        Ok(resp) => Json(resp).into_response(),
         Err(e) => {
             tracing::error!(
                 "Failed to get tafsir pages for surah {surah_number} book {book_id}: {e}"
@@ -551,29 +373,16 @@ pub async fn surah_tafsir_pages(
     }
 }
 
-#[derive(Debug, SurrealValue)]
-struct AyahTafsirMapping {
-    page_index: i64,
-    heading: Option<String>,
-}
+pub use crate::services::tafsir::AyahTafsirResponse;
 
+/// Local row for `ayah_tafsirs_all` page lookups. The single-book path uses
+/// `crate::services::tafsir::get_ayah_tafsir`; this struct stays here until
+/// `ayah_tafsirs_all` itself is extracted.
 #[derive(Debug, SurrealValue)]
 struct AyahTafsirPage {
     text: String,
     vol: String,
     page_num: i64,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct AyahTafsirResponse {
-    pub book_id: u64,
-    pub surah: u64,
-    pub ayah: u64,
-    pub page_index: u64,
-    pub vol: String,
-    pub page_num: u64,
-    pub heading: Option<String>,
-    pub text: String,
 }
 
 /// Tafsir body for one ayah from one tafsir book.
@@ -599,70 +408,15 @@ pub async fn ayah_tafsir(
     Path((surah, ayah)): Path<(u64, u64)>,
     Query(q): Query<TafsirQuery>,
 ) -> impl IntoResponse {
-    let book_id = q.book_id.unwrap_or(DEFAULT_TAFSIR_BOOK_ID);
-
-    let mapping: Result<Option<AyahTafsirMapping>, _> = state
-        .db
-        .query(
-            "SELECT page_index, heading FROM tafsir_ayah_map \
-             WHERE surah = $s AND ayah = $a AND book_id = $b LIMIT 1",
-        )
-        .bind(("s", surah as i64))
-        .bind(("a", ayah as i64))
-        .bind(("b", book_id as i64))
-        .await
-        .and_then(|mut r| r.take(0));
-
-    let mapping = match mapping {
-        Ok(Some(m)) => m,
-        Ok(None) => {
-            return (StatusCode::NOT_FOUND, "No tafsir mapping for this ayah").into_response();
-        }
+    let book_id = q
+        .book_id
+        .unwrap_or(crate::services::tafsir::DEFAULT_TAFSIR_BOOK_ID);
+    match crate::services::tafsir::get_ayah_tafsir(&state, surah, ayah, book_id).await {
+        Ok(Some(resp)) => Json(resp).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "No tafsir mapping for this ayah").into_response(),
         Err(e) => {
-            tracing::error!(
-                "Failed to lookup tafsir mapping for {surah}:{ayah} book {book_id}: {e}"
-            );
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to lookup tafsir").into_response();
-        }
-    };
-
-    let page: Result<Option<AyahTafsirPage>, _> = state
-        .db
-        .query(
-            "SELECT text, vol, page_num FROM book_page \
-             WHERE book_id = $b AND page_index = $p LIMIT 1",
-        )
-        .bind(("b", book_id as i64))
-        .bind(("p", mapping.page_index))
-        .await
-        .and_then(|mut r| r.take(0));
-
-    match page {
-        Ok(Some(p)) => Json(AyahTafsirResponse {
-            book_id,
-            surah,
-            ayah,
-            page_index: mapping.page_index as u64,
-            vol: p.vol,
-            page_num: p.page_num as u64,
-            heading: mapping.heading,
-            text: p.text,
-        })
-        .into_response(),
-        Ok(None) => {
-            tracing::warn!(
-                "tafsir mapping for {surah}:{ayah} book {book_id} points at missing page {}",
-                mapping.page_index
-            );
-            (StatusCode::NOT_FOUND, "Tafsir page missing").into_response()
-        }
-        Err(e) => {
-            tracing::error!("Failed to load tafsir page for {surah}:{ayah} book {book_id}: {e}");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to load tafsir page",
-            )
-                .into_response()
+            tracing::error!("Failed to load tafsir for {surah}:{ayah} book {book_id}: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load tafsir").into_response()
         }
     }
 }

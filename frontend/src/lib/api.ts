@@ -39,7 +39,6 @@ import type {
   SharhBatchResponse,
   NarratorBookRef,
 } from './types';
-import { getDeviceId } from './stores/deviceId';
 
 // Public, documented v1 API. Spec at /openapi.json, interactive docs at /docs.
 const BASE = '/v1';
@@ -267,25 +266,17 @@ export async function getPhraseDetail(id: string): Promise<ApiPhraseWithAyahs> {
 }
 
 // ── Notes API ──
+//
+// Notes/notebooks are a single global namespace — no per-device scoping.
 
-function deviceHeaders(): HeadersInit {
-  return { 'X-Device-Id': getDeviceId() };
-}
-
-async function getWithDevice<T>(path: string): Promise<T> {
-  const res = await fetch(`${INTERNAL_BASE}${path}`, { headers: deviceHeaders() });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  return res.json();
-}
-
-async function mutateWithDevice<T>(
+async function mutateInternal<T>(
   method: 'POST' | 'PUT' | 'DELETE',
   path: string,
   data?: unknown,
 ): Promise<T> {
   const res = await fetch(`${INTERNAL_BASE}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json', ...deviceHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: data ? JSON.stringify(data) : undefined,
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -297,7 +288,7 @@ export async function fetchNotesForRef(
   refType: string,
   refId: string,
 ): Promise<PaginatedResponse<UserNote>> {
-  return getWithDevice(`/notes?ref_type=${encodeURIComponent(refType)}&ref_id=${encodeURIComponent(refId)}`);
+  return getInternal(`/notes?ref_type=${encodeURIComponent(refType)}&ref_id=${encodeURIComponent(refId)}`);
 }
 
 export async function fetchNoteRefs(
@@ -305,7 +296,7 @@ export async function fetchNoteRefs(
   refIds: string[],
 ): Promise<NoteRefsIndicator> {
   if (refIds.length === 0) return {};
-  return getWithDevice(`/notes/refs?ref_type=${encodeURIComponent(refType)}&ref_ids=${refIds.map(encodeURIComponent).join(',')}`);
+  return getInternal(`/notes/refs?ref_type=${encodeURIComponent(refType)}&ref_ids=${refIds.map(encodeURIComponent).join(',')}`);
 }
 
 export async function fetchAllNotes(params?: {
@@ -325,38 +316,38 @@ export async function fetchAllNotes(params?: {
   if (params?.notebook_id) sp.set('notebook_id', params.notebook_id);
   if (params?.page) sp.set('page', String(params.page));
   if (params?.limit) sp.set('limit', String(params.limit));
-  return getWithDevice(`/notes?${sp}`);
+  return getInternal(`/notes?${sp}`);
 }
 
 export async function fetchNoteTags(): Promise<string[]> {
-  return getWithDevice('/notes/tags');
+  return getInternal('/notes/tags');
 }
 
 export async function fetchNote(id: string): Promise<UserNote> {
-  return getWithDevice(`/notes/${encodeURIComponent(id)}`);
+  return getInternal(`/notes/${encodeURIComponent(id)}`);
 }
 
 export async function createNote(data: CreateNoteRequest): Promise<UserNote> {
-  return mutateWithDevice('POST', '/notes', data);
+  return mutateInternal('POST', '/notes', data);
 }
 
 export async function updateNote(id: string, data: UpdateNoteRequest): Promise<UserNote> {
-  return mutateWithDevice('PUT', `/notes/${encodeURIComponent(id)}`, data);
+  return mutateInternal('PUT', `/notes/${encodeURIComponent(id)}`, data);
 }
 
 export async function deleteNote(id: string): Promise<void> {
-  return mutateWithDevice('DELETE', `/notes/${encodeURIComponent(id)}`);
+  return mutateInternal('DELETE', `/notes/${encodeURIComponent(id)}`);
 }
 
 export async function addRefToNote(noteId: string, ref: NoteRef): Promise<UserNote> {
-  return mutateWithDevice('PUT', `/notes/${encodeURIComponent(noteId)}/refs`, {
+  return mutateInternal('PUT', `/notes/${encodeURIComponent(noteId)}/refs`, {
     action: 'add',
     ref,
   });
 }
 
 export async function removeRefFromNote(noteId: string, ref: NoteRef): Promise<UserNote> {
-  return mutateWithDevice('PUT', `/notes/${encodeURIComponent(noteId)}/refs`, {
+  return mutateInternal('PUT', `/notes/${encodeURIComponent(noteId)}/refs`, {
     action: 'remove',
     ref,
   });
@@ -367,7 +358,7 @@ export async function updateRefAnnotation(
   idx: number,
   annotation: string,
 ): Promise<UserNote> {
-  return mutateWithDevice(
+  return mutateInternal(
     'PUT',
     `/notes/${encodeURIComponent(noteId)}/refs/${idx}/annotation`,
     { annotation },
@@ -375,25 +366,25 @@ export async function updateRefAnnotation(
 }
 
 export async function exportNotes(): Promise<UserNote[]> {
-  return getWithDevice('/notes/export');
+  return getInternal('/notes/export');
 }
 
 // ── Notebooks ──
 
 export async function fetchNotebooks(): Promise<Notebook[]> {
-  return getWithDevice('/notebooks');
+  return getInternal('/notebooks');
 }
 
 export async function createNotebook(data: { name: string; emoji?: string; parent_id?: string }): Promise<Notebook> {
-  return mutateWithDevice('POST', '/notebooks', data);
+  return mutateInternal('POST', '/notebooks', data);
 }
 
 export async function updateNotebook(id: string, data: { name?: string; emoji?: string; parent_id?: string; sort_order?: number }): Promise<Notebook> {
-  return mutateWithDevice('PUT', `/notebooks/${encodeURIComponent(id)}`, data);
+  return mutateInternal('PUT', `/notebooks/${encodeURIComponent(id)}`, data);
 }
 
 export async function deleteNotebook(id: string): Promise<void> {
-  return mutateWithDevice('DELETE', `/notebooks/${encodeURIComponent(id)}`);
+  return mutateInternal('DELETE', `/notebooks/${encodeURIComponent(id)}`);
 }
 
 export async function fetchLinkPreview(url: string): Promise<LinkPreview> {
