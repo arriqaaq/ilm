@@ -2,11 +2,14 @@
   import type { BookPage } from '$lib/types';
   import ReaderPage from './ReaderPage.svelte';
 
-  let { pages, currentPageIndex = $bindable(0), onNeedMore }: {
+  import type { Snippet } from 'svelte';
+
+  let { pages, currentPageIndex = $bindable(0), onNeedMore, header }: {
     pages: Map<number, BookPage>;
     currentPageIndex: number;
     onNeedMore: (startIndex: number) => void;
     totalPages: number;
+    header?: Snippet;
   } = $props();
 
   let containerEl: HTMLDivElement | undefined = $state();
@@ -94,6 +97,7 @@
 
 <div class="reader-content" bind:this={containerEl} onscroll={handleScroll}>
   <div class="reader-inner">
+    {#if header}{@render header()}{/if}
     {#each renderedIndices as idx (idx)}
       {@const page = pages.get(idx)}
       {#if page}
@@ -128,17 +132,25 @@
     overflow-x: hidden;
   }
   .reader-inner {
-    max-width: 900px;
+    max-width: 64rem;
     margin: 0 auto;
     padding: 0 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
   }
   .page-wrapper {
-    scroll-margin-top: 60px;
+    scroll-margin-top: 64px;
+  }
+
+  @media (min-width: 1280px) {
+    .reader-inner { padding: 0 4rem; }
   }
 
   @media (max-width: 640px) {
     .reader-inner {
       padding: 0 1rem;
+      gap: 1.25rem;
     }
   }
 </style>

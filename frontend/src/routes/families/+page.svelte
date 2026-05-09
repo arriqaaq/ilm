@@ -3,6 +3,8 @@
   import type { ApiHadithFamily, PaginatedResponse } from '$lib/types';
   import Pagination from '$lib/components/common/Pagination.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import PageHeader from '$lib/components/common/PageHeader.svelte';
+  import Badge from '$lib/components/common/Badge.svelte';
 
   let data: PaginatedResponse<ApiHadithFamily> | null = $state(null);
   let loading = $state(true);
@@ -27,49 +29,100 @@
   }
 </script>
 
-<div class="families-page">
-  <h1>Hadith Families</h1>
-  <p class="subtitle">Groups of hadith variants sharing the same report across different chains</p>
+<div class="page-shell">
+  <PageHeader
+    eyebrow="Networks"
+    title="Hadith Families"
+    subtitle="Groups of hadith variants sharing the same report across different chains."
+  />
 
   {#if loading}
     <LoadingSpinner />
   {:else if data && data.data.length > 0}
-    <div class="family-grid">
+    <div class="family-list">
       {#each data.data as family (family.id)}
-        <a href="/families/{family.id}" class="family-card">
-          <div class="family-label">{family.family_label ?? 'Unnamed Family'}</div>
+        <a href="/families/{family.id}" class="family-row">
           <div class="family-meta">
-            <span class="variant-count">{family.variant_count ?? 0} variants</span>
+            <span class="family-id mono">#{family.id.slice(0, 8)}</span>
+            <h3 class="family-label">{family.family_label ?? 'Unnamed family'}</h3>
           </div>
+          <Badge text="{family.variant_count ?? 0} variants" variant="accent" />
         </a>
       {/each}
     </div>
     <Pagination page={currentPage} hasMore={data.has_more} {onPageChange} />
   {:else}
     <div class="empty">
-      <p>No hadith families computed yet.</p>
-      <p class="hint">Run <code>hadith analyze --families</code> to cluster hadiths into families.</p>
+      <p class="empty-line">No hadith families computed yet.</p>
+      <p class="empty-hint">Run <code>hadith analyze --families</code> to cluster hadiths into families.</p>
     </div>
   {/if}
 </div>
 
 <style>
-  .families-page { padding: 24px; max-width: 1000px; }
-  .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
-  .family-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .family-card {
-    padding: 16px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    transition: all var(--transition);
-    cursor: pointer;
+  .family-list {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: var(--space-6);
   }
-  .family-card:hover { border-color: var(--accent); }
-  .family-label { font-size: 0.95rem; font-weight: 500; margin-bottom: 8px; color: var(--text-primary); }
-  .family-meta { display: flex; gap: 8px; }
-  .variant-count { font-size: 0.8rem; color: var(--accent); background: var(--accent-muted); padding: 2px 8px; border-radius: 12px; }
-  .empty { text-align: center; color: var(--text-muted); padding: 60px 20px; }
-  .hint { font-size: 0.85rem; margin-top: 8px; }
-  code { background: var(--bg-surface); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
+  .family-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--transition);
+  }
+  .family-row:hover { background: var(--bg-hover); }
+  .family-row:last-child { border-bottom: none; }
+
+  .family-meta {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+  .family-id {
+    font-size: var(--text-eyebrow);
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .family-label {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: var(--space-12);
+  }
+  .empty-line {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: var(--text-body);
+    margin: 0 0 var(--space-2);
+  }
+  .empty-hint {
+    font-size: var(--text-meta);
+    margin: 0;
+  }
+  code {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-meta);
+  }
 </style>

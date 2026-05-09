@@ -7,6 +7,9 @@
   import GraphView from '$lib/components/graph/GraphView.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import ReaderPage from '$lib/components/reader/ReaderPage.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import PageHero from '$lib/components/layout/PageHero.svelte';
+  import TabStrip from '$lib/components/layout/TabStrip.svelte';
 
   let data: NarratorDetailResponse | null = $state(null);
   let graphData: GraphData | null = $state(null);
@@ -134,63 +137,54 @@
 
 <div class="narrator-view">
   {#if loading}
-    <LoadingSpinner />
+    <div class="loading-wrap"><LoadingSpinner /></div>
   {:else if data}
-    <div class="hero">
-      {#if data.narrator.name_ar}
-        <h1 class="hero-name">{data.narrator.name_ar}</h1>
-      {/if}
-      {#if data.narrator.name_en && data.narrator.name_en !== data.narrator.name_ar}
-        <h2 class="hero-name-secondary">{data.narrator.name_en}</h2>
-      {/if}
+    {@const d = data}
+    {@const eyebrowText = d.narrator.generation ? `Narrator · Generation ${d.narrator.generation}` : 'Narrator'}
+    {@const otherNames = [
+      ...(d.narrator.kunya ? [d.narrator.kunya] : []),
+      ...(d.narrator.aliases ?? [])
+    ]}
 
-      <div class="hero-meta">
-        {#if data.narrator.death_year}
-          <span class="meta-item">d. {data.narrator.death_year} {data.narrator.death_calendar === 'gregorian' ? 'CE' : 'AH'}</span>
-        {:else if data.narrator.birth_year}
-          <span class="meta-item">b. {data.narrator.birth_year} {data.narrator.birth_calendar === 'gregorian' ? 'CE' : 'AH'}</span>
+    <PageHero
+      nameEn={d.narrator.name_en ?? undefined}
+      nameAr={d.narrator.name_ar ?? undefined}
+      arabicFont="prose"
+    >
+      {#snippet eyebrow()}<Eyebrow>{eyebrowText}</Eyebrow>{/snippet}
+      {#snippet meta()}
+        {#if d.narrator.death_year}
+          <span class="hero-meta-item"><span class="hero-meta-label">d.</span> {d.narrator.death_year} {d.narrator.death_calendar === 'gregorian' ? 'CE' : 'AH'}</span>
+        {:else if d.narrator.birth_year}
+          <span class="hero-meta-item"><span class="hero-meta-label">b.</span> {d.narrator.birth_year} {d.narrator.birth_calendar === 'gregorian' ? 'CE' : 'AH'}</span>
         {/if}
-        {#if data.narrator.generation}
-          <span class="meta-item">Generation {data.narrator.generation}</span>
-        {/if}
-        {#if data.hadiths.length > 0}
-          <span class="meta-item">{data.hadiths.length} {data.hadiths.length === 1 ? 'hadith' : 'hadiths'}</span>
-        {/if}
-        {#if data.teachers.length > 0}
-          <span class="meta-item meta-teachers">{data.teachers.length} {data.teachers.length === 1 ? 'teacher' : 'teachers'}</span>
-        {/if}
-        {#if data.students.length > 0}
-          <span class="meta-item meta-students">{data.students.length} {data.students.length === 1 ? 'student' : 'students'}</span>
-        {/if}
-        {#if data.narrator.locations && data.narrator.locations.length > 0}
-          <span class="meta-item">{data.narrator.locations.join(', ')}</span>
-        {/if}
-      </div>
+        {#if d.hadiths.length > 0}<span class="hero-dot">·</span><span class="hero-meta-item">{d.hadiths.length.toLocaleString()} {d.hadiths.length === 1 ? 'hadith' : 'hadiths'}</span>{/if}
+        {#if d.teachers.length > 0}<span class="hero-dot">·</span><span class="hero-meta-item">{d.teachers.length} {d.teachers.length === 1 ? 'teacher' : 'teachers'}</span>{/if}
+        {#if d.students.length > 0}<span class="hero-dot">·</span><span class="hero-meta-item">{d.students.length} {d.students.length === 1 ? 'student' : 'students'}</span>{/if}
+        {#if d.narrator.locations && d.narrator.locations.length > 0}<span class="hero-dot">·</span><span class="hero-meta-item">{d.narrator.locations.join(', ')}</span>{/if}
+      {/snippet}
+    </PageHero>
 
-      {#if data.narrator.kunya || (data.narrator.aliases && data.narrator.aliases.length > 0)}
-        {@const otherNames = [
-          ...(data.narrator.kunya ? [data.narrator.kunya] : []),
-          ...(data.narrator.aliases ?? [])
-        ]}
-        <p class="hero-also-known">Also known as <span class="known-names">{otherNames.join(' · ')}</span></p>
-      {/if}
+    {#if otherNames.length > 0}
+      <p class="hero-also-known">Also known as <span class="known-names arabic-prose" dir="rtl">{otherNames.join(' · ')}</span></p>
+    {/if}
+    {#if d.narrator.bio}
+      <p class="hero-bio">{d.narrator.bio}</p>
+    {/if}
 
-      {#if data.narrator.bio}
-        <p class="hero-bio">{data.narrator.bio}</p>
-      {/if}
-    </div>
+    <TabStrip
+      ariaLabel="Narrator sections"
+      bind:active={activeTab}
+      tabs={[
+        { id: 'network', label: 'Network' },
+        { id: 'hadiths', label: 'Hadiths', count: d.hadiths.length },
+        { id: 'connections', label: 'Connections' },
+        ...(narratorBooks.length > 0 ? [{ id: 'readbio' as const, label: 'Read Bio' }] : []),
+        { id: 'details', label: 'Details' },
+      ]}
+    />
 
-    <div class="tabs">
-      <button type="button" class="tab" class:active={activeTab === 'network'} onclick={() => { activeTab = 'network'; }}>Network</button>
-      <button type="button" class="tab" class:active={activeTab === 'hadiths'} onclick={() => { activeTab = 'hadiths'; }}>Hadiths ({data.hadiths.length})</button>
-      <button type="button" class="tab" class:active={activeTab === 'connections'} onclick={() => { activeTab = 'connections'; }}>Connections</button>
-      {#if narratorBooks.length > 0}
-        <button type="button" class="tab" class:active={activeTab === 'readbio'} onclick={() => { activeTab = 'readbio'; }}>Read Bio</button>
-      {/if}
-      <button type="button" class="tab" class:active={activeTab === 'details'} onclick={() => { activeTab = 'details'; }}>Details</button>
-    </div>
-
-    <div class="tab-content" class:tab-content-network={activeTab === 'network'}>
+    <div class="tab-content" class:tab-content-network={activeTab === 'network'} style="margin-top: var(--space-6)">
       {#if activeTab === 'network'}
         <GraphView data={graphData} />
       {:else if activeTab === 'hadiths'}
@@ -350,172 +344,262 @@
 
 
 <style>
-  .narrator-view { padding: 24px; max-width: 1200px; }
-
-  /* Hero header */
-  .hero { margin-bottom: 28px; }
-  .hero-name {
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.2;
-    color: var(--text-primary);
-    margin: 0;
-    font-family: var(--font-arabic-text);
+  .narrator-view {
+    max-width: var(--page-width);
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6) var(--space-12);
   }
-  .hero-name-secondary {
-    font-size: 1.25rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin: 6px 0 0;
-    line-height: 1.3;
+  @media (max-width: 640px) {
+    .narrator-view {
+      padding: var(--space-5) var(--space-4) var(--space-10);
+    }
   }
-  /* Horizontal dotted metadata line */
-  .hero-meta {
+  .loading-wrap {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 0;
-    margin-top: 24px;
-    font-size: 0.88rem;
-    color: var(--text-secondary);
-    line-height: 1.6;
+    justify-content: center;
+    padding: var(--space-12);
   }
-  .meta-item {
-    white-space: nowrap;
-  }
-  .meta-item + .meta-item::before {
-    content: '·';
-    margin: 0 8px;
-    color: var(--text-muted);
-    font-weight: 700;
-  }
-  .meta-teachers { color: var(--graph-teacher); font-weight: 500; }
-  .meta-students { color: var(--graph-student); font-weight: 500; }
+
   .hero-also-known {
-    margin: 6px 0 0;
-    font-size: 0.95rem;
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-serif);
+    font-size: var(--text-meta);
     color: var(--text-muted);
   }
   .known-names {
-    font-family: var(--font-arabic-text);
     font-size: 1.05rem;
     color: var(--text-secondary);
   }
   .hero-bio {
+    margin: 0 0 var(--space-5);
+    font-family: var(--font-serif);
     color: var(--text-secondary);
-    font-size: 0.92rem;
+    font-size: var(--text-body);
     line-height: 1.7;
-    margin-top: 12px;
-    max-height: 100px;
+    max-height: 110px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-
-  @media (min-width: 768px) {
-    .hero-name { font-size: 2.75rem; }
-    .hero-name-secondary { font-size: 1.5rem; }
+  .hero-meta-item {
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
   }
-  @media (min-width: 1024px) {
-    .hero-name { font-size: 3.5rem; }
-    .hero-name-secondary { font-size: 1.85rem; }
+  .hero-meta-label {
+    color: var(--text-muted);
+    font-size: var(--text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    margin-right: 4px;
+  }
+  .hero-dot { color: var(--text-muted); }
+
+  .hadith-list { display: flex; flex-direction: column; }
+  .connection-group { margin-bottom: var(--space-6); }
+  .connection-group h3 {
+    font-family: var(--font-sans);
+    font-size: var(--text-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--space-3);
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: var(--space-12);
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
+  .tab-content-network {
+    height: calc(100vh - 240px);
+    min-height: 500px;
+  }
+  /* On tablet and smaller the graph stacks above the sidebar — let the panel
+     grow to fit both so neither gets squished. */
+  @media (max-width: 1024px) {
+    .tab-content-network {
+      height: auto;
+      min-height: 0;
+    }
   }
 
   /* Read Bio tab */
-  .readbio-tab { padding: 8px 0; }
-  .bio-book-selector { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-  .bio-book-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); }
+  .readbio-tab { padding: var(--space-2) 0; }
+  .bio-book-selector {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+  .bio-book-label {
+    font-family: var(--font-sans);
+    font-size: var(--text-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--accent);
+  }
   .bio-book-select {
-    flex: 1; max-width: 300px; padding: 6px 10px;
-    border: 1px solid var(--border); border-radius: var(--radius-sm);
-    background: var(--bg-primary); color: var(--text-primary); font-size: 0.82rem; outline: none;
+    flex: 1;
+    max-width: 320px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: var(--text-meta);
+    outline: none;
   }
   .bio-book-select:focus { border-color: var(--accent); }
-  .bio-book-header { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
-  .bio-reader {
-    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 16px 20px; min-height: 200px;
+  .bio-book-header {
+    font-family: var(--font-serif);
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-3);
   }
-  .bio-loading { display: flex; align-items: center; justify-content: center; min-height: 150px; color: var(--text-muted); font-size: 0.85rem; }
+  .bio-reader {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: var(--space-4) var(--space-5);
+    min-height: 200px;
+  }
+  .bio-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    color: var(--text-muted);
+    font-size: var(--text-meta);
+  }
   .bio-nav {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0; margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) 0;
+    margin-top: var(--space-2);
   }
   .bio-nav-btn {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 0.78rem; font-weight: 500; color: var(--text-secondary);
-    background: var(--bg-surface); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 6px 14px; cursor: pointer;
-    transition: all var(--transition);
-  }
-  .bio-nav-btn:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--accent); color: var(--accent); }
-  .bio-nav-btn:disabled { opacity: 0.3; cursor: default; }
-  .bio-nav-page { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
-  .bio-full-link { text-align: center; margin-top: 8px; }
-  .bio-full-link a { font-size: 0.72rem; color: var(--text-muted); text-decoration: none; }
-  .bio-full-link a:hover { color: var(--accent); text-decoration: underline; }
-
-  .tabs {
-    display: flex;
-    gap: 4px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 20px;
-    position: sticky;
-    top: 0;
-    background: var(--bg-primary);
-    z-index: 10;
-    padding-top: 4px;
-  }
-  .tab {
-    padding: 10px 16px;
-    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    font-weight: var(--font-weight-medium);
     color: var(--text-secondary);
-    border-bottom: 2px solid transparent;
-    transition: all var(--transition);
-    margin-bottom: -1px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
     cursor: pointer;
+    transition: all var(--transition);
   }
-  .tab:hover { color: var(--text-primary); }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .hadith-list { display: flex; flex-direction: column; gap: 12px; }
-  .connection-group { margin-bottom: 20px; }
-  .connection-group h3 { margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .empty { text-align: center; color: var(--text-muted); padding: 40px; }
-  .tab-content-network { height: calc(100vh - 180px); min-height: 500px; }
-  @media (max-width: 768px) { .tab-content-network { min-height: 400px; } }
+  .bio-nav-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .bio-nav-btn:disabled { opacity: 0.4; cursor: default; }
+  .bio-nav-page {
+    font-family: var(--font-mono);
+    font-size: var(--text-meta);
+    color: var(--text-muted);
+  }
+  .bio-full-link { text-align: center; margin-top: var(--space-2); }
+  .bio-full-link a {
+    font-size: var(--text-meta);
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .bio-full-link a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+  }
 
   /* Details form */
-  .details-form { display: flex; flex-direction: column; gap: 20px; }
-  .form-section { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
-  .form-section h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 16px; }
-  .form-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .details-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+  .form-section {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: var(--space-5);
+  }
+  .form-section h3 {
+    font-family: var(--font-sans);
+    font-size: var(--text-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--space-4);
+  }
+  .form-row {
+    display: flex;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    flex-wrap: wrap;
+  }
   .form-row label { flex: 1; }
   .form-row label.half { flex: 2; }
   .form-row label.quarter { flex: 1; }
-  label { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-  label span { font-size: 0.8rem; color: var(--text-secondary); }
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-3);
+  }
+  label span {
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
+  }
   input, select, textarea {
-    padding: 8px 12px;
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg-primary);
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: var(--text-meta);
     font-family: inherit;
   }
-  input:focus, select:focus, textarea:focus { border-color: var(--accent); outline: none; }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
   textarea { resize: vertical; }
-  .form-actions { display: flex; align-items: center; gap: 12px; }
+  .form-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
   .save-btn {
-    padding: 10px 24px;
+    padding: var(--space-3) var(--space-5);
     background: var(--accent);
-    color: white;
+    color: var(--btn-primary-fg);
     border: none;
     border-radius: var(--radius);
     cursor: pointer;
-    font-size: 0.9rem;
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    font-weight: var(--font-weight-semibold);
+    transition: background var(--transition);
   }
+  .save-btn:hover:not(:disabled) { background: var(--accent-hover); }
   .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .save-msg { font-size: 0.85rem; color: var(--accent); }
-  .save-msg.error { color: #ef4444; }
+  .save-msg {
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    color: var(--accent);
+  }
+  .save-msg.error { color: var(--error); }
 </style>

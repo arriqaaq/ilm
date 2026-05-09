@@ -13,6 +13,7 @@
   import { applyHierarchicalLayout, createFA2Supervisor } from './layout';
   import { drawLabel, drawHover } from './drawing';
   import { language } from '$lib/stores/language';
+  import TwoColumn from '$lib/components/layout/TwoColumn.svelte';
 
   let { data }: { data: GraphData | null } = $props();
 
@@ -23,6 +24,7 @@
   let supervisor: Awaited<ReturnType<typeof createFA2Supervisor>> | null = null;
   let mounted = false;
   let themeObserver: MutationObserver | null = null;
+  let resizeObserver: ResizeObserver | null = null;
 
   // Sidebar state
   let showTeachers = $state(true);
@@ -243,7 +245,7 @@
       labelColor: { color: getThemeColor('--text-primary', '#1a1a2e') },
       labelSize: 11,
       labelRenderedSizeThreshold: 8,
-      stagePadding: 40,
+      stagePadding: Math.max(40, Math.floor(rect.width * 0.08)),
       defaultDrawNodeLabel: drawLabel,
       defaultDrawNodeHover: drawHover,
       edgeProgramClasses: {
@@ -324,6 +326,19 @@
       attributes: true,
       attributeFilter: ['data-theme', 'class'],
     });
+
+    // Watch for container size changes (e.g. when sidebar stacks below on mobile)
+    // Sigma observes its own container, but we also re-fit the camera so the graph
+    // re-centers with appropriate padding for the new aspect ratio.
+    resizeObserver?.disconnect();
+    resizeObserver = new ResizeObserver(() => {
+      if (!sigmaInstance || !container) return;
+      const w = container.clientWidth;
+      sigmaInstance.setSetting('stagePadding', Math.max(40, Math.floor(w * 0.08)));
+      sigmaInstance.refresh();
+      sigmaInstance.getCamera().animatedReset({ duration: 200 });
+    });
+    resizeObserver.observe(container);
   }
 
   async function switchLayout(mode: LayoutMode) {
@@ -425,6 +440,8 @@
   onDestroy(() => {
     themeObserver?.disconnect();
     themeObserver = null;
+    resizeObserver?.disconnect();
+    resizeObserver = null;
     supervisor?.kill();
     supervisor = null;
     sigmaInstance?.kill();
@@ -438,69 +455,70 @@
   {#if !data || data.nodes.length === 0}
     <div class="empty">No graph data available</div>
   {:else}
-    <div class="graph-canvas">
-      <div bind:this={container} class="sigma-container"></div>
-    </div>
-    <aside class="graph-sidebar">
-      <!-- Stats -->
-      <div class="sidebar-section">
-        <h4 class="sidebar-title">Stats</h4>
-        <div class="stat-row">
-          <span class="stat-label">Nodes</span>
-          <span class="stat-value">{nodeCount}</span>
+    <TwoColumn fill sidebarWidth={240}>
+      {#snippet main()}
+        <div class="graph-canvas">
+          <div bind:this={container} class="sigma-container"></div>
         </div>
-        <div class="stat-row">
-          <span class="stat-label">Edges</span>
-          <span class="stat-value">{edgeCount}</span>
+      {/snippet}
+      {#snippet sidebar()}
+        <div class="graph-sidebar">
+          <div class="sidebar-section">
+            <h4 class="sidebar-title">Stats</h4>
+            <div class="stat-row">
+              <span class="stat-label">Nodes</span>
+              <span class="stat-value">{nodeCount}</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Edges</span>
+              <span class="stat-value">{edgeCount}</span>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h4 class="sidebar-title">Visibility</h4>
+            <button
+              class="toggle-row"
+              class:hidden-toggle={!showTeachers}
+              onclick={() => { showTeachers = !showTeachers; }}
+            >
+              <span class="toggle-dot dot-teacher" class:faded={!showTeachers}></span>
+              <span class="toggle-label">Teachers</span>
+              <span class="toggle-count">{shownTeachers}{#if data.total_teachers} / {data.total_teachers}{/if}</span>
+            </button>
+            <button
+              class="toggle-row"
+              class:hidden-toggle={!showStudents}
+              onclick={() => { showStudents = !showStudents; }}
+            >
+              <span class="toggle-dot dot-student" class:faded={!showStudents}></span>
+              <span class="toggle-label">Students</span>
+              <span class="toggle-count">{shownStudents}{#if data.total_students} / {data.total_students}{/if}</span>
+            </button>
+          </div>
+
+          <div class="sidebar-section">
+            <h4 class="sidebar-title">Appearance</h4>
+            <label class="checkbox-row">
+              <input type="checkbox" bind:checked={straightEdges} />
+              <span>Straight edges</span>
+            </label>
+          </div>
+
+          <div class="sidebar-section">
+            <h4 class="sidebar-title">Legend</h4>
+            <div class="legend-item"><span class="legend-dot dot-center"></span> This narrator</div>
+            <div class="legend-item"><span class="legend-dot dot-teacher"></span> Teachers</div>
+            <div class="legend-item"><span class="legend-dot dot-student"></span> Students</div>
+          </div>
         </div>
-      </div>
-
-      <!-- Visibility -->
-      <div class="sidebar-section">
-        <h4 class="sidebar-title">Visibility</h4>
-        <button
-          class="toggle-row"
-          class:hidden-toggle={!showTeachers}
-          onclick={() => { showTeachers = !showTeachers; }}
-        >
-          <span class="toggle-dot dot-teacher" class:faded={!showTeachers}></span>
-          <span class="toggle-label">Teachers</span>
-          <span class="toggle-count">{shownTeachers}{#if data.total_teachers} / {data.total_teachers}{/if}</span>
-        </button>
-        <button
-          class="toggle-row"
-          class:hidden-toggle={!showStudents}
-          onclick={() => { showStudents = !showStudents; }}
-        >
-          <span class="toggle-dot dot-student" class:faded={!showStudents}></span>
-          <span class="toggle-label">Students</span>
-          <span class="toggle-count">{shownStudents}{#if data.total_students} / {data.total_students}{/if}</span>
-        </button>
-      </div>
-
-      <!-- Appearance -->
-      <div class="sidebar-section">
-        <h4 class="sidebar-title">Appearance</h4>
-        <label class="checkbox-row">
-          <input type="checkbox" bind:checked={straightEdges} />
-          <span>Straight edges</span>
-        </label>
-      </div>
-
-      <!-- Legend -->
-      <div class="sidebar-section">
-        <h4 class="sidebar-title">Legend</h4>
-        <div class="legend-item"><span class="legend-dot dot-center"></span> This narrator</div>
-        <div class="legend-item"><span class="legend-dot dot-teacher"></span> Teachers</div>
-        <div class="legend-item"><span class="legend-dot dot-student"></span> Students</div>
-      </div>
-    </aside>
+      {/snippet}
+    </TwoColumn>
   {/if}
 </div>
 
 <style>
   .graph-panel {
-    display: flex;
     height: 100%;
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -508,9 +526,13 @@
     overflow: hidden;
   }
 
+  /* Tighten the gap when the graph fills its parent — visual seam, not gutter. */
+  .graph-panel :global(.two-col.fill) { gap: 0; }
+
   .graph-canvas {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 460px;
     position: relative;
   }
 
@@ -535,14 +557,12 @@
     font-size: 0.85rem;
   }
 
-  /* Sidebar */
   .graph-sidebar {
-    width: 240px;
-    flex-shrink: 0;
     border-left: 1px solid var(--border);
     background: var(--bg-primary);
     overflow-y: auto;
     padding: 12px 0;
+    height: 100%;
   }
 
   .sidebar-section {
@@ -552,6 +572,24 @@
 
   .sidebar-section:last-child {
     border-bottom: none;
+  }
+
+  /* When the TwoColumn primitive stacks at ≤1024px, the sidebar drops below
+     the graph and we want the section list to flow as a horizontal grid so it
+     doesn't take a tall vertical strip. */
+  @media (max-width: 1024px) {
+    .graph-sidebar {
+      border-left: none;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      padding: 12px;
+      gap: 8px 16px;
+    }
+    .sidebar-section { padding: 4px 8px; border-bottom: none; }
+  }
+  @media (max-width: 480px) {
+    .graph-sidebar { grid-template-columns: 1fr 1fr; }
   }
 
   .sidebar-title {
@@ -657,31 +695,10 @@
     flex-shrink: 0;
   }
 
-  /* Mobile */
-  @media (max-width: 768px) {
-    .graph-panel {
-      flex-direction: column;
-    }
-
-    .graph-canvas {
-      min-height: 400px;
-    }
-
-    .graph-sidebar {
-      width: 100%;
-      border-left: none;
-      border-top: 1px solid var(--border);
-      display: flex;
-      flex-wrap: wrap;
-      padding: 8px;
-      gap: 8px;
-    }
-
-    .sidebar-section {
-      flex: 1;
-      min-width: 120px;
-      padding: 4px 8px;
-      border-bottom: none;
-    }
+  @media (max-width: 1024px) {
+    .graph-panel { height: auto; }
+  }
+  @media (max-width: 480px) {
+    .graph-canvas { min-height: 380px; }
   }
 </style>

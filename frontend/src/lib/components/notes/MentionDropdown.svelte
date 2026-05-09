@@ -149,7 +149,7 @@
           onmousedown={(e) => { e.preventDefault(); onselect('narrator', narrator.id); }}
           onmouseenter={() => { selectedIdx = i; }}
         >
-          <span class="narrator-name">{narrator.name_en}</span>
+          <span class="narrator-name">{narrator.name_en ?? narrator.name_ar ?? narrator.id}</span>
           {#if narrator.generation}
             <span class="narrator-meta">Gen {narrator.generation}</span>
           {/if}

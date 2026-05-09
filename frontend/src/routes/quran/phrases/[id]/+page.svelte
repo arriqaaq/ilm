@@ -2,6 +2,10 @@
   import { page } from '$app/stores';
   import { getPhraseDetail } from '$lib/api';
   import type { ApiPhraseWithAyahs } from '$lib/types';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import MetaRow from '$lib/components/common/MetaRow.svelte';
+  import SectionHeading from '$lib/components/common/SectionHeading.svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   let data: ApiPhraseWithAyahs | null = $state(null);
   let loading = $state(true);
@@ -22,92 +26,90 @@
 </script>
 
 <svelte:head>
-  <title>Shared Phrase - Quran</title>
+  <title>{data ? `${data.text_ar} · Phrase` : 'Phrase'} — Ilm</title>
 </svelte:head>
 
-<div class="phrase-page">
-  <div class="phrase-header">
-    <a href="/quran" class="back-link">Back to Quran</a>
-
-    {#if data}
-      <h1 dir="rtl" class="phrase-title">{data.text_ar}</h1>
-      <div class="phrase-stats">
-        {data.occurrence} occurrences across {data.ayah_keys.length} ayahs
-      </div>
-    {:else}
-      <h1 class="phrase-title">Shared Phrase</h1>
-    {/if}
-  </div>
-
+<div class="page-shell-narrow">
   {#if loading}
-    <div class="loading">Loading...</div>
+    <div class="state"><LoadingSpinner /></div>
   {:else if error}
-    <div class="error">{error}</div>
-  {:else if data && data.ayah_keys.length === 0}
-    <div class="empty">No ayahs found for this phrase.</div>
+    <div class="state error">{error}</div>
   {:else if data}
-    <div class="ayah-list">
-      {#each data.ayah_keys as key}
-        {@const parts = key.split(':')}
-        <a href="/quran/{parts[0]}?ayah={parts[1]}" class="ayah-item">
-          <span class="ayah-ref">{key}</span>
-        </a>
-      {/each}
-    </div>
+    <header class="phrase-header">
+      <Eyebrow>QURʾĀN · PHRASE</Eyebrow>
+      <h1 class="phrase-title arabic-prose" dir="rtl">{data.text_ar}</h1>
+      <MetaRow items={[
+        `${data.occurrence} occurrences`,
+        `${data.ayah_keys.length} āyāt`,
+      ]} />
+    </header>
+
+    <hr class="separator" />
+
+    {#if data.ayah_keys.length === 0}
+      <div class="state">No āyāt found for this phrase.</div>
+    {:else}
+      <SectionHeading eyebrow="Occurrences" title="Where this phrase appears" level={2} />
+      <div class="ayah-list">
+        {#each data.ayah_keys as key}
+          {@const parts = key.split(':')}
+          <a href="/quran/{parts[0]}?ayah={parts[1]}" class="ayah-chip">
+            <span class="ayah-ref mono">{key}</span>
+          </a>
+        {/each}
+      </div>
+    {/if}
   {/if}
 </div>
 
 <style>
-  .phrase-page {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 24px;
-  }
-  .phrase-header {
-    margin-bottom: 24px;
-  }
-  .back-link {
-    font-size: 0.85rem;
-    color: var(--accent);
-    text-decoration: none;
-  }
-  .phrase-title {
-    font-size: 2.5rem;
-    color: var(--text-primary);
-    margin: 8px 0;
-    line-height: 1.6;
-  }
-  .phrase-stats {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-  }
-  .loading, .error, .empty {
-    padding: 40px;
+  .state {
+    padding: var(--space-12);
     text-align: center;
     color: var(--text-muted);
+    font-family: var(--font-serif);
+    font-style: italic;
   }
+  .state.error { color: var(--error); }
+
+  .phrase-header { text-align: center; margin-bottom: var(--space-3); }
+  .phrase-title {
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin: var(--space-3) 0 var(--space-3);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .separator {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: var(--space-6) 0;
+  }
+
   .ayah-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
   }
-  .ayah-item {
+  .ayah-chip {
     display: inline-flex;
     align-items: center;
-    padding: 8px 16px;
-    background: var(--bg-hover);
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-pill);
     text-decoration: none;
     transition: all var(--transition);
   }
-  .ayah-item:hover {
+  .ayah-chip:hover {
     border-color: var(--accent);
     background: var(--accent-muted);
   }
   .ayah-ref {
-    font-family: var(--font-mono);
-    font-size: 0.9rem;
+    font-size: var(--text-meta);
     color: var(--accent);
+    font-weight: var(--font-weight-semibold);
   }
 </style>

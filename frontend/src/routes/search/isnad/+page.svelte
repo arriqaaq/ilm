@@ -3,6 +3,8 @@
   import IsnadChip from '$lib/components/isnad/IsnadChip.svelte';
   import IsnadResults from '$lib/components/isnad/IsnadResults.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import PageHeader from '$lib/components/common/PageHeader.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
   import { isnadSearch } from '$lib/api';
   import type { ApiNarratorSearchResult, IsnadSearchResponse } from '$lib/types';
 
@@ -44,33 +46,40 @@
   }
 </script>
 
-<div class="isnad-page">
-  <h1>Isnad Search</h1>
-  <p class="subtitle">Find hadiths by selecting narrators in the chain</p>
+<div class="page-shell">
+  <PageHeader
+    eyebrow="Search"
+    title="Isnād Search"
+    subtitle="Find every hadith chain that contains the narrators you select."
+  />
 
-  <div class="mode-toggle">
-    <button class="btn btn-soft btn-sm toggle-btn" class:active={mode === 'loose'} onclick={() => { mode = 'loose'; result = null; }}>Any Order</button>
-    <button class="btn btn-soft btn-sm toggle-btn" class:active={mode === 'strict'} onclick={() => { mode = 'strict'; result = null; }}>Ordered Chain</button>
+  <div class="mode-row">
+    <div class="mode-eyebrow"><Eyebrow tone="muted">Match Mode</Eyebrow></div>
+    <div class="mode-toggle">
+      <button class="btn btn-soft btn-sm toggle-btn" class:active={mode === 'loose'} onclick={() => { mode = 'loose'; result = null; }}>Any Order</button>
+      <button class="btn btn-soft btn-sm toggle-btn" class:active={mode === 'strict'} onclick={() => { mode = 'strict'; result = null; }}>Ordered Chain</button>
+    </div>
   </div>
 
   <div class="chain-builder">
+    <div class="builder-eyebrow"><Eyebrow>Chain</Eyebrow></div>
     {#if selectedNarrators.length > 0}
       <div class="selected-chain" class:strict={mode === 'strict'}>
         {#each selectedNarrators as n, i (n.id)}
           {#if mode === 'strict' && i > 0}
-            <span class="chain-arrow">&rarr;</span>
+            <span class="chain-arrow">→</span>
           {/if}
           <IsnadChip narrator={n} onRemove={() => removeNarrator(n.id)} />
         {/each}
       </div>
     {/if}
 
-    <NarratorAutocomplete onSelect={addNarrator} {excludeIds} placeholder="Search narrator to add..." />
+    <NarratorAutocomplete onSelect={addNarrator} {excludeIds} placeholder="Search narrator to add…" />
   </div>
 
   <div class="actions">
     <button class="btn btn-primary btn-md" disabled={selectedNarrators.length < 2 || loading} onclick={doSearch}>
-      Search ({selectedNarrators.length} narrators)
+      Search ({selectedNarrators.length} narrator{selectedNarrators.length === 1 ? '' : 's'})
     </button>
     {#if selectedNarrators.length > 0}
       <button class="btn btn-soft btn-md" onclick={clearAll}>Clear All</button>
@@ -85,17 +94,47 @@
 </div>
 
 <style>
-  .isnad-page { padding: var(--space-6); }
-  h1 { margin-bottom: var(--space-1); }
-  .subtitle { color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-5); }
-  .mode-toggle { display: flex; gap: 0; margin-bottom: var(--space-4); width: fit-content; }
+  .mode-row { margin-bottom: var(--space-5); }
+  .mode-eyebrow { margin-bottom: var(--space-2); }
+  .mode-toggle {
+    display: flex;
+    gap: 0;
+    width: fit-content;
+  }
   .toggle-btn { border-radius: 0; }
-  .toggle-btn:first-child { border-top-left-radius: var(--radius); border-bottom-left-radius: var(--radius); }
-  .toggle-btn:last-child { border-top-right-radius: var(--radius); border-bottom-right-radius: var(--radius); }
+  .toggle-btn:first-child {
+    border-top-left-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+  }
+  .toggle-btn:last-child {
+    border-top-right-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+  }
   .toggle-btn:not(:first-child) { border-left: none; }
-  .toggle-btn.active { background: var(--accent); color: var(--btn-primary-fg); border-color: var(--accent); }
-  .chain-builder { margin-bottom: var(--space-4); }
-  .selected-chain { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
-  .chain-arrow { color: var(--text-muted); font-size: var(--text-base); }
-  .actions { display: flex; gap: var(--space-2); margin-bottom: var(--space-6); }
+  .toggle-btn.active {
+    background: var(--accent-muted);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .chain-builder { margin-bottom: var(--space-5); }
+  .builder-eyebrow { margin-bottom: var(--space-2); }
+  .selected-chain {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+  .chain-arrow {
+    color: var(--accent);
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+  }
 </style>

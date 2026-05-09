@@ -16,7 +16,6 @@ export function formatScore(score: number | null): string {
 
 /**
  * Convert turath page text to HTML for rendering.
- * Ported from usul.ai's src/lib/reader.ts
  */
 export function convertPageToHtml(page: string): string {
   const footnotesChar = '_________';

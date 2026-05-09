@@ -67,10 +67,6 @@
     }
     pageInput = '';
   }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') handlePageJump();
-  }
 </script>
 
 <aside class="reader-sidebar" dir="rtl">
@@ -78,23 +74,20 @@
     <button class="close-btn" onclick={onClose} aria-label="Close">&times;</button>
   {/if}
 
-  <div class="page-navigator">
-    <label class="nav-label" for="reader-page-nav">Go to page</label>
-    <div class="nav-input-row">
-      <input
-        id="reader-page-nav"
-        type="number"
-        class="nav-input"
-        placeholder="Page #"
-        min="1"
-        max={totalPages}
-        bind:value={pageInput}
-        onkeydown={handleKeydown}
-      />
-      <button class="nav-go" onclick={handlePageJump}>Go</button>
-    </div>
-    <span class="nav-total">{totalPages} pages</span>
-  </div>
+  <form class="page-navigator" onsubmit={(e) => { e.preventDefault(); handlePageJump(); }}>
+    <input
+      id="reader-page-nav"
+      type="number"
+      class="nav-input"
+      placeholder="Go to page #"
+      min="1"
+      max={totalPages}
+      bind:value={pageInput}
+      aria-label="Go to page"
+    />
+    <button type="submit" class="nav-go">Go</button>
+    <span class="nav-total">of {totalPages.toLocaleString()}</span>
+  </form>
 
   <div class="heading-tree">
     {#each tree as node}
@@ -114,7 +107,7 @@
                 <button
                   class="tree-child"
                   class:active={child.index === activeHeadingIndex}
-                  onclick={() => { onNavigate(child.heading.page_index); if (onClose) onClose(); }}
+                  onclick={() => onNavigate(child.heading.page_index)}
                 >
                   {child.heading.title}
                 </button>
@@ -125,7 +118,7 @@
           <button
             class="tree-parent leaf"
             class:active={node.index === activeHeadingIndex}
-            onclick={() => { onNavigate(node.heading.page_index); if (onClose) onClose(); }}
+            onclick={() => onNavigate(node.heading.page_index)}
           >
             <span class="heading-title">{node.heading.title}</span>
           </button>
@@ -165,51 +158,58 @@
   .close-btn:hover { background: var(--bg-active); }
 
   .page-navigator {
-    padding: 0 16px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    column-gap: 0;
+    row-gap: 4px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border-subtle);
     direction: ltr;
-    text-align: left;
-  }
-  .nav-label {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 6px;
-    display: block;
-  }
-  .nav-input-row {
-    display: flex;
-    gap: 6px;
   }
   .nav-input {
-    flex: 1;
-    padding: 6px 10px;
+    grid-column: 1;
+    padding: 8px 12px;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-right: none;
+    border-radius: var(--radius) 0 0 var(--radius);
     background: var(--bg-surface);
     color: var(--text-primary);
-    font-size: 0.8rem;
     font-family: var(--font-mono);
+    font-size: var(--text-meta);
     outline: none;
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
-  .nav-input:focus { border-color: var(--accent); }
+  .nav-input::-webkit-outer-spin-button,
+  .nav-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .nav-input:focus { border-color: var(--accent); z-index: 1; }
   .nav-go {
-    padding: 6px 14px;
+    grid-column: 2;
+    padding: 8px 16px;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: 0 var(--radius) var(--radius) 0;
     background: var(--bg-surface);
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all var(--transition);
   }
-  .nav-go:hover { background: var(--bg-hover); border-color: var(--accent); }
+  .nav-go:hover { background: var(--accent-muted); border-color: var(--accent); color: var(--accent); }
   .nav-total {
-    font-size: 0.7rem;
+    grid-column: 1 / -1;
+    font-family: var(--font-sans);
+    font-size: var(--text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-eyebrow);
     color: var(--text-muted);
+    text-align: left;
     margin-top: 4px;
-    display: block;
   }
 
   .heading-tree {
@@ -229,13 +229,13 @@
     border: none;
     background: none;
     color: var(--text-primary);
-    font-size: 0.85rem;
+    font-size: var(--text-meta);
     font-weight: 600;
     line-height: 1.6;
     text-align: right;
     cursor: pointer;
     transition: background var(--transition);
-    font-family: var(--font-arabic-text);
+    font-family: var(--font-sans);
   }
   .tree-parent:hover { background: var(--bg-hover); }
   .tree-parent.active { color: var(--accent); background: var(--accent-muted); }
@@ -262,12 +262,12 @@
     border: none;
     background: none;
     color: var(--text-secondary);
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     line-height: 1.6;
     text-align: right;
     cursor: pointer;
     transition: all var(--transition);
-    font-family: var(--font-arabic-text);
+    font-family: var(--font-sans);
   }
   .tree-child:hover { background: var(--bg-hover); color: var(--text-primary); }
   .tree-child.active { color: var(--accent); background: var(--accent-muted); font-weight: 600; }

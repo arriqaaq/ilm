@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ApiNarratorSearchResult } from '$lib/types';
   import { language } from '$lib/stores/language';
+  import { bilingualDisplayName } from '$lib/normalize';
   import Badge from '$lib/components/common/Badge.svelte';
 
   let { narrator, onRemove }: {
@@ -8,9 +9,7 @@
     onRemove: () => void;
   } = $props();
 
-  let displayName = $derived(
-    $language === 'en' && narrator.name_en ? narrator.name_en : (narrator.name_ar || narrator.name_en)
-  );
+  let displayName = $derived(bilingualDisplayName(narrator, $language, narrator.id));
 </script>
 
 <span class="isnad-chip">

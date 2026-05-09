@@ -2,6 +2,10 @@
   import { page } from '$app/stores';
   import { searchByRoot } from '$lib/api';
   import type { RootSearchResponse } from '$lib/types';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import MetaRow from '$lib/components/common/MetaRow.svelte';
+  import SectionHeading from '$lib/components/common/SectionHeading.svelte';
+  import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
 
   let data: RootSearchResponse | null = $state(null);
   let loading = $state(true);
@@ -34,33 +38,35 @@
 </script>
 
 <svelte:head>
-  <title>Root: {root} - Quran</title>
+  <title>Root: {root} — Qurʾān</title>
 </svelte:head>
 
-<div class="root-page">
-  <div class="root-header">
-    <a href="/quran/search" class="back-link">Back to Search</a>
-    <h1 dir="rtl" class="root-title">{root}</h1>
+<div class="page-shell-narrow">
+  <header class="root-header">
+    <Eyebrow>QURʾĀN · ROOT</Eyebrow>
+    <h1 class="root-title arabic-prose" dir="rtl">{root}</h1>
     {#if data}
-      <div class="root-stats">
-        {data.occurrences.length} occurrences in {data.ayah_count} ayahs
-      </div>
+      <MetaRow items={[
+        `${data.occurrences.length} occurrences`,
+        `${data.ayah_count} āyāt`,
+      ]} />
     {/if}
-  </div>
+  </header>
+
+  <hr class="separator" />
 
   {#if loading}
-    <div class="loading">Loading...</div>
+    <div class="state"><LoadingSpinner /></div>
   {:else if error}
-    <div class="error">{error}</div>
+    <div class="state error">{error}</div>
   {:else if grouped.length === 0}
-    <div class="empty">No occurrences found for this root.</div>
+    <div class="state">No occurrences found for this root.</div>
   {:else}
+    <SectionHeading eyebrow="Occurrences" title="Where this root appears" level={2} />
     <div class="root-results">
       {#each grouped as { key, words }}
-        <div class="root-ayah">
-          <a href="/quran/{words[0].surah_number}#{key}" class="ayah-link">
-            <span class="ref">{key}</span>
-          </a>
+        <article class="root-ayah">
+          <a href="/quran/{words[0].surah_number}#{key}" class="ayah-link mono">{key}</a>
           <div class="word-list" dir="rtl">
             {#each words as word}
               <span class="root-word">
@@ -72,83 +78,92 @@
               </span>
             {/each}
           </div>
-        </div>
+        </article>
       {/each}
     </div>
   {/if}
 </div>
 
 <style>
-  .root-page {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 24px;
-  }
-  .root-header {
-    margin-bottom: 24px;
-  }
-  .back-link {
-    font-size: 0.85rem;
-    color: var(--accent);
-    text-decoration: none;
-  }
+  .root-header { text-align: center; margin-bottom: var(--space-3); }
   .root-title {
-    font-size: 3rem;
+    font-size: clamp(3rem, 8vw, 5rem);
     color: var(--text-primary);
-    margin: 8px 0;
+    line-height: 1.4;
+    margin: var(--space-3) 0 var(--space-3);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.1em;
   }
-  .root-stats {
-    font-size: 0.85rem;
-    color: var(--text-muted);
+
+  .separator {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: var(--space-6) 0;
   }
-  .loading, .error, .empty {
-    padding: 40px;
+
+  .state {
+    padding: var(--space-12);
     text-align: center;
     color: var(--text-muted);
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
+  .state.error { color: var(--error); }
+
+  .root-results {
+    display: flex;
+    flex-direction: column;
   }
   .root-ayah {
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
     display: flex;
-    gap: 16px;
     align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--border-subtle);
   }
+  .root-ayah:last-child { border-bottom: none; }
+
   .ayah-link {
-    text-decoration: none;
-  }
-  .ref {
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
+    flex-shrink: 0;
+    font-size: var(--text-meta);
     color: var(--accent);
-    white-space: nowrap;
-    min-width: 50px;
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+    min-width: 56px;
+    line-height: 1.5;
   }
+  .ayah-link:hover { text-decoration: underline; }
+
   .word-list {
     display: flex;
-    gap: 8px;
     flex-wrap: wrap;
+    gap: var(--space-2);
   }
   .root-word {
-    display: flex;
+    display: inline-flex;
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 6px 10px;
-    background: var(--bg-hover);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
   }
   .rw-ar {
     font-size: 1.3rem;
     color: var(--text-primary);
   }
   .rw-en {
-    font-size: 0.65rem;
+    font-family: var(--font-serif);
+    font-size: var(--text-2xs);
     color: var(--text-muted);
+    font-style: italic;
   }
   .rw-pos {
-    font-size: 0.55rem;
+    font-size: var(--text-2xs);
     color: var(--accent);
     font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 </style>

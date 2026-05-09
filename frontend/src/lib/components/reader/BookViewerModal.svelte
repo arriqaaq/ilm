@@ -49,7 +49,7 @@
       kind: 'turath' as const,
       key: `turath-${b.book_id}`,
       book_id: b.book_id,
-      label: b.name_en,
+      label: b.name_en ?? b.name_ar,
       subtitle: b.name_ar,
     }));
   });
@@ -64,7 +64,7 @@
       const data = await getAyahTafsir(tafsirAnchor.surah, tafsirAnchor.ayah, opt.book_id);
       const bookMeta = tafsirAnchor.availableBooks.find((b) => b.book_id === opt.book_id);
       bookId = opt.book_id;
-      headerTitle = bookMeta?.name_en ?? opt.label;
+      headerTitle = bookMeta?.name_en ?? bookMeta?.name_ar ?? opt.label;
       pages = new Map();           // invalidate cache — new book, new pages
       headings = [];
       totalPages = 0;

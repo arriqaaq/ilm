@@ -1,14 +1,11 @@
 <script lang="ts">
   import type { ApiNarrator } from '$lib/types';
   import { language } from '$lib/stores/language';
+  import { bilingualDisplayName } from '$lib/normalize';
 
   let { narrator }: { narrator: ApiNarrator } = $props();
 
-  let displayName = $derived(
-    $language === 'en' && narrator.name_en && narrator.name_en !== narrator.name_ar
-      ? narrator.name_en
-      : (narrator.name_ar || narrator.name_en || narrator.id)
-  );
+  let displayName = $derived(bilingualDisplayName(narrator, $language, narrator.id));
 </script>
 
 <a href="/narrators/{narrator.id}" class="chip">

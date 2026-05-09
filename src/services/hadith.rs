@@ -29,15 +29,36 @@ pub async fn list_collections(state: &AppState) -> Result<Vec<ApiCollection>> {
     Ok(books.into_iter().map(ApiCollection::from).collect())
 }
 
-/// Paginated hadith list with optional `collection_id` and `hadith_number`
-/// filters. Returns `data` ordered by `hadith_number ASC`.
+/// Filters accepted by the paginated hadith list query.
+///
+/// Fields are independent — supplying multiple narrows the result set with AND
+/// semantics. `book` (single) and `books` (multi) are unioned: a hadith
+/// matches if its `collection_id` equals `book` OR is in `books`.
+#[derive(Default)]
+pub struct ListFilters {
+    pub book: Option<i64>,
+    pub books: Vec<i64>,
+    pub number: Option<i64>,
+    pub n_min: Option<i64>,
+    pub n_max: Option<i64>,
+    /// Narrator slugs (without the `narrator:` table prefix). A hadith matches
+    /// when at least one of these narrators sits on its transmission chain.
+    pub narrators: Vec<String>,
+    /// Substring filter applied (case-insensitively) to `text_ar`, `text_en`,
+    /// and `narrator_text`.
+    pub q: Option<String>,
+    /// `number_asc` (default) or `number_desc`.
+    pub sort: Option<String>,
+}
+
+/// Paginated hadith list with optional filters. Returns `data` ordered by
+/// `hadith_number` (asc by default, desc when `sort=number_desc`).
 ///
 /// Pagination is offset-based and detects `has_more` via the size of the
 /// returned page (no `total` count to keep the query cheap).
 pub async fn list(
     state: &AppState,
-    book: Option<i64>,
-    number: Option<i64>,
+    filters: ListFilters,
     page: usize,
     limit: usize,
 ) -> Result<PaginatedResponse<ApiHadith>> {
@@ -45,28 +66,98 @@ pub async fn list(
     let limit = limit.clamp(1, 100);
     let offset = (page - 1) * limit;
 
+    let ListFilters {
+        book,
+        books,
+        number,
+        n_min,
+        n_max,
+        narrators,
+        q,
+        sort,
+    } = filters;
+
     let mut conditions: Vec<String> = Vec::new();
-    if let Some(book_id) = book {
-        conditions.push(format!("collection_id = {book_id}"));
+
+    // Collection filter — `book` (single) and `books` (multi) union into a
+    // single `collection_id IN [...]` condition so callers can supply either.
+    let mut book_ids: Vec<i64> = books;
+    if let Some(b) = book {
+        if !book_ids.contains(&b) {
+            book_ids.push(b);
+        }
     }
+    if !book_ids.is_empty() {
+        let ids = book_ids
+            .iter()
+            .map(i64::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+        conditions.push(format!("collection_id IN [{ids}]"));
+    }
+
     if let Some(num) = number {
         conditions.push(format!("hadith_number = {num}"));
     }
+    if let Some(min) = n_min {
+        conditions.push(format!("hadith_number >= {min}"));
+    }
+    if let Some(max) = n_max {
+        conditions.push(format!("hadith_number <= {max}"));
+    }
+
+    if q.is_some() {
+        // Lowercase both sides so the substring match is case-insensitive
+        // (matches the `narrator` autocomplete pattern in `services::search`).
+        // `?? ''` guards against null fields, which would otherwise propagate
+        // a NONE through the comparison.
+        conditions.push(
+            "(string::lowercase(text_ar ?? '') CONTAINS string::lowercase($q) \
+             OR string::lowercase(text_en ?? '') CONTAINS string::lowercase($q) \
+             OR string::lowercase(narrator_text ?? '') CONTAINS string::lowercase($q))"
+                .to_string(),
+        );
+    }
+
+    if !narrators.is_empty() {
+        // Hadiths reachable via any of the supplied narrators' `narrates`
+        // edges. Resolved as record ids so the `IN $narrator_ids` filter is
+        // typesafe (mirrors `isnad_search` in this same file).
+        conditions.push(
+            "id IN (SELECT VALUE out FROM narrates WHERE in IN $narrator_ids)".to_string(),
+        );
+    }
+
     let where_clause = if conditions.is_empty() {
         String::new()
     } else {
         format!("WHERE {}", conditions.join(" AND "))
     };
+
+    let order = if sort.as_deref() == Some("number_desc") {
+        "hadith_number DESC"
+    } else {
+        "hadith_number ASC"
+    };
+
     let query = format!(
         "SELECT {HADITH_FIELDS} FROM hadith {where_clause} \
-         ORDER BY hadith_number ASC LIMIT {limit} START {offset}"
+         ORDER BY {order} LIMIT {limit} START {offset}"
     );
 
-    let mut res = state
-        .db
-        .query(&query)
-        .await
-        .context("hadith list query failed")?;
+    let mut q_builder = state.db.query(&query);
+    if let Some(qs) = q {
+        q_builder = q_builder.bind(("q", qs));
+    }
+    if !narrators.is_empty() {
+        let narrator_rids: Vec<surrealdb::types::RecordId> = narrators
+            .iter()
+            .map(|s| make_record_id("narrator", s))
+            .collect();
+        q_builder = q_builder.bind(("narrator_ids", narrator_rids));
+    }
+
+    let mut res = q_builder.await.context("hadith list query failed")?;
     let hadiths: Vec<Hadith> = res.take(0).unwrap_or_default();
     let has_more = hadiths.len() == limit;
 

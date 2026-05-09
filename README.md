@@ -286,3 +286,7 @@ cd frontend && npm run dev                   # hot reload at :5173
 ```
 
 See [METHODOLOGY.md](docs/METHODOLOGY.md) for the scholarly framework and [DATA_SOURCES.md](docs/DATA_SOURCES.md) for dataset documentation.
+
+## Acknowledgements
+
+The 10 decorative SVG patterns under [`frontend/static/patterns/`](frontend/static/patterns/) — used as the background art for collection, surah, and book-cover cards on the landing page — are adopted from [Usul.ai](https://usul.ai) ([source](https://github.com/seemorg/usul)). The card-cover layout (vertical aspect, pattern fallback when no cover image is available) also draws on Usul's design. Color palette and component code in this repo are original.

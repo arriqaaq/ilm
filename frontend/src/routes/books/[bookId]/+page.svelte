@@ -4,7 +4,9 @@
   import type { BookDetail, BookPage } from '$lib/types';
   import ReaderContent from '$lib/components/reader/ReaderContent.svelte';
   import ReaderHeader from '$lib/components/reader/ReaderHeader.svelte';
+  import BookInfo from '$lib/components/reader/BookInfo.svelte';
   import ReaderSidebar from '$lib/components/reader/ReaderSidebar.svelte';
+  import ReaderSearch from '$lib/components/reader/ReaderSearch.svelte';
   import SidebarTabs from '$lib/components/reader/SidebarTabs.svelte';
   import BookChat from '$lib/components/reader/BookChat.svelte';
   import ResizeHandle from '$lib/components/layout/ResizeHandle.svelte';
@@ -30,7 +32,8 @@
 
   // Right sidebar state
   let rightCollapsed = $state(false);
-  let rightWidth = $state(300);
+  let rightWidth = $state(360);
+  let rightDragging = $state(false);
   const RIGHT_MIN = 220;
   const RIGHT_MAX = 700;
   const RIGHT_COLLAPSED_W = 40;
@@ -163,15 +166,24 @@
           bind:currentPageIndex
           totalPages={b.total_pages}
           onNeedMore={handleNeedMore}
-        />
+        >
+          {#snippet header()}
+            <BookInfo book={b} />
+          {/snippet}
+        </ReaderContent>
       </div>
 
       <!-- Desktop right sidebar -->
       <div class="right-sidebar-area">
-        <ResizeHandle ondrag={handleRightDrag} />
+        <ResizeHandle
+          ondrag={handleRightDrag}
+          ondragstart={() => (rightDragging = true)}
+          ondragend={() => (rightDragging = false)}
+        />
         <div
           class="right-sidebar"
           class:right-collapsed={rightCollapsed}
+          class:dragging={rightDragging}
           style="width: {rightCollapsed ? RIGHT_COLLAPSED_W : rightWidth}px"
         >
           {#if rightCollapsed}
@@ -189,17 +201,20 @@
                   onClose={toggleRight}
                 />
               {/snippet}
+              {#snippet search()}
+                <ReaderSearch {bookId} onNavigate={handleSidebarNavigate} />
+              {/snippet}
               {#snippet chat()}
                 {#if $appConfig.advanced_enabled}
                   <BookChat
                     {bookId}
-                    bookName={b.name_en}
+                    bookName={b.name_en ?? b.name_ar}
                     {currentPageIndex}
                     onNavigate={handleSidebarNavigate}
                     defaultQuestions={chatDefaultQuestions}
                   />
                 {:else}
-                  <p style="padding: 16px; color: var(--text-muted); font-size: 0.85rem;">Chat is not available in this build.</p>
+                  <p class="chat-disabled-msg">Chat is not available in this build.</p>
                 {/if}
               {/snippet}
             </SidebarTabs>
@@ -227,11 +242,14 @@
               onClose={() => { mobileDrawerOpen = false; }}
             />
           {/snippet}
+          {#snippet search()}
+            <ReaderSearch {bookId} onNavigate={(idx) => { mobileDrawerOpen = false; handleSidebarNavigate(idx); }} />
+          {/snippet}
           {#snippet chat()}
             {#if $appConfig.advanced_enabled}
               <BookChat
                 {bookId}
-                bookName={b.name_en}
+                bookName={b.name_en ?? b.name_ar}
                 {currentPageIndex}
                 onNavigate={(idx) => { mobileDrawerOpen = false; handleSidebarNavigate(idx); }}
               />
@@ -255,6 +273,8 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    background: var(--reader-bg);
+    color: var(--reader-fg);
     overflow: hidden;
     position: relative;
   }
@@ -263,6 +283,7 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+    min-height: 0;
   }
 
   .reader-main {
@@ -282,13 +303,20 @@
     height: 100%;
     overflow: hidden;
     transition: width 200ms ease;
-    border-left: none;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border-subtle);
+    will-change: width;
+  }
+  .right-sidebar.dragging {
+    transition: none;
   }
 
   .right-sidebar.right-collapsed {
     display: flex;
     align-items: center;
     justify-content: center;
+    background: transparent;
+    border-left: none;
   }
 
   .expand-btn {
@@ -321,6 +349,14 @@
   }
   .error-container a {
     color: var(--accent);
+  }
+
+  .chat-disabled-msg {
+    padding: var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--text-meta);
+    font-family: var(--font-sans);
+    font-style: italic;
   }
 
   .mobile-sidebar-btn { display: none; }

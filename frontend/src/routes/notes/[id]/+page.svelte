@@ -7,6 +7,9 @@
   import TagInput from '$lib/components/notes/TagInput.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
   import NotebookPicker from '$lib/components/notes/NotebookPicker.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import SectionHeading from '$lib/components/common/SectionHeading.svelte';
+  import Divider from '$lib/components/common/Divider.svelte';
 
   let note: UserNote | null = $state(null);
   let loading = $state(true);
@@ -87,12 +90,16 @@
 
 <div class="note-detail">
   {#if loading}
-    <div class="loading">Loading note...</div>
+    <div class="state">Loading note…</div>
   {:else if !note}
-    <div class="not-found">Note not found</div>
+    <div class="state">Note not found.</div>
   {:else}
-    <!-- Title -->
-    <div class="title-area">
+    <header class="title-area">
+      <div class="title-top">
+        <Eyebrow>Note · {sourceLabel}</Eyebrow>
+        <a href="/notes" class="back-link">← All notes</a>
+      </div>
+
       {#if editingTitle}
         <input
           class="title-input"
@@ -104,35 +111,36 @@
         <h1 class="title">
           <button type="button" class="title-btn" onclick={() => { editingTitle = true; }}>
             {note.title ?? 'Untitled Note'}
-            <span class="edit-hint">&#9998;</span>
+            <span class="edit-hint">✎</span>
           </button>
         </h1>
       {/if}
+
       <div class="title-meta">
         <Badge text={sourceLabel} variant="default" />
         <span class="ref-count">{note.refs.length} references</span>
         <NotebookPicker bind:value={selectedNotebookId} onchange={handleNotebookChange} />
       </div>
-    </div>
+    </header>
 
-    <!-- Tags -->
+    <hr class="separator" />
+
     <div class="tags-area">
       <TagInput tags={note.tags} onchange={handleTagsChange} />
     </div>
 
-    <!-- Overall Notes -->
     <section class="section">
-      <h2 class="section-label">Overall Notes</h2>
+      <SectionHeading eyebrow="Notes" title="Overall Notes" level={2} />
       <NoteEditor
         note={note}
         onsave={handleContentSave}
       />
     </section>
 
-    <!-- Collected References -->
     {#if note.refs.length > 0}
+      <Divider variant="ornamental" />
       <section class="section">
-        <h2 class="section-label">Collected References ({note.refs.length})</h2>
+        <SectionHeading eyebrow="Refs" title="Collected References ({note.refs.length})" level={2} />
         <div class="refs-list">
           {#each note.refs as ref, idx}
             <RefCard
@@ -144,123 +152,103 @@
         </div>
       </section>
     {/if}
-
-    <a href="/notes" class="back-link">&larr; All Notes</a>
   {/if}
 </div>
 
 <style>
   .note-detail {
-    padding: 40px 40px 60px;
-    max-width: 800px;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6) var(--space-12);
   }
-  .title-area {
-    margin-bottom: 28px;
+
+  .state {
+    text-align: center;
+    padding: var(--space-12);
+    color: var(--text-muted);
+    font-family: var(--font-serif);
+    font-style: italic;
   }
-  .title {
+
+  .title-area { margin-bottom: var(--space-3); }
+  .title-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-3);
+  }
+  .back-link {
     font-family: var(--font-sans);
-    font-size: 2.2rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.3;
+    font-size: var(--text-meta);
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+  .back-link:hover { color: var(--accent); }
+
+  .title {
+    font-family: var(--font-serif);
+    font-size: 2.1rem;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-tight);
+    line-height: 1.2;
+    margin: 0;
   }
   .title-btn {
     all: unset;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-2);
     font: inherit;
     letter-spacing: inherit;
     color: inherit;
   }
   .edit-hint {
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
     color: var(--text-muted);
     opacity: 0;
     transition: opacity var(--transition);
   }
   .title:hover .edit-hint { opacity: 1; }
   .title-input {
-    font-family: var(--font-sans);
-    font-size: 2.2rem;
-    font-weight: 800;
+    font-family: var(--font-serif);
+    font-size: 2.1rem;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-tight);
     border: none;
     border-bottom: 2px solid var(--accent);
     background: transparent;
     color: var(--text-primary);
     width: 100%;
     outline: none;
-    padding: 4px 0;
-    letter-spacing: -0.01em;
+    padding: var(--space-1) 0;
   }
+
   .title-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 8px;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    flex-wrap: wrap;
   }
   .ref-count {
-    font-size: 0.75rem;
-    color: var(--text-muted);
     font-family: var(--font-mono);
+    font-size: var(--text-meta);
+    color: var(--text-muted);
   }
-  .tags-area {
-    margin-bottom: 28px;
+
+  .separator {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: var(--space-6) 0;
   }
-  .section {
-    margin-bottom: 36px;
-  }
-  .section-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--accent);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .section-label::before {
-    content: '';
-    display: inline-block;
-    width: 3px;
-    height: 14px;
-    background: var(--accent);
-    border-radius: 2px;
-  }
+  .tags-area { margin-bottom: var(--space-6); }
+  .section { margin-bottom: var(--space-8); }
+
   .refs-list {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-  }
-  .loading, .not-found {
-    text-align: center;
-    padding: 60px;
-    color: var(--text-muted);
-    font-family: var(--font-serif);
-    font-style: italic;
-  }
-  .back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 32px;
-    padding: 10px 20px;
-    font-size: 0.8rem;
-    font-family: var(--font-sans);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--accent);
-    text-decoration: none;
-    border: 1px solid var(--accent-muted);
-    border-radius: var(--radius);
-    transition: all var(--transition);
-  }
-  .back-link:hover {
-    background: var(--accent-muted);
-    color: var(--accent-hover);
+    gap: var(--space-3);
   }
 </style>

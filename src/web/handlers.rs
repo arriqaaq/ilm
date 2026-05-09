@@ -56,11 +56,21 @@ pub struct SearchParams {
 pub struct ListParams {
     /// Numeric `collection_id` (1=Bukhari, 2=Muslim, 3=Abu Dawud, 4=Tirmidhi, 5=Nasai, 6=Ibn Majah).
     pub book: Option<i64>,
+    /// Multiple `collection_id`s, comma-joined (e.g. `1,2,3`). Combined with `book` if both supplied.
+    pub books: Option<String>,
     /// Filter by `hadith_number` within a collection.
     pub number: Option<i64>,
+    /// Inclusive lower bound on `hadith_number`.
+    pub n_min: Option<i64>,
+    /// Inclusive upper bound on `hadith_number`.
+    pub n_max: Option<i64>,
+    /// Comma-joined narrator slugs; restricts to hadiths with `narrates` edges from any of them.
+    pub narrators: Option<String>,
+    /// Sort order: `number_asc` (default) or `number_desc`.
+    pub sort: Option<String>,
     pub page: Option<usize>,
     pub limit: Option<usize>,
-    /// Free-text substring filter on Arabic / English text.
+    /// Free-text substring filter on Arabic / English / narrator text.
     pub q: Option<String>,
     /// Filter by narrator generation (tabaqah).
     pub generation: Option<String>,
@@ -190,7 +200,26 @@ pub async fn hadith_list(
 ) -> impl IntoResponse {
     let page = params.page.unwrap_or(1);
     let limit = params.limit.unwrap_or(20);
-    match crate::services::hadith::list(&state, params.book, params.number, page, limit).await {
+    let books = parse_csv_i64(params.books.as_deref());
+    let narrators = parse_csv_string(params.narrators.as_deref());
+    let q = params.q.as_deref().map(str::trim).filter(|s| !s.is_empty()).map(str::to_owned);
+    match crate::services::hadith::list(
+        &state,
+        crate::services::hadith::ListFilters {
+            book: params.book,
+            books,
+            number: params.number,
+            n_min: params.n_min,
+            n_max: params.n_max,
+            narrators,
+            q,
+            sort: params.sort,
+        },
+        page,
+        limit,
+    )
+    .await
+    {
         Ok(resp) => Json(serde_json::to_value(resp).unwrap()),
         Err(e) => {
             tracing::error!("Hadith list query failed: {e}");
@@ -202,6 +231,26 @@ pub async fn hadith_list(
             }))
         }
     }
+}
+
+fn parse_csv_i64(s: Option<&str>) -> Vec<i64> {
+    s.map(|raw| {
+        raw.split(',')
+            .filter_map(|p| p.trim().parse::<i64>().ok())
+            .collect()
+    })
+    .unwrap_or_default()
+}
+
+fn parse_csv_string(s: Option<&str>) -> Vec<String> {
+    s.map(|raw| {
+        raw.split(',')
+            .map(str::trim)
+            .filter(|p| !p.is_empty())
+            .map(str::to_owned)
+            .collect()
+    })
+    .unwrap_or_default()
 }
 
 /// Single hadith with its narrators, linked Quran ayahs, and similar hadiths.

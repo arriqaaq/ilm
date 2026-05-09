@@ -2,6 +2,7 @@
   import { narratorAutocomplete } from '$lib/api';
   import type { ApiNarratorSearchResult } from '$lib/types';
   import { language } from '$lib/stores/language';
+  import { bilingualDisplayName } from '$lib/normalize';
   import Badge from '$lib/components/common/Badge.svelte';
   import { onDestroy } from 'svelte';
 
@@ -70,7 +71,7 @@
         <button class="dropdown-item" class:selected={i === selectedIndex}
                 onmousedown={(e) => { e.preventDefault(); select(s); }}>
           <span class="item-name">
-            {$language === 'en' && s.name_en ? s.name_en : (s.name_ar || s.name_en)}
+            {bilingualDisplayName(s, $language, s.id)}
           </span>
           {#if s.generation}<Badge text={s.generation} variant="accent" />{/if}
           {#if s.hadith_count}<span class="item-count mono">{s.hadith_count}</span>{/if}

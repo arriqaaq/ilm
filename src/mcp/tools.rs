@@ -568,9 +568,18 @@ impl McpServer {
     ) -> Result<CallToolResult, McpError> {
         let page = args.page.unwrap_or(1).max(1) as usize;
         let limit = clamp_limit(args.limit);
-        let resp = services::hadith::list(&self.state, args.book, args.number, page, limit)
-            .await
-            .map_err(mcp_err)?;
+        let resp = services::hadith::list(
+            &self.state,
+            services::hadith::ListFilters {
+                book: args.book,
+                number: args.number,
+                ..Default::default()
+            },
+            page,
+            limit,
+        )
+        .await
+        .map_err(mcp_err)?;
         Ok(CallToolResult::success(vec![Content::json(resp)?]))
     }
 

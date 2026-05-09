@@ -1,29 +1,58 @@
 <script lang="ts">
-  let { ondrag }: {
+  let { ondrag, ondragstart, ondragend }: {
     ondrag: (deltaX: number) => void;
+    ondragstart?: () => void;
+    ondragend?: () => void;
   } = $props();
 
   let dragging = $state(false);
   let startX = 0;
+  let rafId = 0;
+  let pendingDelta = 0;
 
-  function onMouseDown(e: MouseEvent) {
+  function flush() {
+    if (pendingDelta !== 0) {
+      ondrag(pendingDelta);
+      pendingDelta = 0;
+    }
+    rafId = 0;
+  }
+
+  function onPointerDown(e: PointerEvent) {
+    if (e.button !== 0) return;
     e.preventDefault();
     dragging = true;
     startX = e.clientX;
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.add('is-resizing');
+    }
+    ondragstart?.();
   }
 
-  function onMouseMove(e: MouseEvent) {
+  function onPointerMove(e: PointerEvent) {
+    if (!dragging) return;
     const delta = e.clientX - startX;
+    if (delta === 0) return;
     startX = e.clientX;
-    ondrag(delta);
+    pendingDelta += delta;
+    if (rafId === 0) {
+      rafId = requestAnimationFrame(flush);
+    }
   }
 
-  function onMouseUp() {
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
+  function onPointerUp(e: PointerEvent) {
+    if (!dragging) return;
     dragging = false;
+    if (rafId !== 0) {
+      cancelAnimationFrame(rafId);
+      flush();
+    }
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('is-resizing');
+    }
+    ondragend?.();
   }
 </script>
 
@@ -31,7 +60,10 @@
 <div
   class="resize-handle"
   class:dragging
-  onmousedown={onMouseDown}
+  onpointerdown={onPointerDown}
+  onpointermove={onPointerMove}
+  onpointerup={onPointerUp}
+  onpointercancel={onPointerUp}
 >
   <div class="handle-grip">
     <span class="grip-dot"></span>
@@ -42,7 +74,7 @@
 
 <style>
   .resize-handle {
-    width: 8px;
+    width: 12px;
     flex-shrink: 0;
     position: relative;
     cursor: col-resize;
@@ -50,6 +82,7 @@
     align-items: center;
     justify-content: center;
     user-select: none;
+    touch-action: none;
     z-index: 2;
   }
 

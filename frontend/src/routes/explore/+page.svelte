@@ -8,6 +8,10 @@
   import Badge from '$lib/components/common/Badge.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import Pagination from '$lib/components/common/Pagination.svelte';
+  import PageHeader from '$lib/components/common/PageHeader.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import Button from '$lib/components/common/Button.svelte';
+  import Ornament from '$lib/components/common/Ornament.svelte';
   import { appConfig } from '$lib/stores/config';
 
   let result: UnifiedSearchResponse | null = $state(null);
@@ -76,55 +80,58 @@
 </script>
 
 {#if !$appConfig.advanced_enabled}
-<div class="explore-page">
-  <div class="explore-header">
-    <h1>Explore</h1>
-    <p class="unavailable-msg">Advanced search features are not available in this build. Use <a href="/search">Search</a> for text search.</p>
-  </div>
+<div class="page-shell">
+  <PageHeader eyebrow="Explore" title="Semantic Search" />
+  <p class="unavailable-msg">Advanced search features are not available in this build. Use <a class="link" href="/search">Search</a> for text search.</p>
 </div>
 {:else}
-<div class="explore-page">
-  <div class="explore-header">
-    <h1>Quran & Sunnah</h1>
-    <form class="search-form" onsubmit={handleSubmit}>
-      <div class="search-bar">
-        <span class="search-icon">&#x2315;</span>
-        <input type="text" placeholder="Search Quran & Sunnah..." bind:value={query} class="search-input" />
+<div class="page-shell">
+  <PageHeader
+    eyebrow="Explore"
+    title="Semantic Search"
+    subtitle="Find verses and hadiths by meaning, not just keywords."
+  />
+
+  <form class="explore-form" onsubmit={handleSubmit}>
+    <div class="search-bar">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="text" placeholder="Ask a question or search a topic…" bind:value={query} class="search-input" />
+      <Button type="submit" variant="primary" size="md">Search</Button>
+    </div>
+    <div class="search-controls">
+      <div class="type-toggle">
+        <button type="button" class="toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
+        <button type="button" class="toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
       </div>
-      <div class="search-controls">
-        <div class="type-toggle">
-          <button type="button" class="toggle-btn" class:active={searchType === 'hybrid'} onclick={() => searchType = 'hybrid'}>Hybrid</button>
-          <button type="button" class="toggle-btn" class:active={searchType === 'semantic'} onclick={() => searchType = 'semantic'}>Semantic</button>
-        </div>
-        {#if searchType === 'hybrid'}
-          <label class="rerank-toggle" title="Slower but better ranking for theological queries (~200ms).">
-            <input type="checkbox" bind:checked={rerank} />
-            <span>⚡ Precision mode</span>
-          </label>
-        {/if}
-        <button type="submit" class="search-btn">Search</button>
-      </div>
-    </form>
-  </div>
+      {#if searchType === 'hybrid'}
+        <label class="rerank-toggle" title="Slower but better ranking for theological queries (~200ms).">
+          <input type="checkbox" bind:checked={rerank} />
+          <span>⚡ Precision mode</span>
+        </label>
+      {/if}
+    </div>
+  </form>
 
   {#if loading}
     <LoadingSpinner />
   {:else if result}
     {#if result.results.length > 0}
       <div class="results-summary">
-        <span class="summary-count">{result.results.length} results</span>
-        <span class="summary-breakdown">
-          <span class="quran-count">{result.quran_count} from Quran</span>
-          <span class="summary-dot">&middot;</span>
-          <span class="hadith-count">{result.hadith_count} from Hadith</span>
-        </span>
+        <span class="summary-count">{result.results.length}</span>
+        <span class="summary-label">results</span>
+        <span class="summary-dot">·</span>
+        <span class="quran-count">{result.quran_count} ayāt</span>
+        <span class="summary-dot">·</span>
+        <span class="hadith-count">{result.hadith_count} hadiths</span>
       </div>
 
       <div class="results-list">
         {#each result.results as item}
           {#if isQuran(item)}
-            <div class="result-item">
-              <div class="source-tag quran-tag">Quran</div>
+            <article class="result-row source-quran">
+              <div class="source-eyebrow"><Eyebrow>Qurʾān</Eyebrow></div>
               <a href="/quran/{item.surah_number}?ayah={item.ayah_number}" class="result-link">
                 <AyahCard ayah={{
                   id: item.id,
@@ -133,13 +140,12 @@
                   text_ar: item.text_ar,
                   text_en: item.text_en,
                   tafsir_en: item.tafsir_en,
-
                 }} compact />
               </a>
-            </div>
+            </article>
           {:else}
-            <div class="result-item">
-              <div class="source-tag hadith-tag">Hadith</div>
+            <article class="result-row source-hadith">
+              <div class="source-eyebrow"><Eyebrow tone="muted">Hadith</Eyebrow></div>
               <a href="/hadiths/{item.id}" class="result-card">
                 <div class="result-header">
                   <Badge text="Book {item.collection_id}" />
@@ -149,7 +155,7 @@
                 {#if item.narrator_text}<p class="narrator">{item.narrator_text}</p>{/if}
                 <p class="text">{$language === 'en' && item.text_en ? truncate(stripHtml(item.text_en), 200) : truncate(item.text_ar || stripHtml(item.text_en ?? ''), 200)}</p>
               </a>
-            </div>
+            </article>
           {/if}
         {/each}
       </div>
@@ -160,103 +166,175 @@
     {/if}
   {:else}
     <div class="empty-state">
-      <div class="empty-icon">&#x2726;</div>
-      <h2>Search across Quran & Sunnah</h2>
-      <p>Find wisdom from the Quran and Prophetic tradition in a single search.</p>
+      <Ornament variant="star" size={32} color="var(--accent)" />
+      <h2 class="empty-title">Search across Qurʾān &amp; Sunnah</h2>
+      <p class="empty-hint">Find wisdom from the Qurʾān and Prophetic tradition in a single search.</p>
     </div>
   {/if}
 </div>
 {/if}
 
 <style>
-  .explore-page { padding: 24px; }
-  .unavailable-msg { color: var(--text-secondary); font-size: 0.9rem; }
-  .unavailable-msg a { color: var(--accent); text-decoration: none; font-weight: 600; }
-
-  .explore-header { margin-bottom: 24px; }
-  .explore-header h1 {
-    font-size: 1.4rem;
-    margin-bottom: 16px;
-    color: var(--text-primary);
+  .unavailable-msg {
+    color: var(--text-secondary);
+    font-family: var(--font-serif);
+    font-size: var(--text-body);
+    font-style: italic;
+  }
+  .link {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
   }
 
-  .search-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .explore-form {
+    margin-bottom: var(--space-6);
+  }
   .search-bar {
-    flex: 1;
-    min-width: 250px;
-    max-width: 500px;
     display: flex;
     align-items: center;
+    gap: var(--space-3);
+    max-width: 720px;
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
     background: var(--bg-surface);
     border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 0 14px;
+    border-radius: var(--radius-pill);
     transition: border-color var(--transition);
   }
   .search-bar:focus-within { border-color: var(--accent); }
-  .search-icon { color: var(--text-muted); font-size: 1rem; margin-right: 8px; }
-  .search-input { flex: 1; border: none; background: transparent; padding: 10px 0; font-size: 0.9rem; }
-  .search-controls { display: flex; gap: 8px; align-items: center; }
-  .type-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .toggle-btn { padding: 8px 14px; font-size: 0.8rem; background: var(--bg-surface); color: var(--text-secondary); transition: all var(--transition); border: none; cursor: pointer; }
-  .toggle-btn.active { background: var(--accent); color: white; }
-  .rerank-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; user-select: none; }
+  .search-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    padding: var(--space-2) 0;
+  }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .search-controls {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    margin-top: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .type-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .toggle-btn {
+    padding: var(--space-3) var(--space-4);
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    font-weight: var(--font-weight-medium);
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all var(--transition);
+    border: none;
+    cursor: pointer;
+  }
+  .toggle-btn.active {
+    background: var(--accent-muted);
+    color: var(--accent);
+  }
+  .rerank-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+  }
   .rerank-toggle input { margin: 0; cursor: pointer; }
-  .search-btn { padding: 8px 20px; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: background var(--transition); }
-  .search-btn:hover { background: var(--accent-hover); }
 
   .results-summary {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-    font-size: 0.85rem;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
     color: var(--text-secondary);
   }
-  .summary-count { font-weight: 600; color: var(--text-primary); }
-  .summary-breakdown { display: flex; gap: 6px; align-items: center; }
+  .summary-count {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+  }
+  .summary-label { color: var(--text-muted); }
   .quran-count { color: var(--success); }
   .hadith-count { color: var(--accent); }
   .summary-dot { color: var(--text-muted); }
 
-  .results-list { display: flex; flex-direction: column; gap: 12px; }
-
-  .result-item { position: relative; }
-  .source-tag {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 2;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 2px 8px;
-    border-radius: 10px;
+  .results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
-  .quran-tag { background: rgba(63, 185, 80, 0.12); color: var(--success); }
-  .hadith-tag { background: var(--accent-muted); color: var(--accent); }
 
-  .result-link { display: block; color: var(--text-primary); }
+  .result-row {
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .result-row:last-child { border-bottom: none; }
+  .source-eyebrow { margin-bottom: var(--space-2); }
+
+  .result-link {
+    display: block;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
   .result-link:hover { color: var(--text-primary); }
 
   .result-card {
     display: block;
-    padding: 16px;
+    padding: var(--space-3) var(--space-4);
     background: var(--bg-surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius);
     color: var(--text-primary);
     transition: all var(--transition);
   }
   .result-card:hover { border-color: var(--accent); background: var(--bg-hover); color: var(--text-primary); }
-  .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-  .hadith-num { color: var(--text-muted); font-size: 0.8rem; }
-  .score { margin-left: auto; color: var(--success); font-size: 0.8rem; }
-  .narrator { color: var(--accent); font-size: 0.85rem; margin-bottom: 4px; }
-  .text { color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; }
+  .result-header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+  .hadith-num { color: var(--text-muted); font-size: var(--text-meta); }
+  .score { margin-left: auto; color: var(--success); font-size: var(--text-meta); }
+  .narrator {
+    font-family: var(--font-serif);
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: var(--text-meta);
+    margin: 0 0 var(--space-2);
+  }
+  .text {
+    font-family: var(--font-serif);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    line-height: var(--leading-relaxed);
+    margin: 0;
+  }
 
-  .empty { text-align: center; color: var(--text-muted); padding: 40px; }
+  .empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: var(--space-12);
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
 
   .empty-state {
     display: flex;
@@ -264,16 +342,28 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 80px 24px;
+    padding: var(--space-12) var(--space-6);
     color: var(--text-secondary);
-    gap: 12px;
+    gap: var(--space-3);
   }
-  .empty-icon { font-size: 2.5rem; color: var(--accent); }
-  .empty-state h2 { color: var(--text-primary); font-size: 1.2rem; }
-  .empty-state p { max-width: 400px; line-height: 1.6; font-size: 0.9rem; }
+  .empty-title {
+    color: var(--text-primary);
+    font-family: var(--font-serif);
+    font-size: var(--text-lead);
+    font-weight: var(--font-weight-semibold);
+    margin: var(--space-2) 0 0;
+  }
+  .empty-hint {
+    max-width: 420px;
+    line-height: 1.6;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: var(--text-body);
+    color: var(--text-muted);
+    margin: 0;
+  }
 
   @media (max-width: 640px) {
     .search-bar { max-width: 100%; }
-    .source-tag { top: 4px; right: 4px; }
   }
 </style>

@@ -7,6 +7,9 @@
   import GlossaryTooltip from '$lib/components/hadith/GlossaryTooltip.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
   import DiffViewer from '$lib/components/hadith/DiffViewer.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import PageHero from '$lib/components/layout/PageHero.svelte';
+  import TabStrip from '$lib/components/layout/TabStrip.svelte';
 
   let data: FamilyDetailResponse | null = $state(null);
   let mustalah: MustalahFamilyResponse | null = $state(null);
@@ -76,25 +79,31 @@
 
 <div class="family-view">
   {#if loading}
-    <LoadingSpinner />
+    <div class="loading-wrap"><LoadingSpinner /></div>
   {:else if data}
-    <div class="view-header">
-      <h1>{data.family.family_label ?? 'Hadith Family'}</h1>
-      <div class="badges">
-        <Badge text="{data.hadiths.length} variants" variant="accent" />
+    {@const d = data}
+    <PageHero nameEn={d.family.family_label ?? 'Unnamed family'}>
+      {#snippet eyebrow()}<Eyebrow>Hadith Family · #{d.family.id.slice(0, 8)}</Eyebrow>{/snippet}
+      {#snippet meta()}
+        <span class="hero-meta-item"><span class="hero-meta-label">Variants</span> {d.hadiths.length}</span>
         {#if mustalah?.analysis?.breadth_class}
-          <Badge text={breadthLabel(mustalah.analysis.breadth_class)} variant="default" />
+          <span class="hero-dot">·</span>
+          <span class="hero-meta-item"><span class="hero-meta-label">Breadth</span> {breadthLabel(mustalah.analysis.breadth_class)}</span>
         {/if}
-      </div>
-    </div>
+      {/snippet}
+    </PageHero>
 
-    <div class="tabs">
-      <button type="button" class="tab" class:active={activeTab === 'variants'} onclick={() => { activeTab = 'variants'; }}>Variants ({data.hadiths.length})</button>
-      <button type="button" class="tab" class:active={activeTab === 'analysis'} onclick={() => { activeTab = 'analysis'; }}>Analysis</button>
-      <button type="button" class="tab" class:active={activeTab === 'diff'} onclick={() => { activeTab = 'diff'; }}>Matn Diff</button>
-    </div>
+    <TabStrip
+      ariaLabel="Family sections"
+      bind:active={activeTab}
+      tabs={[
+        { id: 'variants', label: 'Variants', count: d.hadiths.length },
+        { id: 'analysis', label: 'Analysis' },
+        { id: 'diff', label: 'Matn Diff' },
+      ]}
+    />
 
-    <div class="tab-content">
+    <div class="tab-content" style="margin-top: var(--space-6)">
       {#if activeTab === 'variants'}
         <div class="hadith-list">
           {#each data.hadiths as hadith (hadith.id)}
@@ -245,62 +254,245 @@
 </div>
 
 <style>
-  .family-view { padding: 24px; max-width: 1100px; }
-  .view-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-  .badges { display: flex; gap: 8px; }
-  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-  .tab { padding: 10px 16px; font-size: 0.85rem; color: var(--text-secondary); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
-  .tab:hover { color: var(--text-primary); }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .hadith-list { display: flex; flex-direction: column; gap: 12px; }
-  .empty { text-align: center; color: var(--text-muted); padding: 40px; }
-  .hint { font-size: 0.85rem; }
-  code { background: var(--bg-surface); padding: 2px 6px; border-radius: 4px; }
+  .family-view {
+    max-width: var(--page-width);
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6) var(--space-12);
+  }
+  .loading-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-12);
+  }
+
+  .hero-meta-item {
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
+  }
+  .hero-meta-label {
+    color: var(--text-muted);
+    font-size: var(--text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    margin-right: 4px;
+  }
+  .hero-dot { color: var(--text-muted); }
+
+  .hadith-list { display: flex; flex-direction: column; }
+  .empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: var(--space-12);
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
+  .hint { font-size: var(--text-meta); }
+  code {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-meta);
+  }
 
   /* Analysis table */
   .analysis-table { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-  th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; }
-  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-  td.mono { font-family: monospace; }
-  td.pos { width: 30px; color: var(--text-muted); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-meta);
+  }
+  th {
+    text-align: left;
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+    font-family: var(--font-sans);
+    font-size: var(--text-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  td {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  td.mono { font-family: var(--font-mono); }
+  td.pos {
+    width: 30px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
   td a { color: var(--accent); }
   td a:hover { text-decoration: underline; }
 
-  /* Diff */
-  .diff-controls { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; }
-  .diff-controls label { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px; }
-  .diff-controls span { font-size: 0.8rem; color: var(--text-secondary); }
-  .diff-controls select { padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-primary); color: var(--text-primary); }
-  .diff-btn { padding: 8px 20px; background: var(--accent); color: white; border: none; border-radius: var(--radius); cursor: pointer; white-space: nowrap; }
+  /* Diff controls */
+  .diff-controls {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-end;
+    margin-bottom: var(--space-5);
+    flex-wrap: wrap;
+  }
+  .diff-controls label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    flex: 1;
+    min-width: 200px;
+  }
+  .diff-controls span {
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
+  }
+  .diff-controls select {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: var(--text-meta);
+  }
+  .diff-btn {
+    padding: var(--space-2) var(--space-5);
+    background: var(--accent);
+    color: var(--btn-primary-fg);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    font-weight: var(--font-weight-semibold);
+    transition: background var(--transition);
+  }
+  .diff-btn:hover:not(:disabled) { background: var(--accent-hover); }
   .diff-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  /* Mustalah analysis */
-  .mustalah-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .m-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
-  .m-card .label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px; }
-  .m-card .value { font-size: 1.1rem; font-weight: 600; }
-  .m-card .detail { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
-  .section-header { margin-top: 20px; margin-bottom: 10px; }
-  .section-header h3 { font-size: 0.95rem; color: var(--text-secondary); }
-  .section-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
-  .ilal-section { margin-top: 16px; margin-bottom: 16px; padding: 12px; background: color-mix(in srgb, var(--warning) 8%, transparent); border: 1px solid var(--warning); border-radius: var(--radius); }
-  .ilal-section h3 { font-size: 0.85rem; color: var(--warning); margin-bottom: 8px; }
-  .ilal-section ul { margin: 0; padding-left: 20px; font-size: 0.85rem; color: var(--text-secondary); }
-  .ilal-section li { margin-bottom: 4px; }
+  /* Mustalah analysis cards */
+  .mustalah-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+  .m-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+  }
+  .m-card .label {
+    font-family: var(--font-sans);
+    font-size: var(--text-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: var(--space-1);
+  }
+  .m-card .value {
+    font-family: var(--font-serif);
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+  }
+  .m-card .detail {
+    font-size: var(--text-meta);
+    color: var(--text-muted);
+    margin-top: var(--space-1);
+  }
+  .section-header {
+    margin-top: var(--space-5);
+    margin-bottom: var(--space-3);
+  }
+  .section-header h3 {
+    font-family: var(--font-sans);
+    font-size: var(--text-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .section-hint {
+    font-size: var(--text-meta);
+    color: var(--text-muted);
+    margin-top: var(--space-1);
+  }
+  .ilal-section {
+    margin: var(--space-4) 0;
+    padding: var(--space-4);
+    background: color-mix(in srgb, var(--warning) 8%, transparent);
+    border: 1px solid var(--warning);
+    border-radius: var(--radius);
+  }
+  .ilal-section h3 {
+    font-family: var(--font-sans);
+    font-size: var(--text-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--warning);
+    margin-bottom: var(--space-2);
+  }
+  .ilal-section ul {
+    margin: 0;
+    padding-left: var(--space-5);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
+  }
+  .ilal-section li { margin-bottom: var(--space-1); }
 
   /* Chain cards */
-  .chain-card { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; }
-  .chain-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-surface); cursor: pointer; width: 100%; border: none; color: var(--text-primary); }
+  .chain-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-2);
+    overflow: hidden;
+  }
+  .chain-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-surface);
+    cursor: pointer;
+    width: 100%;
+    border: none;
+    color: var(--text-primary);
+    text-align: inherit;
+    transition: background var(--transition);
+  }
   .chain-header:hover { background: var(--bg-hover); }
-  .chain-info { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .chain-info a { color: var(--accent); font-weight: 600; }
-  .chain-meta { display: flex; align-items: center; gap: 8px; }
-  .narrator-count { font-size: 0.8rem; color: var(--text-muted); }
-  .expand-icon { font-size: 0.8rem; color: var(--text-muted); }
+  .chain-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+  .chain-info a {
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: var(--text-meta);
+    font-weight: var(--font-weight-semibold);
+  }
+  .chain-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .narrator-count {
+    font-size: var(--text-meta);
+    color: var(--text-muted);
+  }
+  .expand-icon { font-size: var(--text-meta); color: var(--text-muted); }
   .chain-narrators { border-top: 1px solid var(--border); }
   .chain-narrators table { font-size: 0.85rem; }
-  .chain-narrators th { font-size: 0.75rem; }
+  .chain-narrators th { font-size: var(--text-2xs); }
 
   @media (max-width: 768px) {
   }

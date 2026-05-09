@@ -1,11 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { goto } from '$app/navigation';
   import { searchQuran, searchByRoot } from '$lib/api';
   import type { QuranSearchResponse, RootSearchResponse } from '$lib/types';
   import AyahCard from '$lib/components/quran/AyahCard.svelte';
   import Pagination from '$lib/components/common/Pagination.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import PageHeader from '$lib/components/common/PageHeader.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import Button from '$lib/components/common/Button.svelte';
   import { appConfig } from '$lib/stores/config';
 
   let result: QuranSearchResponse | null = $state(null);
@@ -69,11 +71,15 @@
   }
 </script>
 
-<div class="search-page">
-  <h1>Quran Search</h1>
+<div class="page-shell">
+  <PageHeader
+    eyebrow="Qurʾān"
+    title="Search the Qurʾān"
+    subtitle="Full-text, semantic, hybrid, or trilateral root search across all 6,236 āyāt."
+  />
 
   <form class="search-form" onsubmit={handleSubmit}>
-    <input type="text" placeholder="Search the Quran..." bind:value={query} class="search-input" />
+    <input type="text" placeholder="Search the Qurʾān…" bind:value={query} class="search-input" />
     <div class="type-toggle">
       <button type="button" class="toggle-btn" class:active={searchType === 'text'} onclick={() => searchType = 'text'}>Text</button>
       {#if $appConfig.advanced_enabled}
@@ -82,7 +88,7 @@
       {/if}
       <button type="button" class="toggle-btn" class:active={searchType === 'root'} onclick={() => searchType = 'root'}>Root</button>
     </div>
-    <button type="submit" class="search-btn">Search</button>
+    <Button type="submit" variant="primary" size="md">Search</Button>
   </form>
 
   {#if loading}
@@ -90,8 +96,10 @@
   {:else if rootResult}
     {#if rootResult.occurrences.length > 0}
       <section class="results-section">
-        <h2 dir="rtl">{rootResult.root} - {rootResult.occurrences.length} words in {rootResult.ayah_count} ayahs</h2>
-        <a href="/quran/root/{encodeURIComponent(rootResult.root)}" class="view-all">View detailed root page</a>
+        <Eyebrow>Root Results</Eyebrow>
+        <h2 class="results-title arabic-prose" dir="rtl">{rootResult.root}</h2>
+        <p class="results-subtitle">{rootResult.occurrences.length} words across {rootResult.ayah_count} āyāt</p>
+        <a href="/quran/root/{encodeURIComponent(rootResult.root)}" class="link">View detailed root page →</a>
       </section>
     {:else}
       <div class="empty">No words found for root "{query}".</div>
@@ -99,7 +107,7 @@
   {:else if result}
     {#if result.ayahs.length > 0}
       <section class="results-section">
-        <h2>Results</h2>
+        <Eyebrow>Results · {result.ayahs.length}</Eyebrow>
         <div class="results-list">
           {#each result.ayahs as ayah}
             <a href="/quran/{ayah.surah_number}?ayah={ayah.ayah_number}" class="result-link">
@@ -116,20 +124,91 @@
 </div>
 
 <style>
-  .search-page { padding: 24px; }
-  h1 { margin-bottom: 20px; }
-  .search-form { display: flex; gap: 8px; margin-bottom: 24px; align-items: center; flex-wrap: wrap; }
-  .search-input { flex: 1; min-width: 250px; max-width: 500px; }
-  .type-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .toggle-btn { padding: 8px 12px; font-size: 0.8rem; background: var(--bg-surface); color: var(--text-secondary); transition: all var(--transition); }
-  .toggle-btn.active { background: var(--accent); color: var(--bg-primary); }
-  .search-btn { padding: 8px 20px; background: var(--accent); color: var(--bg-primary); border-radius: var(--radius); font-weight: 600; font-size: 0.85rem; transition: background var(--transition); }
-  .search-btn:hover { background: var(--accent-hover); }
-  .results-section { margin-bottom: 28px; }
-  .results-section h2 { margin-bottom: 12px; }
-  .results-list { display: flex; flex-direction: column; gap: 10px; }
-  .result-link { color: var(--text-primary); }
+  .search-form {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .search-input {
+    flex: 1;
+    min-width: 250px;
+    max-width: 500px;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+
+  .type-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .toggle-btn {
+    padding: var(--space-2) var(--space-4);
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    font-weight: var(--font-weight-medium);
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+  .toggle-btn.active {
+    background: var(--accent-muted);
+    color: var(--accent);
+  }
+
+  .results-section { margin-bottom: var(--space-7); }
+  .results-section :global(.eyebrow) {
+    display: inline-block;
+    margin-bottom: var(--space-3);
+  }
+  .results-title {
+    font-size: clamp(2rem, 5vw, 2.6rem);
+    font-weight: var(--font-weight-semibold);
+    margin: 0;
+    line-height: 1.4;
+  }
+  .results-subtitle {
+    font-family: var(--font-serif);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: var(--space-2) 0;
+  }
+  .results-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .result-link {
+    color: var(--text-primary);
+    text-decoration: none;
+  }
   .result-link:hover { color: var(--text-primary); }
-  .empty { text-align: center; color: var(--text-muted); padding: 40px; }
-  .view-all { font-size: 0.85rem; color: var(--accent); }
+
+  .link {
+    color: var(--accent);
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  .empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: var(--space-12);
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
 </style>

@@ -2,8 +2,8 @@
   import { page } from '$app/state';
   import { getSurah, fetchNoteRefs, getSurahTafsirPages } from '$lib/api';
   import type { ApiAyah, ApiAyahSearchResult, SurahDetailResponse, NoteRefsIndicator, TafsirPageRef } from '$lib/types';
-  import SurahHeader from '$lib/components/quran/SurahHeader.svelte';
   import AyahCard from '$lib/components/quran/AyahCard.svelte';
+  import PageHero from '$lib/components/layout/PageHero.svelte';
   import AyahDetailsModal from '$lib/components/quran/AyahDetailsModal.svelte';
   import NoteModal from '$lib/components/notes/NoteModal.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -38,9 +38,10 @@
 
   // Right sidebar state
   let rightCollapsed = $state(true);
-  let rightWidth = $state(280);
-  const RIGHT_MIN = 200;
-  const RIGHT_MAX = 400;
+  let rightWidth = $state(360);
+  let rightDragging = $state(false);
+  const RIGHT_MIN = 220;
+  const RIGHT_MAX = 480;
   const RIGHT_COLLAPSED_W = 40;
 
   let surahNum = $derived(Number(page.params.surah));
@@ -125,63 +126,75 @@
   let mobileDrawerOpen = $state(false);
 </script>
 
-<div class="surah-page">
+<div class="reader">
   {#if loading}
-    <div class="page-content">
-      <LoadingSpinner />
-    </div>
+    <div class="reader-loading"><LoadingSpinner /></div>
   {:else if data}
     {@const d = data}
-    <!-- Scrollable content area -->
-    <div class="page-content">
-      <div class="surah-nav">
-        {#if d.surah.surah_number > 1}
-          <a href="/quran/{d.surah.surah_number - 1}" class="nav-link">← Previous</a>
-        {/if}
-        <a href="/quran" class="nav-link">All Surahs</a>
-        {#if d.surah.surah_number < 114}
-          <a href="/quran/{d.surah.surah_number + 1}" class="nav-link">Next →</a>
-        {/if}
-      </div>
+    <div class="reader-body">
+      <div class="reader-main">
+        <article class="reader-column">
+          <PageHero
+            nameEn={d.surah.name_translit}
+            nameAr={d.surah.name_ar}
+            arabicFont="quran"
+          >
+            {#snippet accent()}<span class="meaning">{d.surah.name_en}</span>{/snippet}
+            {#snippet meta()}
+              <span class="hero-meta-item"><span class="hero-meta-label">Sūrah</span> <span class="mono">#{d.surah.surah_number}</span></span>
+              <span class="hero-dot">·</span>
+              <span class="hero-meta-item"><span class="hero-meta-label">Āyāt</span> {d.surah.ayah_count}</span>
+              <span class="hero-dot">·</span>
+              <span class="hero-meta-item"><span class="hero-meta-label">Revelation</span> {d.surah.revelation_type}</span>
+            {/snippet}
+          </PageHero>
+        </article>
 
-      <SurahHeader surah={d.surah} />
+        <div class="ayah-stream">
+          {#each d.ayahs as ayah}
+            <div id="{d.surah.surah_number}:{ayah.ayah_number}">
+              <AyahCard
+                {ayah}
+                active={ayah.ayah_number === activeAyah}
+                onplay={handleAyahPlay}
+                onopenpanel={(a) => panelAyah = a}
+                onopennote={(a) => { noteTarget = { refType: 'ayah', refId: `${a.surah_number}:${a.ayah_number}`, label: `${a.surah_number}:${a.ayah_number}` }; }}
+                onopentafsir={(info) => { tafsirTarget = info; }}
+                noteIndicator={noteIndicators[`${d.surah.surah_number}:${ayah.ayah_number}`]}
+                tafsirPage={tafsirMappings[String(ayah.ayah_number)]}
+                {reciterFolder}
+              />
+            </div>
+          {/each}
+        </div>
 
-      <div class="ayah-list">
-        {#each d.ayahs as ayah}
-          <div id="{d.surah.surah_number}:{ayah.ayah_number}">
-            <AyahCard
-              {ayah}
-              active={ayah.ayah_number === activeAyah}
-              onplay={handleAyahPlay}
-              onopenpanel={(a) => panelAyah = a}
-              onopennote={(a) => { noteTarget = { refType: 'ayah', refId: `${a.surah_number}:${a.ayah_number}`, label: `${a.surah_number}:${a.ayah_number}` }; }}
-              onopentafsir={(info) => { tafsirTarget = info; }}
-              noteIndicator={noteIndicators[`${d.surah.surah_number}:${ayah.ayah_number}`]}
-              tafsirPage={tafsirMappings[String(ayah.ayah_number)]}
-              {reciterFolder}
-            />
-          </div>
-        {/each}
+        <nav class="surah-nav">
+          {#if d.surah.surah_number > 1}
+            <a href="/quran/{d.surah.surah_number - 1}" class="nav-link">← Previous Sūrah</a>
+          {:else}
+            <span></span>
+          {/if}
+          <a href="/quran" class="nav-link">All Sūrahs</a>
+          {#if d.surah.surah_number < 114}
+            <a href="/quran/{d.surah.surah_number + 1}" class="nav-link">Next Sūrah →</a>
+          {:else}
+            <span></span>
+          {/if}
+        </nav>
       </div>
-
-      <div class="surah-nav bottom">
-        {#if d.surah.surah_number > 1}
-          <a href="/quran/{d.surah.surah_number - 1}" class="nav-link">← Previous Surah</a>
-        {/if}
-        <a href="/quran" class="nav-link">All Surahs</a>
-        {#if d.surah.surah_number < 114}
-          <a href="/quran/{d.surah.surah_number + 1}" class="nav-link">Next Surah →</a>
-        {/if}
-      </div>
-    </div>
 
     <!-- Desktop: right sidebar (full page height, animates to 0 when collapsed) -->
     <div class="right-area">
       {#if !rightCollapsed}
-        <ResizeHandle ondrag={handleRightDrag} />
+        <ResizeHandle
+          ondrag={handleRightDrag}
+          ondragstart={() => (rightDragging = true)}
+          ondragend={() => (rightDragging = false)}
+        />
       {/if}
       <div
         class="right-sidebar"
+        class:dragging={rightDragging}
         style="width: {rightCollapsed ? 0 : rightWidth}px"
       >
         {#if !rightCollapsed}
@@ -211,7 +224,7 @@
                       defaultQuestions={tafsirDefaultQuestions}
                     />
                   {:else}
-                    <p style="padding: 16px; color: var(--text-muted); font-size: 0.85rem;">Chat is not available in this build.</p>
+                    <p class="chat-disabled-msg">Chat is not available in this build.</p>
                   {/if}
                 {/snippet}
               </SidebarTabs>
@@ -222,6 +235,7 @@
       <button class="sidebar-open-btn" class:visible={rightCollapsed} onclick={toggleRight} title="Open panel">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
+    </div>
     </div>
 
     <!-- Mobile: floating button + drawer -->
@@ -300,88 +314,130 @@
 {/if}
 
 <style>
-  /* Top-level: horizontal flex — content + sidebar side by side, full height */
-  .surah-page {
+  .reader {
     display: flex;
+    flex-direction: column;
     height: 100%;
+    background: var(--reader-bg);
+    color: var(--reader-fg);
+    overflow: hidden;
   }
-
-  /* Scrollable content area — takes remaining width */
-  .page-content {
+  .reader-loading {
     flex: 1;
-    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+  }
+  .reader-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .reader-main {
+    flex: 1;
     overflow-y: auto;
-    padding: 24px;
-    padding-bottom: 72px;
+    overflow-x: hidden;
+    padding: var(--space-8) 0 var(--space-12);
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
-  .page-content::-webkit-scrollbar { width: 4px; }
-  .page-content::-webkit-scrollbar-track { background: transparent; }
-  .page-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .reader-main::-webkit-scrollbar { width: 4px; }
+  .reader-main::-webkit-scrollbar-track { background: transparent; }
+  .reader-main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .reader-column {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+  .ayah-stream {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  @media (min-width: 1280px) {
+    .reader-column, .ayah-stream { padding: 0 4rem; }
+  }
+
+  .meaning {
+    font-family: var(--font-serif);
+    font-size: var(--text-meta);
+    font-style: italic;
+    color: var(--text-muted);
+  }
+  .hero-meta-item {
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
+  }
+  .hero-meta-label {
+    color: var(--text-muted);
+    font-size: var(--text-eyebrow);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    margin-right: 4px;
+  }
+  .hero-dot { color: var(--text-muted); }
+  .mono { font-family: var(--font-mono); }
 
   .surah-nav {
+    max-width: 64rem;
+    margin: var(--space-10) auto 0;
+    padding: var(--space-6) 2rem 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
-    margin-bottom: 8px;
-    gap: 8px;
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-    width: 100%;
+    gap: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
   }
-  .surah-nav.bottom {
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border);
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
+  .nav-link {
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color var(--transition);
   }
-  .nav-link { font-size: 0.85rem; color: var(--btn-text); }
-  .nav-link:hover { text-decoration: underline; color: var(--text-secondary); }
+  .nav-link:hover { color: var(--accent); }
 
-  /* Ayah list — centered within content area */
-  .ayah-list {
-    max-width: 800px;
-    margin: 0 auto;
-    width: 100%;
-  }
-
-  /* Right sidebar area — full height alongside content */
   .right-area {
     display: flex;
     flex-shrink: 0;
     height: 100%;
   }
-
   .right-sidebar {
     height: 100%;
     overflow: hidden;
     transition: width 200ms ease;
     flex-shrink: 0;
+    will-change: width;
   }
-
+  .right-sidebar.dragging {
+    transition: none;
+  }
   .sidebar-inner {
     height: 100%;
     display: flex;
     flex-direction: column;
+    background: var(--bg-surface);
     border-left: 1px solid var(--border-subtle);
   }
-
   .sidebar-header-bar {
     display: flex;
     justify-content: flex-end;
-    padding: 6px 8px;
+    padding: var(--space-2);
     border-bottom: 1px solid var(--border-subtle);
     flex-shrink: 0;
   }
-
   .sidebar-close-btn {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -396,14 +452,12 @@
     color: var(--accent);
     background: var(--accent-muted);
   }
-
   .sidebar-scroll {
     flex: 1;
     overflow-y: auto;
     min-height: 0;
   }
 
-  /* Collapse/expand button — always present, only visible when collapsed */
   .sidebar-open-btn {
     width: 0;
     height: 100%;
@@ -413,7 +467,7 @@
     justify-content: center;
     border: none;
     border-left: 1px solid var(--border-subtle);
-    background: var(--bg-primary);
+    background: var(--bg-surface);
     color: var(--text-muted);
     cursor: pointer;
     transition: width 200ms ease, opacity 200ms ease;
@@ -430,14 +484,26 @@
     background: var(--accent-muted);
   }
 
-  /* Mobile */
+  .chat-disabled-msg {
+    padding: var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--text-meta);
+    font-family: var(--font-sans);
+    font-style: italic;
+  }
+
   .mobile-sidebar-btn { display: none; }
   .mobile-backdrop { display: none; }
   .mobile-drawer { display: none; }
 
+  @media (max-width: 640px) {
+    .reader-column, .ayah-stream { padding: 0 1rem; }
+    .surah-nav { padding: var(--space-6) 1rem 0; }
+  }
+
   @media (max-width: 768px) {
-    .surah-page { display: block; height: auto; }
-    .page-content { padding: 12px; padding-bottom: 72px; overflow-y: visible; }
+    .reader-body { flex-direction: column; }
+    .reader-main { padding: var(--space-4) 0 var(--space-12); }
     .right-area { display: none; }
 
     .mobile-sidebar-btn {
@@ -449,7 +515,7 @@
       right: 16px;
       width: 44px;
       height: 44px;
-      border-radius: 50%;
+      border-radius: var(--radius-full);
       border: 1px solid var(--border);
       background: var(--bg-surface);
       color: var(--text-secondary);

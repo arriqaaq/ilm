@@ -2,15 +2,12 @@
   import type { ApiNarratorWithCount } from '$lib/types';
   import Badge from '$lib/components/common/Badge.svelte';
   import { language } from '$lib/stores/language';
+  import { bilingualDisplayName, bilingualIsArabic } from '$lib/normalize';
 
   let { narrator }: { narrator: ApiNarratorWithCount } = $props();
 
-  let displayName = $derived(
-    $language === 'en' && narrator.name_en && narrator.name_en !== narrator.name_ar
-      ? narrator.name_en
-      : (narrator.name_ar || narrator.name_en)
-  );
-  let isArabic = $derived($language === 'ar' || !narrator.name_en || narrator.name_en === narrator.name_ar);
+  let displayName = $derived(bilingualDisplayName(narrator, $language));
+  let isArabic = $derived(bilingualIsArabic(narrator, $language));
 </script>
 
 <a href="/narrators/{narrator.id}" class="card card-stripe card-link narrator-card">

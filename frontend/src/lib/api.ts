@@ -39,6 +39,11 @@ import type {
   SharhBatchResponse,
   NarratorBookRef,
 } from './types';
+import {
+  normalizeBilingualName,
+  normalizeBilingualNames,
+  normalizeGraphLabels,
+} from './normalize';
 
 // Public, documented v1 API. Spec at /openapi.json, interactive docs at /docs.
 const BASE = '/v1';
@@ -63,7 +68,7 @@ export async function getStats(): Promise<StatsResponse> {
 }
 
 export async function getCollections(): Promise<ApiCollection[]> {
-  return get('/collections');
+  return normalizeBilingualNames(await get<ApiCollection[]>('/collections'));
 }
 
 export async function searchAll(
@@ -73,25 +78,41 @@ export async function searchAll(
   rerank = false
 ): Promise<SearchResponse> {
   const suffix = rerank ? '&rerank=true' : '';
-  return get(`/search/hadith?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}${suffix}`);
+  const res = await get<SearchResponse>(`/search/hadith?q=${encodeURIComponent(q)}&type=${type}&limit=${limit}${suffix}`);
+  normalizeBilingualNames(res.narrators);
+  return res;
 }
 
 export async function getHadiths(params: {
   book?: number;
+  books?: number[];
   number?: number;
+  n_min?: number;
+  n_max?: number;
+  narrators?: string[];
+  q?: string;
+  sort?: 'number_asc' | 'number_desc';
   page?: number;
   limit?: number;
 }): Promise<PaginatedResponse<ApiHadith>> {
   const sp = new URLSearchParams();
   if (params.book) sp.set('book', String(params.book));
+  if (params.books && params.books.length) sp.set('books', params.books.join(','));
   if (params.number) sp.set('number', String(params.number));
+  if (params.n_min !== undefined) sp.set('n_min', String(params.n_min));
+  if (params.n_max !== undefined) sp.set('n_max', String(params.n_max));
+  if (params.narrators && params.narrators.length) sp.set('narrators', params.narrators.join(','));
+  if (params.q) sp.set('q', params.q);
+  if (params.sort) sp.set('sort', params.sort);
   if (params.page) sp.set('page', String(params.page));
   if (params.limit) sp.set('limit', String(params.limit));
   return get(`/hadiths?${sp}`);
 }
 
 export async function getHadith(id: string): Promise<HadithDetailResponse> {
-  return get(`/hadiths/${encodeURIComponent(id)}`);
+  const res = await get<HadithDetailResponse>(`/hadiths/${encodeURIComponent(id)}`);
+  normalizeBilingualNames(res.narrators);
+  return res;
 }
 
 export async function getNarrators(params: {
@@ -105,19 +126,25 @@ export async function getNarrators(params: {
   if (params.page) sp.set('page', String(params.page));
   if (params.limit) sp.set('limit', String(params.limit));
   if (params.generation) sp.set('generation', params.generation);
-  return get(`/narrators?${sp}`);
+  const res = await get<PaginatedResponse<ApiNarratorWithCount>>(`/narrators?${sp}`);
+  normalizeBilingualNames(res.data);
+  return res;
 }
 
 export async function getNarrator(id: string): Promise<NarratorDetailResponse> {
-  return get(`/narrators/${encodeURIComponent(id)}`);
+  const res = await get<NarratorDetailResponse>(`/narrators/${encodeURIComponent(id)}`);
+  normalizeBilingualName(res.narrator);
+  normalizeBilingualNames(res.teachers);
+  normalizeBilingualNames(res.students);
+  return res;
 }
 
 export async function getChainGraph(hadithId: string): Promise<GraphData> {
-  return get(`/hadiths/${encodeURIComponent(hadithId)}/chain`);
+  return normalizeGraphLabels(await get<GraphData>(`/hadiths/${encodeURIComponent(hadithId)}/chain`));
 }
 
 export async function getNarratorGraph(id: string): Promise<GraphData> {
-  return get(`/narrators/${encodeURIComponent(id)}/graph`);
+  return normalizeGraphLabels(await get<GraphData>(`/narrators/${encodeURIComponent(id)}/graph`));
 }
 
 export async function updateNarrator(
@@ -243,7 +270,7 @@ export async function searchByRoot(root: string): Promise<RootSearchResponse> {
 // ── Quran Recitation API ──
 
 export async function getReciters(): Promise<ApiReciter[]> {
-  return get<ApiReciter[]>('/quran/reciters');
+  return normalizeBilingualNames(await get<ApiReciter[]>('/quran/reciters'));
 }
 
 // ── Corpus Coranicum Manuscript API (browser-direct) ──
@@ -394,7 +421,10 @@ export async function fetchLinkPreview(url: string): Promise<LinkPreview> {
 // ── Book Viewer ──
 
 export async function getBooksConfig(): Promise<BooksConfig> {
-  return get('/books/config');
+  const res = await get<BooksConfig>('/books/config');
+  normalizeBilingualNames(res.books);
+  normalizeBilingualNames(res.tafsir_books);
+  return res;
 }
 
 export async function getBooksList(category?: string, bookType?: string): Promise<Book[]> {
@@ -402,11 +432,11 @@ export async function getBooksList(category?: string, bookType?: string): Promis
   if (category) sp.set('category', category);
   if (bookType) sp.set('book_type', bookType);
   const qs = sp.toString();
-  return get(qs ? `/books?${qs}` : '/books');
+  return normalizeBilingualNames(await get<Book[]>(qs ? `/books?${qs}` : '/books'));
 }
 
 export async function getBook(bookId: number): Promise<BookDetail> {
-  return get(`/books/${bookId}`);
+  return normalizeBilingualName(await get<BookDetail>(`/books/${bookId}`));
 }
 
 export async function getBookPages(bookId: number, start: number, size: number): Promise<BookPagesResponse> {
@@ -430,7 +460,9 @@ export async function getAllTafsirsForAyah(
   surah: number,
   ayah: number,
 ): Promise<AllTafsirsResponse> {
-  return get(`/quran/ayahs/${surah}/${ayah}/tafsirs`);
+  const res = await get<AllTafsirsResponse>(`/quran/ayahs/${surah}/${ayah}/tafsirs`);
+  normalizeBilingualNames(res.entries);
+  return res;
 }
 
 export async function getNarratorBooks(narratorId: string): Promise<NarratorBookRef[]> {
@@ -445,7 +477,11 @@ export async function getHadithSharhPages(bookId: number, hadithNumbers: number[
 // ── Isnad Search ──
 
 export async function narratorAutocomplete(q: string, limit = 8): Promise<import('./types').ApiNarratorSearchResult[]> {
-  return get(`/narrators/autocomplete?q=${encodeURIComponent(q)}&limit=${limit}`);
+  return normalizeBilingualNames(
+    await get<import('./types').ApiNarratorSearchResult[]>(
+      `/narrators/autocomplete?q=${encodeURIComponent(q)}&limit=${limit}`,
+    ),
+  );
 }
 
 export async function isnadSearch(params: {
@@ -459,9 +495,17 @@ export async function isnadSearch(params: {
     body: JSON.stringify(params),
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
-  return res.json();
+  const json = (await res.json()) as import('./types').IsnadSearchResponse;
+  normalizeBilingualNames(json.narrators);
+  return json;
 }
 
 export async function getCommonNarrators(a: string, b: string): Promise<import('./types').CommonNarratorsResponse> {
-  return get(`/narrators/common?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`);
+  const res = await get<import('./types').CommonNarratorsResponse>(
+    `/narrators/common?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`,
+  );
+  normalizeBilingualName(res.narrator1);
+  normalizeBilingualName(res.narrator2);
+  normalizeBilingualNames(res.common);
+  return res;
 }

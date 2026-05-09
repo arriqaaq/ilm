@@ -3,6 +3,11 @@
   import type { ApiHadith, ApiHadithSearchResult, ApiMatnDiff } from '$lib/types';
   import DiffViewer from '$lib/components/hadith/DiffViewer.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import PageHeader from '$lib/components/common/PageHeader.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import Divider from '$lib/components/common/Divider.svelte';
+  import SectionHeading from '$lib/components/common/SectionHeading.svelte';
+  import Button from '$lib/components/common/Button.svelte';
 
   // Book names for filter dropdown
   const BOOKS = [
@@ -133,16 +138,17 @@
   <title>Diff Hadiths - Ilm</title>
 </svelte:head>
 
-<div class="compare-page">
-  <div class="page-header">
-    <h1>Diff Hadiths</h1>
-    <p class="subtitle">Compare the text (matn) of any two hadiths side by side. Search by text or hadith number.</p>
-  </div>
+<div class="page-shell">
+  <PageHeader
+    eyebrow="Compare"
+    title="Matn Diff"
+    subtitle="Compare the text of any two hadiths side by side. Search by text or hadith number."
+  />
 
   <div class="selectors">
     <!-- Side A -->
-    <div class="selector-panel">
-      <div class="panel-label">Hadith A</div>
+    <article class="selector-panel">
+      <div class="panel-eyebrow"><Eyebrow>Hadith A</Eyebrow></div>
       {#if selectedA}
         <div class="selected-card">
           <div class="selected-info">
@@ -183,11 +189,11 @@
           {/if}
         </div>
       {/if}
-    </div>
+    </article>
 
     <!-- Side B -->
-    <div class="selector-panel">
-      <div class="panel-label">Hadith B</div>
+    <article class="selector-panel">
+      <div class="panel-eyebrow"><Eyebrow>Hadith B</Eyebrow></div>
       {#if selectedB}
         <div class="selected-card">
           <div class="selected-info">
@@ -228,17 +234,18 @@
           {/if}
         </div>
       {/if}
-    </div>
+    </article>
   </div>
 
   <div class="compare-action">
-    <button
-      class="compare-btn"
+    <Button
+      variant="primary"
+      size="md"
       onclick={runDiff}
       disabled={!selectedA || !selectedB || selectedA.id === selectedB.id || diffLoading}
     >
-      {diffLoading ? 'Computing...' : 'Compare'}
-    </button>
+      {diffLoading ? 'Computing…' : 'Compare'}
+    </Button>
     {#if selectedA && selectedB && selectedA.id === selectedB.id}
       <span class="compare-warn">Select two different hadiths</span>
     {/if}
@@ -249,92 +256,61 @@
   {/if}
 
   {#if diffResult}
+    <Divider variant="ornamental" />
+    <SectionHeading eyebrow="Result" title="Diff" level={2} />
     <DiffViewer result={diffResult} />
   {/if}
 </div>
 
 <style>
-  .compare-page {
-    padding: 24px;
-    max-width: 1000px;
-    margin: 0 auto;
-  }
-
-  .page-header {
-    margin-bottom: 24px;
-  }
-  .page-header h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0 0 4px;
-  }
-  .subtitle {
-    font-size: 0.88rem;
-    color: var(--text-muted);
-    margin: 0;
-  }
-
-  /* Two-panel selector layout */
   .selectors {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
   }
-
   .selector-panel {
     background: var(--bg-surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius);
-    padding: 16px;
+    padding: var(--space-4);
     min-height: 160px;
   }
+  .panel-eyebrow { margin-bottom: var(--space-3); }
 
-  .panel-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    margin-bottom: 10px;
-  }
-
-  /* Search area */
   .search-row {
     display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
   }
-
   .search-input {
     flex: 1;
-    padding: 8px 12px;
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg-primary);
     color: var(--text-primary);
-    font-size: 0.88rem;
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
     outline: none;
   }
-  .search-input:focus {
-    border-color: var(--accent);
-  }
-
+  .search-input:focus { border-color: var(--accent); }
   .book-filter {
-    padding: 8px;
+    padding: var(--space-2);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg-primary);
     color: var(--text-primary);
-    font-size: 0.8rem;
-    min-width: 120px;
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
+    min-width: 130px;
   }
-
   .search-status {
-    font-size: 0.78rem;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: var(--text-meta);
     color: var(--text-muted);
-    padding: 4px 0;
+    padding: var(--space-1) 0;
   }
 
   .results-list {
@@ -342,14 +318,12 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 2px;
   }
-
   .result-item {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 8px 10px;
+    padding: var(--space-2) var(--space-3);
     border: none;
     border-radius: var(--radius-sm);
     background: none;
@@ -358,18 +332,15 @@
     transition: background var(--transition);
     width: 100%;
   }
-  .result-item:hover {
-    background: var(--bg-hover);
-  }
-
+  .result-item:hover { background: var(--bg-hover); }
   .result-ref {
-    font-size: 0.78rem;
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: var(--text-meta);
     color: var(--accent);
+    font-weight: var(--font-weight-semibold);
   }
-
   .result-text {
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
     color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
@@ -381,38 +352,37 @@
     background: var(--accent-muted);
     border: 1px solid var(--accent);
     border-radius: var(--radius);
-    padding: 12px;
+    padding: var(--space-3);
   }
-
   .selected-info {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
     align-items: baseline;
-    margin-bottom: 6px;
+    margin-bottom: var(--space-2);
   }
-
   .selected-ref {
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: var(--text-meta);
+    font-weight: var(--font-weight-semibold);
     color: var(--accent);
   }
-
   .selected-book {
-    font-size: 0.78rem;
+    font-family: var(--font-serif);
+    font-size: var(--text-meta);
     color: var(--text-secondary);
+    font-style: italic;
   }
-
   .selected-preview {
-    font-size: 0.85rem;
+    font-size: var(--text-meta);
     color: var(--text-primary);
     line-height: 1.8;
-    margin-bottom: 8px;
+    margin-bottom: var(--space-2);
     max-height: 60px;
     overflow: hidden;
   }
-
   .clear-btn {
-    font-size: 0.75rem;
+    font-family: var(--font-sans);
+    font-size: var(--text-meta);
     color: var(--text-muted);
     background: none;
     border: none;
@@ -420,45 +390,25 @@
     text-decoration: underline;
     padding: 0;
   }
-  .clear-btn:hover {
-    color: var(--accent);
-  }
+  .clear-btn:hover { color: var(--accent); }
 
-  /* Compare button */
   .compare-action {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
   }
-
-  .compare-btn {
-    padding: 10px 28px;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity var(--transition);
-  }
-  .compare-btn:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-  .compare-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
   .compare-warn {
-    font-size: 0.8rem;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: var(--text-meta);
     color: var(--warning);
   }
 
-  @media (max-width: 768px) {
-    .compare-page { padding: 12px; }
+  @media (max-width: 1024px) {
     .selectors { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 768px) {
     .search-row { flex-direction: column; }
     .book-filter { min-width: unset; }
   }

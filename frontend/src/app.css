@@ -30,6 +30,14 @@
   --accent-muted: rgba(176, 138, 62, 0.10);
   --accent-secondary: #8b6914;
 
+  /* Listing-page hero band — a SOLID warm gold so it reads consistently as a
+     deliberate panel regardless of what surface sits behind it. (Earlier
+     attempts used a transparent gold layered over the body bg, which fades
+     to near-black on dark themes.) */
+  --hero-bg: #ebdcb2;
+  --hero-fg: var(--text-primary);
+  --hero-subtle-fg: var(--accent-secondary);
+
   /* ── Buttons ── */
   --btn-text: #57534e;
   --btn-bg: #f7f4ec;
@@ -44,9 +52,8 @@
 
   /* ── Fonts ──
      Arabic typography uses ONE canonical token for prose: --font-arabic
-     (Scheherazade New). This is the same font usul.ai uses for hadith reading;
-     it is published by SIL International specifically for Quran, hadith, and
-     classical Islamic texts, and renders Arabic punctuation correctly.
+     (Scheherazade New). Published by SIL International for Quran, hadith,
+     and classical Islamic texts; renders Arabic punctuation correctly.
 
      UthmanicHafs is the KFGQPC mushaf font — it substitutes common punctuation
      (Arabic commas etc.) with Quranic ayah-separator rosettes, which is wrong
@@ -56,8 +63,7 @@
 
      --font-arabic-text aliases to --font-arabic so all reading surfaces (hadith,
      tafsir, narrator names, book reader, notes) share the same prose font.
-     --font-arabic-ui stays in IBM Plex Sans Arabic for tiny chrome labels
-     (also matching usul.ai's pattern).
+     --font-arabic-ui stays in IBM Plex Sans Arabic for tiny chrome labels.
 
      CRITICAL: --font-sans and --font-serif each include the Arabic stack as a
      tail fallback. Browser font-family fallback is per-character, so Latin chars
@@ -126,7 +132,7 @@
 
   /* ── Layout widths ── */
   --prose-width: 68ch;
-  --page-width: 1080px;
+  --page-width: 1320px;
 
   /* ── Radius ── */
   --radius: 8px;
@@ -167,7 +173,8 @@
 
   --sidebar-width: 220px;
   --sidebar-collapsed-width: 48px;
-  --topbar-height: 56px;
+  --topbar-height: 64px;
+  --topbar-height-lg: 80px;
   --transition: 150ms ease;
 
   /* ── Graph visualization ── */
@@ -202,6 +209,40 @@
   --card-shadow-hover: var(--shadow-card-hover);
   --note-editor-bg: #ffffff;
   --note-card-bg: #ffffff;
+
+  /* ── Library / reading surface tokens ── */
+  --reader-bg: #fdfcf9;
+  --reader-fg: var(--text-primary);
+  --topbar-bg: #15110b;
+  --topbar-fg: #f5ecd7;
+  --topbar-fg-muted: rgba(245, 236, 215, 0.72);
+  --topbar-border: rgba(245, 236, 215, 0.10);
+
+  /* Hero / dark-panel tokens */
+  --hero-bg: #15110b;
+  --hero-bg-2: #1c170f;
+  --hero-text: #f5ecd7;
+  --hero-text-muted: rgba(245, 236, 215, 0.72);
+  --hero-glow: rgba(176, 138, 62, 0.18);
+
+  /* Collection card colors — Islamic-manuscript pigment palette
+     (walnut, sienna, malachite, saffron, lapis, aubergine).
+     Tuned to harmonize with --bg-primary cream, --hero-bg walnut,
+     and --accent gold. */
+  --collection-walnut:    #3a2a18;
+  --collection-sienna:    #a85c3e;
+  --collection-malachite: #3d6b3a;
+  --collection-saffron:   #c08828;
+  --collection-lapis:     #2a4d7a;
+  --collection-aubergine: #5b3a5e;
+
+  /* Reading-page typography */
+  --reading-prose-size:    1.25rem;
+  --reading-prose-size-sm: 1.5rem;
+  --reading-prose-leading:    2.5rem;
+  --reading-prose-leading-sm: 3rem;
+  --reading-h1-size:    1.5rem;
+  --reading-h1-size-sm: 1.875rem;
 }
 
 *, *::before, *::after {
@@ -219,6 +260,50 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+html.is-resizing, html.is-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/*
+  Responsive breakpoints — DO NOT add others.
+    mobile  : ≤ 640px   (phones)
+    tablet  : ≤ 1024px  (phones + tablets, narrow desktop windows)
+    desktop : > 1024px  (default)
+    wide    : ≥ 1280px  (extra horizontal padding)
+  Pages should NOT write their own media queries for these layout transitions.
+  Use the layout primitives (<TwoColumn>, <TabStrip>, <PageHero>) and the
+  utility classes below.
+*/
+
+.stack-tablet {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-start;
+}
+@media (max-width: 1024px) {
+  .stack-tablet { flex-direction: column; gap: var(--space-5); }
+  .stack-tablet > .stack-tablet-aside {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    position: static !important;
+  }
+}
+
+.stack-mobile {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+@media (max-width: 640px) {
+  .stack-mobile { flex-direction: column; gap: var(--space-3); }
+}
+
+.hide-mobile { display: initial; }
+@media (max-width: 640px)  { .hide-mobile  { display: none !important; } }
+.hide-tablet { display: initial; }
+@media (max-width: 1024px) { .hide-tablet  { display: none !important; } }
 
 a {
   color: var(--accent);
@@ -287,6 +372,73 @@ h3 { font-size: var(--text-lg); }
   line-height: var(--leading-relaxed);
   color: var(--text-primary);
   letter-spacing: 0.01em;
+}
+
+/* Reading surface — used on hadith detail and any other body-text page.
+   Generous editorial line height for manuscript-quality reading. */
+.reading-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-size: var(--reading-prose-size);
+  line-height: var(--reading-prose-leading);
+  color: var(--text-primary);
+}
+@media (min-width: 640px) {
+  .reading-page {
+    gap: var(--space-5);
+    font-size: var(--reading-prose-size-sm);
+    line-height: var(--reading-prose-leading-sm);
+  }
+}
+.reading-page a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.reading-page h1 {
+  margin: var(--space-8) var(--space-2);
+  display: inline-block;
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: var(--reading-h1-size);
+  line-height: 1.25;
+  font-weight: var(--font-weight-semibold);
+}
+@media (min-width: 640px) {
+  .reading-page h1 { font-size: var(--reading-h1-size-sm); line-height: 1.3; }
+}
+.reading-page h2 {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-weight-bold);
+}
+.reading-page h3,
+.reading-page h4,
+.reading-page h5 {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+}
+.reading-page h3,
+.reading-page h4 { font-weight: var(--font-weight-semibold); }
+.reading-page h5 { font-weight: var(--font-weight-medium); }
+.reading-page .footnotes {
+  margin-top: var(--space-3);
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}
+
+/* Standard page wrappers — used by every index/detail page so we don't repeat
+   max-width / margin / padding across components. */
+.page-shell {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-12);
+}
+.page-shell-narrow {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-12);
 }
 
 .mono {
@@ -419,6 +571,12 @@ input::placeholder {
   --accent-hover: #d4b57f;
   --accent-muted: rgba(229, 200, 144, 0.15);
   --accent-secondary: #daa520;
+  /* Dark-theme hero band: a saturated warm gold-brown that reads cleanly as
+     gold against the very dark body bg. A transparent overlay would fade to
+     near-black here. */
+  --hero-bg: #3d2e15;
+  --hero-fg: var(--text-primary);
+  --hero-subtle-fg: var(--accent);
   --btn-text: #9ca3af;
   --btn-bg: #1c2128;
   --btn-border: #30363d;
@@ -474,6 +632,9 @@ input::placeholder {
   --accent-hover: #996f09;
   --accent-muted: rgba(184, 134, 11, 0.12);
   --accent-secondary: #8b6914;
+  --hero-bg: #e3d3a3;
+  --hero-fg: var(--text-primary);
+  --hero-subtle-fg: var(--accent-secondary);
   --btn-text: #9a8a6e;
   --btn-bg: #efe4cb;
   --btn-border: #d4c5a0;

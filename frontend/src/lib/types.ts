@@ -18,7 +18,7 @@ export interface ApiHadith {
 export interface ApiNarrator {
   id: string;
   name_ar: string | null;
-  name_en: string;
+  name_en: string | null;
   gender: string | null;
   generation: string | null;
   bio: string | null;
@@ -35,14 +35,14 @@ export interface ApiNarrator {
 export interface ApiCollection {
   id: string;
   collection_id: number;
-  name_en: string;
+  name_en: string | null;
   name_ar: string | null;
 }
 
 export interface ApiNarratorWithCount {
   id: string;
   name_ar: string | null;
-  name_en: string;
+  name_en: string | null;
   generation: string | null;
   bio: string | null;
   kunya: string | null;
@@ -63,7 +63,7 @@ export interface ApiHadithSearchResult {
 export interface ApiNarratorSearchResult {
   id: string;
   name_ar: string | null;
-  name_en: string;
+  name_en: string | null;
   generation: string | null;
   hadith_count: number | null;
 }
@@ -104,7 +104,7 @@ export interface NarratorDetailResponse {
 export interface GraphNodeData {
   id: string;
   label: string;
-  label_en: string;
+  label_en: string | null;
   type: string;
   generation: string | null;
 }
@@ -351,7 +351,7 @@ export interface RootSearchResponse {
 
 export interface ApiReciter {
   id: string;
-  name_en: string;
+  name_en: string | null;
   name_ar: string | null;
   style: string | null;
   folder_name: string;
@@ -466,7 +466,7 @@ export interface NoteRefsIndicator {
 export interface BookConfig {
   book_id: number;
   name_ar: string;
-  name_en: string;
+  name_en: string | null;
   category: string | null;
   book_type: string | null;
   chat_enabled: boolean;
@@ -477,7 +477,7 @@ export interface TafsirBookEntry {
   book_id: number;
   slug: string;
   name_ar: string;
-  name_en: string;
+  name_en: string | null;
   is_default: boolean;
 }
 
@@ -505,7 +505,7 @@ export type TafsirOption =
 
 export interface AllTafsirsEntry {
   book_id: number;
-  name_en: string;
+  name_en: string | null;
   name_ar: string;
   is_default: boolean;
   page_index: number;
@@ -539,7 +539,7 @@ export interface MultiBookSource {
 export interface Book {
   book_id: number;
   name_ar: string;
-  name_en: string;
+  name_en: string | null;
   author_ar: string;
   total_pages: number;
 }

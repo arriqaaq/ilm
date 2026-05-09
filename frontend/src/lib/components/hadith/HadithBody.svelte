@@ -53,7 +53,7 @@
 <style>
   .prose-ar {
     color: var(--text-primary);
-    line-height: var(--leading-arabic);
+    line-height: 2;
     margin: 0;
   }
   .prose-ar :global(.matn) {
@@ -63,7 +63,7 @@
   .prose-en {
     font-family: var(--font-serif);
     color: var(--text-primary);
-    line-height: var(--leading-relaxed);
+    line-height: 1.7;
     letter-spacing: 0.005em;
     margin: 0;
   }

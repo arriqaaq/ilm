@@ -67,7 +67,7 @@
         >
           <span class="chevron" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
           <span class="title-group">
-            <span class="title-en">{entry.name_en}</span>
+            {#if entry.name_en}<span class="title-en">{entry.name_en}</span>{/if}
             <span class="title-ar" dir="rtl">{entry.name_ar}</span>
           </span>
           <span class="page-chip">Vol {entry.vol} · Page {entry.page_num}</span>

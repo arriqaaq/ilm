@@ -164,7 +164,7 @@
     <select class="reciter-select" value={selectedFolder} onchange={onReciterChange}>
       {#each reciters as r}
         <option value={r.folder_name}>
-          {r.name_en}{r.style ? ` (${r.style})` : ''}
+          {r.name_en ?? r.name_ar ?? r.folder_name}{r.style ? ` (${r.style})` : ''}
         </option>
       {/each}
     </select>
