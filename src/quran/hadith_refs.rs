@@ -425,7 +425,7 @@ async fn fallback_text_match(
         by_verse.entry((u.surah, u.ayah)).or_default().push(u);
     }
 
-    let pb = make_progress(unmatched.len() as u64, "unmatched refs resolved");
+    let pb = make_progress(unmatched.len() as u64, "unmatched refs processed");
     let mut resolved = 0usize;
 
     for (&(surah, ayah), refs) in &by_verse {
@@ -560,7 +560,7 @@ async fn fallback_text_match(
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     }
 
-    pb.finish_with_message("done");
+    pb.finish_with_message(format!("done ({resolved}/{} resolved)", unmatched.len()));
     Ok(resolved)
 }
 

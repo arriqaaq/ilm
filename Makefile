@@ -189,11 +189,22 @@ quran-hadith-refs:
 	cargo run $(CARGO_FEATURES) -- ingest-quran-hadith-refs
 
 # Download morphology data (if not present)
-data/quran-morphology.txt:
-	curl -sL https://raw.githubusercontent.com/mustafa0x/quran-morphology/master/quran-morphology.txt -o data/quran-morphology.txt
+# Morphology files: canonical copies live committed in qul/. The data/ targets
+# just copy them. The qul/ targets are a fallback — they only fire if the
+# committed file was deleted, in which case curl re-fetches from upstream.
+qul/quran-morphology.txt:
+	curl -sL https://raw.githubusercontent.com/mustafa0x/quran-morphology/master/quran-morphology.txt -o qul/quran-morphology.txt
 
-data/morphology-terms-ar.json:
-	curl -sL https://raw.githubusercontent.com/mustafa0x/quran-morphology/master/morphology-terms-ar.json -o data/morphology-terms-ar.json
+qul/morphology-terms-ar.json:
+	curl -sL https://raw.githubusercontent.com/mustafa0x/quran-morphology/master/morphology-terms-ar.json -o qul/morphology-terms-ar.json
+
+data/quran-morphology.txt: qul/quran-morphology.txt
+	@mkdir -p data
+	cp $< $@
+
+data/morphology-terms-ar.json: qul/morphology-terms-ar.json
+	@mkdir -p data
+	cp $< $@
 
 # Preflight check: verify all required data files exist before running pipeline
 quran-check:
@@ -574,6 +585,7 @@ pageindex-status: pageindex-deps
 # pipeline-check is a defensive sanity check; it only fails if a tracked
 # file was deleted locally.
 pipeline-full: data/semantic_hadith.json pageindex-clone pipeline-check
+	$(MAKE) quran-prepare
 	$(MAKE) hadith-full
 	$(MAKE) quran-full
 	$(MAKE) book-full
@@ -611,7 +623,7 @@ hadith-lite:
 	@echo "Done. Hadith ingestion complete (no embeddings, no analysis)."
 
 # Quran ingestion without embeddings
-quran-lite: quran-check quran-prepare
+quran-lite: quran-check quran-prepare data/quran-morphology.txt data/morphology-terms-ar.json
 	cargo run --no-default-features -- ingest-quran
 	cargo run --no-default-features -- ingest-quran-hadith-refs
 	cargo run --no-default-features -- ingest-morphology
@@ -619,6 +631,7 @@ quran-lite: quran-check quran-prepare
 
 # Full lite pipeline: hadith + quran + turath books (no embeddings, no analysis)
 pipeline-lite: data/semantic_hadith.json pageindex-clone pipeline-check
+	$(MAKE) quran-prepare
 	$(MAKE) hadith-lite
 	$(MAKE) quran-lite
 	$(MAKE) book-full
