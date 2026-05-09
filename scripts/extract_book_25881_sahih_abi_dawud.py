@@ -6,21 +6,18 @@ Maps to our collection_id=3 (Sunan Abi Dawud).
 Format (verified by sampling pages 200, 500, 1000):
   Full prose-discussion edition. Each entry is numbered:
       <hadith#> - عن <sahabi> ... <matn>
-  Then comes a multi-paragraph isnad/takhrij discussion that quotes other
-  scholars (al-Hakim, Dhahabi, Ibn Hibban, ...). Albani's OWN verdict appears
-  in a parenthetical that begins with `قلت:` (his first-person voice marker):
-      (قلت: إسناده صحيح على شرط البخاري ... )
+  Then comes a multi-paragraph isnad/takhrij discussion. Albani's verdict
+  appears either in:
+    (a) `(قلت: إسناده X ...)`  — first-person voice marker
+    (b) Last balanced paren block in the entry whose inner starts with a
+        mustalah verdict word — when Albani gives a bare verdict without
+        the قلت: framing.
 
-Strategy:
-  Iterate balanced-paren blocks across the whole book. For each block whose
-  stripped inner text starts with `قلت\\s*:`, extract the verdict by scanning
-  the first ~150 chars of the inner text for a mustalah verdict word
-  (إسناده X / حديث X / ...). Walk back ≤4000 chars to the nearest entry header
-  to attribute the verdict to a hadith number.
-
-This handles Albani's multiple verdicts within a single entry (e.g.,
-"chain A is sahih, chain B is daif") naturally — each `(قلت:...)` block
-becomes its own row.
+Strategy: per-entry iteration. For each entry block (between consecutive
+entry headers), try (a) first via قلت scan, fall back to (b) via the shared
+`find_albani_verdict()` helper (which already uses the full mustalah
+vocabulary and balanced-paren scanning, including handling the `»` alt-paren
+quirk).
 
 Output: data/grading_book_25881.json
 """
@@ -33,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _grading_common import (  # noqa: E402
     MUSTALAH_VERDICTS,
     concatenate_pages,
+    find_albani_verdict,
     in_corpus,
     iter_paren_blocks,
     load_pages,
@@ -53,13 +51,7 @@ ENTRY_HEAD_RE = re.compile(
     re.MULTILINE,
 )
 
-# Mustalah verdict word + optional cross-ref text inside the قلت paren.
 QULT_PREFIX = re.compile(r"^\s*قلت\s*:")
-
-# Once we know we're inside a قلت block, look for the actual verdict word.
-# Use the shared mustalah vocabulary, but allow it anywhere in the first
-# 200 chars (Albani prefixes his verdict with explanatory context like
-# "وهذا إسناده حسن", "والحديث صحيح", etc.).
 _VERDICT_WORDS_RE = re.compile(
     r"(?<![ء-ي])("
     + "|".join(re.escape(w) for w, _ in MUSTALAH_VERDICTS)
@@ -67,7 +59,24 @@ _VERDICT_WORDS_RE = re.compile(
 )
 _VERDICT_BUCKET = {w: b for w, b in MUSTALAH_VERDICTS}
 
-WALKBACK = 4000
+
+def find_qult_verdicts(entry_text: str):
+    """Find ALL Albani `(قلت: ... <verdict>)` blocks in `entry_text`.
+    Albani frequently writes multiple verdicts per entry (one per chain
+    he discusses), and the schema allows multiple rows per (hadith,
+    scholar, source_book). Each match becomes its own row.
+    """
+    candidates = []
+    for bs, be, inner in iter_paren_blocks(entry_text):
+        if not QULT_PREFIX.match(inner):
+            continue
+        vm = _VERDICT_WORDS_RE.search(inner[:250])
+        if vm is None:
+            continue
+        verdict_term = vm.group(1)
+        bucket = _VERDICT_BUCKET[verdict_term]
+        candidates.append((bs, be, inner, verdict_term, bucket))
+    return candidates
 
 
 def main():
@@ -77,60 +86,71 @@ def main():
         sys.exit(1)
 
     full, offsets = concatenate_pages(pages)
-    print(f"Book {BOOK_ID} ({SLUG}): {len(pages)} pages, full_text len={len(full)}")
+    headers = list(ENTRY_HEAD_RE.finditer(full))
+    print(f"Book {BOOK_ID} ({SLUG}): {len(pages)} pages, "
+          f"{len(headers)} entry headers detected")
 
-    # Find every قلت: paren block + its verdict word.
-    qult_verdicts = []
-    for bs, be, inner in iter_paren_blocks(full):
-        if not QULT_PREFIX.match(inner):
-            continue
-        # Search for a verdict word in the first 250 chars.
-        head = inner[:250]
-        vm = _VERDICT_WORDS_RE.search(head)
-        if vm is None:
-            continue  # qult comment without a verdict (just a clarifying note)
-        verdict_term = vm.group(1)
-        bucket = _VERDICT_BUCKET[verdict_term]
-        qult_verdicts.append((bs, be, inner, verdict_term, bucket))
-
-    print(f"  قلت paren blocks total     : (counted via iteration)")
-    print(f"  قلت blocks with verdict    : {len(qult_verdicts)}")
-
-    rows, no_anchor = [], 0
+    rows = []
+    n_qult = 0
+    n_fallback = 0
+    n_no_verdict = 0
+    n_unique_hadiths = set()
     not_in_corpus_count = 0
 
-    for bs, be, inner, verdict_term, bucket in qult_verdicts:
-        win_start = max(0, bs - WALKBACK)
-        window = full[win_start:bs]
-        candidates = list(ENTRY_HEAD_RE.finditer(window))
-        if not candidates:
-            no_anchor += 1
-            continue
-        last = candidates[-1]
+    for i, h in enumerate(headers):
         try:
-            hadith_number = int(normalize_digits(last.group(1)))
+            hadith_number = int(normalize_digits(h.group(1)))
         except ValueError:
             continue
 
-        page_idx = page_for_offset(offsets, bs)
+        start = h.end()
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(full)
+        entry = full[start:end]
 
-        if not in_corpus(COLLECTION_ID, hadith_number):
-            not_in_corpus_count += 1
+        verdicts = find_qult_verdicts(entry)
+        used_path = "qult"
+        if not verdicts:
+            v2 = find_albani_verdict(entry)
+            if v2 is not None:
+                bs, be, inner, bucket = v2
+                verdict_term = inner.split()[0] if inner.strip() else ""
+                verdicts = [(bs, be, inner, verdict_term, bucket)]
+                used_path = "fallback"
 
-        rows.append({
-            "hadith_number": hadith_number,
-            "collection_id": COLLECTION_ID,
-            "scholar_key": SCHOLAR_KEY,
-            "scholar_ar": SCHOLAR_AR,
-            "grade": inner.strip()[:300],
-            "grade_normalized": bucket,
-            "source_book_id": BOOK_ID,
-            "source_page_index": page_idx,
-            "raw_text": ("(" + inner.strip() + ")")[:300],
-        })
+        if not verdicts:
+            n_no_verdict += 1
+            continue
+
+        n_unique_hadiths.add(hadith_number)
+        for bs, be, inner, verdict_term, bucket in verdicts:
+            if used_path == "qult":
+                n_qult += 1
+            else:
+                n_fallback += 1
+
+            if not in_corpus(COLLECTION_ID, hadith_number):
+                not_in_corpus_count += 1
+
+            global_off = start + bs
+            page_idx = page_for_offset(offsets, global_off)
+
+            rows.append({
+                "hadith_number": hadith_number,
+                "collection_id": COLLECTION_ID,
+                "scholar_key": SCHOLAR_KEY,
+                "scholar_ar": SCHOLAR_AR,
+                "grade": inner.strip()[:300],
+                "grade_normalized": bucket,
+                "source_book_id": BOOK_ID,
+                "source_page_index": page_idx,
+                "raw_text": ("(" + inner.strip() + ")")[:300],
+            })
 
     print(f"  rows extracted             : {len(rows)}")
-    print(f"  verdicts with no anchor    : {no_anchor}")
+    print(f"    via qult-anchor          : {n_qult}")
+    print(f"    via verdict-paren fallback: {n_fallback}")
+    print(f"  unique hadiths covered     : {len(n_unique_hadiths)}")
+    print(f"  entries with no verdict    : {n_no_verdict}")
     print(f"  rows w/ hadith# not in corpus: {not_in_corpus_count}")
     out = write_rows(BOOK_ID, rows)
     print(f"\nWrote {len(rows)} rows to {out}")

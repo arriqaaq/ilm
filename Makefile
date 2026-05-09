@@ -458,6 +458,7 @@ extract-grading:
 	python3 scripts/extract_book_5914_daif_abi_dawud.py
 	python3 scripts/extract_book_10757_sahih_jami_saghir.py
 	python3 scripts/extract_book_1663_daif_jami_saghir.py
+	python3 scripts/extract_book_21662_tirmidhi_inline.py
 
 # 4. Ingest extracted grading rows into hadith_grading
 book-ingest-grading-rows:
@@ -468,7 +469,8 @@ book-ingest-grading-rows:
 		--hadith-file data/grading_book_25881.json \
 		--hadith-file data/grading_book_5914.json \
 		--hadith-file data/grading_book_10757.json \
-		--hadith-file data/grading_book_1663.json
+		--hadith-file data/grading_book_1663.json \
+		--hadith-file data/grading_book_21662_tirmidhi_inline.json
 
 # Full grading pipeline (runs after hadith-full so the (hadith_number,collection_id)
 # joins resolve)
