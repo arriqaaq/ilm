@@ -1,28 +1,36 @@
 <script lang="ts">
   import type { AyahHadithResponse } from '$lib/types';
-  import { truncate } from '$lib/utils';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import HadithBody from '$lib/components/hadith/HadithBody.svelte';
+  import { language } from '$lib/stores/language';
+  import { proseArabicFontSize } from '$lib/stores/preferences';
 
   let { data }: { data: AyahHadithResponse } = $props();
 </script>
 
 {#if data.curated.length > 0}
   <div class="section">
-    <div class="section-label">Referenced Hadiths</div>
+    <div class="section-eyebrow"><Eyebrow>Referenced Hadiths</Eyebrow></div>
     {#each data.curated as hadith}
       <div class="hadith-item">
         <div class="hadith-meta">
           <span class="book-name">{hadith.book_name ?? 'Unknown'}</span>
-          <span class="hadith-num">#{hadith.hadith_number}</span>
+          <span class="dot" aria-hidden="true">·</span>
+          <span class="hadith-num mono">#{hadith.hadith_number}</span>
           {#if hadith.grade}
             <span class="grade-badge">{hadith.grade}</span>
           {/if}
-          <a href="/hadiths/{hadith.id}" class="detail-link">View</a>
+          <a href="/hadiths/{hadith.id}" class="detail-link">View →</a>
         </div>
-        {#if hadith.text_en}
-          <div class="hadith-text">{truncate(hadith.text_en, 300)}</div>
-        {:else if hadith.matn}
-          <div class="hadith-text arabic" dir="rtl">{truncate(hadith.matn, 200)}</div>
-        {/if}
+        <HadithBody
+          textAr={hadith.matn ?? null}
+          textEn={hadith.text_en ?? null}
+          language={$language}
+          arabicSize={Math.min(1.1, $proseArabicFontSize)}
+          englishSize={0.95}
+          preview
+          previewLength={300}
+        />
       </div>
     {/each}
   </div>
@@ -30,18 +38,25 @@
 
 {#if data.related && data.related.length > 0}
   <div class="section">
-    <div class="section-label">Related Hadiths</div>
+    <div class="section-eyebrow"><Eyebrow tone="muted">Related Hadiths</Eyebrow></div>
     {#each data.related as hadith}
       <div class="hadith-item">
         <div class="hadith-meta">
-          <span class="hadith-num">#{hadith.hadith_number}</span>
+          <span class="hadith-num mono">#{hadith.hadith_number}</span>
           {#if hadith.score}
-            <span class="score">{hadith.score.toFixed(3)}</span>
+            <span class="score mono">{hadith.score.toFixed(3)}</span>
           {/if}
-          <a href="/hadiths/{hadith.id}" class="detail-link">View</a>
+          <a href="/hadiths/{hadith.id}" class="detail-link">View →</a>
         </div>
         {#if hadith.text_en}
-          <div class="hadith-text">{truncate(hadith.text_en, 200)}</div>
+          <HadithBody
+            textAr={null}
+            textEn={hadith.text_en}
+            language="en"
+            englishSize={0.95}
+            preview
+            previewLength={200}
+          />
         {/if}
       </div>
     {/each}
@@ -53,78 +68,49 @@
 {/if}
 
 <style>
-  .section {
-    margin-bottom: 16px;
-  }
-  .section:last-child {
-    margin-bottom: 0;
-  }
-  .section-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--success);
-    margin-bottom: 8px;
-  }
+  .section { margin-bottom: var(--space-4); }
+  .section:last-child { margin-bottom: 0; }
+  .section-eyebrow { margin-bottom: var(--space-2); }
+
   .hadith-item {
-    padding: 10px 12px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    margin-bottom: 8px;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--border-subtle);
   }
-  .hadith-item:last-child {
-    margin-bottom: 0;
-  }
+  .hadith-item:last-child { border-bottom: none; }
+
   .hadith-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
     flex-wrap: wrap;
+    font-size: var(--text-meta);
   }
   .book-name {
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
   }
-  .hadith-num {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-  }
+  .hadith-num { color: var(--text-muted); }
+  .dot { color: var(--text-muted); }
   .grade-badge {
-    font-size: 0.65rem;
+    font-size: var(--text-2xs);
     padding: 1px 6px;
-    border-radius: 8px;
-    background: var(--success);
-    color: white;
+    border-radius: var(--radius-pill);
+    background: var(--accent-muted);
+    color: var(--accent);
+    font-weight: var(--font-weight-semibold);
   }
   .score {
-    font-size: 0.7rem;
     color: var(--success);
-    font-family: var(--font-mono);
   }
   .detail-link {
     margin-left: auto;
-    font-size: 0.7rem;
     color: var(--accent);
+    font-size: var(--text-meta);
   }
-  .detail-link:hover {
-    text-decoration: underline;
-  }
-  .hadith-text {
-    font-size: 0.8rem;
-    line-height: 1.6;
-    color: var(--text-secondary);
-  }
-  .hadith-text.arabic {
-    font-size: 0.9rem;
-    line-height: 1.8;
-  }
+  .detail-link:hover { text-decoration: underline; }
   .empty {
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
     color: var(--text-muted);
   }
 </style>

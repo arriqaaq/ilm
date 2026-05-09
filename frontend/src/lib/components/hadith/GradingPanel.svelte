@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { HadithGrading } from '$lib/types';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
 
   let { gradings = [] }: { gradings?: HadithGrading[] } = $props();
 
@@ -26,7 +27,7 @@
 
 {#if gradings.length > 0}
   <section class="grading-panel">
-    <h2>Scholar Rulings</h2>
+    <div class="panel-eyebrow"><Eyebrow>Scholar Rulings</Eyebrow></div>
     <ul class="grading-list">
       {#each gradings as g}
         <li class="grading-row">
@@ -36,7 +37,7 @@
             <span class="notes">{g.notes}</span>
           {/if}
           {#if sourceHref(g)}
-            <a class="source-link" href={sourceHref(g)}>Open source &#x2197;</a>
+            <a class="source-link" href={sourceHref(g)}>Source ↗</a>
           {/if}
         </li>
       {/each}
@@ -47,14 +48,12 @@
 <style>
   .grading-panel {
     margin-top: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    background: var(--bg-surface);
   }
-
-  .grading-panel h2 {
-    margin: 0 0 0.75rem 0;
-    font-size: 1.15rem;
-    color: var(--text-primary);
-    font-weight: 600;
-  }
+  .panel-eyebrow { margin-bottom: var(--space-3); }
 
   .grading-list {
     list-style: none;
@@ -62,71 +61,58 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: var(--space-2);
   }
 
   .grading-row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--bg-surface);
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border-subtle);
     flex-wrap: wrap;
   }
+  .grading-row:last-child { border-bottom: none; }
 
   .scholar {
-    font-weight: 600;
+    font-family: var(--font-arabic);
+    font-weight: var(--font-weight-semibold);
     min-width: 6ch;
-    font-size: 0.95rem;
+    font-size: 1.05rem;
     color: var(--text-primary);
   }
 
   .chip {
     display: inline-flex;
     align-items: center;
-    padding: 2px 10px;
-    border-radius: var(--radius-sm);
-    font-size: 0.95rem;
-    font-weight: 500;
+    padding: 2px var(--space-3);
+    border-radius: var(--radius-pill);
+    font-family: var(--font-arabic);
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.6;
   }
 
-  .chip.success {
-    background: rgba(74, 222, 128, 0.15);
-    color: var(--success);
-  }
-
-  .chip.accent {
-    background: var(--accent-muted);
-    color: var(--accent);
-  }
-
-  .chip.warning {
-    background: rgba(248, 113, 113, 0.15);
-    color: var(--danger, #f87171);
-  }
-
+  .chip.success { background: rgba(21, 128, 61, 0.10); color: var(--success); }
+  .chip.accent  { background: var(--accent-muted); color: var(--accent); }
+  .chip.warning { background: rgba(180, 83, 9, 0.10); color: var(--warning); }
   .chip.default {
-    background: var(--bg-surface);
+    background: transparent;
     color: var(--text-secondary);
     border: 1px solid var(--border);
   }
 
   .notes {
-    font-size: 0.8rem;
+    font-size: var(--text-meta);
     color: var(--text-muted);
     font-style: italic;
   }
 
   .source-link {
     margin-left: auto;
-    font-size: 0.85rem;
+    font-size: var(--text-meta);
     color: var(--accent);
     text-decoration: none;
   }
-
-  .source-link:hover {
-    text-decoration: underline;
-  }
+  .source-link:hover { text-decoration: underline; }
 </style>

@@ -1,8 +1,10 @@
 <script lang="ts">
   import type { ApiHadith, SharhPageRef } from '$lib/types';
-  import { truncate, stripHtml } from '$lib/utils';
-  import Badge from '$lib/components/common/Badge.svelte';
+  import Button from '$lib/components/common/Button.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import HadithBody from '$lib/components/hadith/HadithBody.svelte';
   import { language } from '$lib/stores/language';
+  import { proseArabicFontSize } from '$lib/stores/preferences';
 
   let { hadith, sharhPage, onopensharh }: {
     hadith: ApiHadith;
@@ -11,92 +13,73 @@
   } = $props();
 </script>
 
-<div class="card card-stripe hadith-card-wrapper">
-  <a href="/hadiths/{hadith.id}" class="card-link hadith-card">
-    <div class="card-header">
-      {#if hadith.book_name}
-        <Badge text={hadith.book_name} variant="accent" />
-      {:else}
-        <Badge text="Book {hadith.collection_id}" />
-      {/if}
-      <span class="hadith-num mono">#{hadith.hadith_number}</span>
+<article class="hadith-card-row">
+  <a href="/hadiths/{hadith.id}" class="card-link">
+    <div class="meta">
+      <Eyebrow>
+        {hadith.book_name ?? `Book ${hadith.collection_id}`} · #{hadith.hadith_number}
+      </Eyebrow>
     </div>
-
     {#if hadith.narrator_text}
       <p class="narrator">{hadith.narrator_text}</p>
     {/if}
-
-    {#if $language === 'en' && hadith.text_en}
-      <p class="text-preview">{truncate(stripHtml(hadith.text_en), 180)}</p>
-    {:else if hadith.text_ar}
-      <p class="text-ar arabic-text" dir="rtl">{truncate(hadith.text_ar, 150)}</p>
-    {:else if hadith.text_en}
-      <p class="text-preview">{truncate(stripHtml(hadith.text_en), 180)}</p>
-    {/if}
+    <div class="body">
+      <HadithBody
+        textAr={hadith.text_ar}
+        textEn={hadith.text_en}
+        language={$language}
+        arabicSize={Math.min(1.2, $proseArabicFontSize)}
+        englishSize={1}
+        preview
+        previewLength={180}
+      />
+    </div>
   </a>
 
   {#if sharhPage && onopensharh}
+    {@const sp = sharhPage}
     <div class="card-actions">
-      <button
-        class="btn btn-secondary btn-sm"
-        onclick={() => onopensharh({ bookId: sharhPage.book_id, pageIndex: sharhPage.page_index, bookName: sharhPage.book_name, hadithNumber: hadith.hadith_number })}
-        title="View {sharhPage.book_name}"
+      <Button
+        variant="ghost"
+        size="sm"
+        onclick={() => onopensharh({ bookId: sp.book_id, pageIndex: sp.page_index, bookName: sp.book_name, hadithNumber: hadith.hadith_number })}
+        title="View {sp.book_name}"
       >
-        Sharh
-      </button>
+        Sharḥ →
+      </Button>
     </div>
   {/if}
-</div>
+</article>
 
 <style>
-  .hadith-card-wrapper {
-    overflow: hidden;
-    padding: 0;
+  .hadith-card-row {
+    padding: var(--space-5) 0;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background var(--transition);
   }
-  .hadith-card-wrapper:hover {
-    background: var(--bg-hover);
-  }
+  .hadith-card-row:hover { background: var(--bg-hover); }
+  .hadith-card-row:last-child { border-bottom: none; }
 
-  .hadith-card {
-    padding: var(--space-card-y) var(--space-card-x);
+  .card-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    padding: 0 var(--space-2);
   }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-2);
-  }
-
-  .hadith-num {
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-  }
+  .meta { margin-bottom: var(--space-2); }
 
   .narrator {
-    color: var(--accent);
-    font-size: var(--text-sm);
-    margin-bottom: var(--space-2);
-    font-weight: var(--font-weight-medium);
-  }
-
-  .text-preview {
     font-family: var(--font-serif);
+    font-size: var(--text-meta);
     color: var(--text-secondary);
-    font-size: var(--text-sm);
-    line-height: var(--leading-normal);
-    margin-bottom: var(--space-2);
+    margin: 0 0 var(--space-2);
+    font-style: italic;
   }
-
-  .text-ar {
-    color: var(--text-secondary);
-    font-size: var(--text-md);
-    opacity: 0.9;
-  }
+  .body { margin-top: var(--space-2); }
 
   .card-actions {
-    padding: 0 var(--space-card-x) var(--space-3);
     display: flex;
     gap: var(--space-2);
+    padding: var(--space-2) var(--space-2) 0;
   }
 </style>

@@ -7,6 +7,7 @@
   import BookViewerModal from '$lib/components/reader/BookViewerModal.svelte';
   import Pagination from '$lib/components/common/Pagination.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
 
   let result: PaginatedResponse<ApiHadith> | null = $state(null);
   let loading = $state(true);
@@ -62,9 +63,9 @@
 
 <div class="hadith-list">
   <aside class="book-filter-panel">
-    <h2>Books</h2>
+    <div class="filter-eyebrow"><Eyebrow>Collections</Eyebrow></div>
     <a class="book-card" class:active={bookFilter === undefined} href="/hadiths">
-      <span class="card-label">All Books</span>
+      <span class="book-title">All Books</span>
     </a>
     {#each collections as c (c.id)}
       <a
@@ -72,20 +73,21 @@
         class:active={bookFilter === c.collection_id}
         href={`/hadiths?book=${c.collection_id}`}
       >
-        <span class="book-num">{c.collection_id}</span>
-        <span class="book-title arabic" dir="rtl">{c.name_ar ?? c.name_en}</span>
+        <span class="book-num mono">{c.collection_id}</span>
+        <span class="book-ar arabic-prose" dir="rtl">{c.name_ar ?? c.name_en}</span>
         <span class="book-en">{c.name_en}</span>
       </a>
     {/each}
   </aside>
 
   <main class="list-main">
-    <div class="list-header">
+    <header class="list-header">
+      <Eyebrow>Ḥadīth</Eyebrow>
       <h1>Hadiths</h1>
       {#if activeCollectionName}
-        <span class="filter-badge">{activeCollectionName}</span>
+        <p class="subtitle">Filter: {activeCollectionName}</p>
       {/if}
-    </div>
+    </header>
 
     {#if loading}
       <LoadingSpinner />
@@ -118,89 +120,77 @@
 
 <style>
   .hadith-list {
-    padding: 24px;
-    max-width: 1200px;
+    padding: var(--space-8) var(--space-6);
+    max-width: var(--page-width);
+    margin: 0 auto;
     display: flex;
-    gap: 24px;
+    gap: var(--space-8);
     align-items: flex-start;
   }
 
-  /* Sticky left sidepanel: book filter cards */
   .book-filter-panel {
     flex: 0 0 240px;
     position: sticky;
-    top: 16px;
+    top: var(--space-4);
   }
-  .book-filter-panel h2 {
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0 0 12px;
-  }
+  .filter-eyebrow { padding: 0 var(--space-2) var(--space-3); }
+
   .book-card {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 12px 14px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    margin-bottom: 8px;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
     text-decoration: none;
     color: var(--text-primary);
-    background: var(--bg-surface);
-    transition: all var(--transition);
+    transition: background var(--transition);
   }
-  .book-card:hover {
-    border-color: var(--accent);
-  }
+  .book-card:hover { background: var(--bg-hover); }
   .book-card.active {
     background: var(--accent-muted);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-  .card-label {
-    font-weight: 600;
-    font-size: 0.95rem;
+    border-bottom-color: var(--accent);
   }
   .book-num {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: var(--text-2xs);
     color: var(--text-muted);
   }
-  .book-title {
-    font-size: 0.95rem;
-    font-weight: 600;
+  .book-ar {
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    font-weight: var(--font-weight-semibold);
     line-height: 1.5;
   }
   .book-en {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    font-size: var(--text-meta);
+    color: var(--text-secondary);
+  }
+  .book-title {
+    font-family: var(--font-serif);
+    font-size: var(--text-body);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
   }
 
-  /* Main list */
-  .list-main {
-    flex: 1 1 auto;
-    min-width: 0;
+  .list-main { flex: 1 1 auto; min-width: 0; }
+  .list-header { margin-bottom: var(--space-6); }
+  .list-header h1 {
+    font-family: var(--font-serif);
+    font-size: 2.1rem;
+    margin: var(--space-2) 0;
+    letter-spacing: var(--tracking-tight);
   }
-  .list-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
+  .list-header .subtitle {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-style: italic;
+    color: var(--text-secondary);
+    font-size: var(--text-body);
   }
-  .filter-badge {
-    padding: 4px 12px;
-    background: var(--accent-muted);
-    color: var(--accent);
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-  }
-  .list { display: flex; flex-direction: column; gap: 12px; }
-  .empty { text-align: center; color: var(--text-muted); padding: 40px; }
+  .list { display: flex; flex-direction: column; gap: 0; }
+  .empty { text-align: center; color: var(--text-muted); padding: var(--space-10); }
 
   @media (max-width: 900px) {
-    .hadith-list { flex-direction: column; }
+    .hadith-list { flex-direction: column; gap: var(--space-6); }
     .book-filter-panel { flex: 1 1 auto; position: static; }
   }
 </style>

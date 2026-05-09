@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=EB+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Scheherazade+New:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400;1,600&display=swap');
 
 /* KFGQPC Uthmanic Hafs — same font used by quran.com */
 @font-face {
@@ -10,35 +10,72 @@
 }
 
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
+  /* ── Surfaces (warm-cream editorial palette) ── */
+  --bg-primary: #fdfcf9;
+  --bg-secondary: #f7f4ec;
   --bg-surface: #ffffff;
-  --bg-hover: #f0f1f3;
-  --bg-active: #e8e9ec;
-  --border: #e5e7eb;
-  --border-subtle: #f0f1f3;
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a4a68;
-  --text-muted: #9ca3af;
-  --accent: #c8a96a;
-  --accent-hover: #b09050;
-  --accent-muted: rgba(200, 169, 106, 0.1);
+  --bg-hover: #f1ede4;
+  --bg-active: #e9e3d4;
+  --border: #e3ddcf;
+  --border-subtle: #efeae0;
+
+  /* ── Ink ── */
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --text-muted: #a8a29e;
+
+  /* ── Accent (restrained editorial gold) ── */
+  --accent: #b08a3e;
+  --accent-hover: #8f6f2f;
+  --accent-muted: rgba(176, 138, 62, 0.10);
   --accent-secondary: #8b6914;
-  --btn-text: #6b7280;
-  --btn-bg: #f9fafb;
-  --btn-border: #e5e7eb;
-  --btn-bg-hover: #f3f4f6;
-  --btn-border-hover: #d1d5db;
-  --success: #16a34a;
-  --warning: #d97706;
-  --error: #dc2626;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-arabic: 'UthmanicHafs', 'Amiri', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
-  --font-arabic-text: 'UthmanicHafs', 'Amiri', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
+
+  /* ── Buttons ── */
+  --btn-text: #57534e;
+  --btn-bg: #f7f4ec;
+  --btn-border: #e3ddcf;
+  --btn-bg-hover: #efeae0;
+  --btn-border-hover: #c9c0a8;
+
+  /* ── Status ── */
+  --success: #15803d;
+  --warning: #b45309;
+  --error: #b91c1c;
+
+  /* ── Fonts ──
+     Arabic typography uses ONE canonical token for prose: --font-arabic
+     (Scheherazade New). This is the same font usul.ai uses for hadith reading;
+     it is published by SIL International specifically for Quran, hadith, and
+     classical Islamic texts, and renders Arabic punctuation correctly.
+
+     UthmanicHafs is the KFGQPC mushaf font — it substitutes common punctuation
+     (Arabic commas etc.) with Quranic ayah-separator rosettes, which is wrong
+     for hadith / tafsir / narrator prose. It is reserved for --font-quran and
+     used only on explicitly Quranic surfaces (.arabic-quran class). The actual
+     Quran reader uses per-page QCF V2/V4 glyph fonts via quranFonts.ts.
+
+     --font-arabic-text aliases to --font-arabic so all reading surfaces (hadith,
+     tafsir, narrator names, book reader, notes) share the same prose font.
+     --font-arabic-ui stays in IBM Plex Sans Arabic for tiny chrome labels
+     (also matching usul.ai's pattern).
+
+     CRITICAL: --font-sans and --font-serif each include the Arabic stack as a
+     tail fallback. Browser font-family fallback is per-character, so Latin chars
+     render in Inter / EB Garamond and Arabic chars cascade to Scheherazade —
+     this makes mixed-language strings (narrator names, hadith previews, search
+     results) render Arabic in the prose font without every component editing
+     its stack. */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont,
+               'Scheherazade New', 'Noto Naskh Arabic', sans-serif;
+  --font-serif: 'EB Garamond', Georgia,
+                'Scheherazade New', 'Noto Naskh Arabic', serif;
+  --font-arabic: 'Scheherazade New', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
+  --font-arabic-text: var(--font-arabic);
+  --font-quran: 'UthmanicHafs', 'Scheherazade New', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
   --font-arabic-ui: 'IBM Plex Sans Arabic', 'Noto Naskh Arabic', 'Tahoma', sans-serif;
   --font-mono: 'Menlo', 'Consolas', monospace;
 
-  /* Typography scale (15px base) */
+  /* ── Type scale (15px base) ── */
   --text-2xs: 0.7rem;
   --text-xs: 0.78rem;
   --text-sm: 0.85rem;
@@ -50,11 +87,19 @@
   --text-3xl: 2.2rem;
   --text-display: 4rem;
 
+  /* ── Semantic type aliases (use these in components) ── */
+  --text-eyebrow: 0.72rem;
+  --text-caption: 0.85rem;
+  --text-meta: 0.85rem;
+  --text-body: 1rem;
+  --text-body-lg: 1.125rem;
+  --text-lead: 1.25rem;
+
   --leading-tight: 1.25;
   --leading-snug: 1.4;
   --leading-normal: 1.6;
-  --leading-relaxed: 1.9;
-  --leading-arabic: 2.0;
+  --leading-relaxed: 1.75;
+  --leading-arabic: 2.1;
 
   --font-weight-normal: 400;
   --font-weight-medium: 500;
@@ -64,8 +109,9 @@
   --tracking-tight: -0.02em;
   --tracking-normal: 0;
   --tracking-wide: 0.04em;
+  --tracking-eyebrow: 0.14em;
 
-  /* Spacing scale (4px base) */
+  /* ── Spacing (4px base) ── */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -78,7 +124,11 @@
   --space-card-y: var(--space-4);
   --space-card-x: var(--space-5);
 
-  /* Radius */
+  /* ── Layout widths ── */
+  --prose-width: 68ch;
+  --page-width: 1080px;
+
+  /* ── Radius ── */
   --radius: 8px;
   --radius-lg: 12px;
   --radius-sm: 4px;
@@ -87,14 +137,14 @@
   --radius-pill: 999px;
   --radius-full: 50%;
 
-  /* Icon sizes */
+  /* ── Icons ── */
   --icon-xs: 12px;
   --icon-sm: 16px;
   --icon-md: 20px;
   --icon-lg: 24px;
   --icon-xl: 32px;
 
-  /* Button tokens */
+  /* ── Buttons ── */
   --btn-height-sm: 28px;
   --btn-height-md: 36px;
   --btn-height-lg: 44px;
@@ -107,7 +157,7 @@
   --btn-letter-spacing: var(--tracking-wide);
   --btn-primary-fg: #ffffff;
 
-  /* Card tokens */
+  /* ── Cards ── */
   --card-bg: var(--bg-surface);
   --card-border: 1px solid var(--border);
   --card-radius: var(--radius);
@@ -120,17 +170,17 @@
   --topbar-height: 56px;
   --transition: 150ms ease;
 
-  /* Graph visualization */
-  --graph-center: #c8a96a;
-  --graph-teacher: #16a34a;
-  --graph-student: #b8860b;
+  /* ── Graph visualization ── */
+  --graph-center: #b08a3e;
+  --graph-teacher: #15803d;
+  --graph-student: #8b6914;
   --graph-edge: rgba(156, 163, 175, 0.35);
-  --graph-edge-hover: #c8a96a;
-  --graph-shadow-center: rgba(200, 169, 106, 0.3);
-  --graph-shadow-teacher: rgba(22, 163, 74, 0.3);
-  --graph-shadow-student: rgba(184, 134, 11, 0.3);
+  --graph-edge-hover: #b08a3e;
+  --graph-shadow-center: rgba(176, 138, 62, 0.3);
+  --graph-shadow-teacher: rgba(21, 128, 61, 0.3);
+  --graph-shadow-student: rgba(139, 105, 20, 0.3);
 
-  /* Note highlight colors */
+  /* ── Note highlights ── */
   --note-yellow-bg: #fef3c7; --note-yellow: #f59e0b;
   --note-green-bg: #d1fae5;  --note-green: #10b981;
   --note-blue-bg: #dbeafe;   --note-blue: #3b82f6;
@@ -142,12 +192,11 @@
   --note-pink-rgb: 236, 72, 153;
   --note-purple-rgb: 139, 92, 246;
   --hadith-embed-rgb: 16, 185, 129;
-  --hadith-narrator: #b45309;
+  --hadith-narrator: #92400e;
 
-  /* Scholarly UI tokens */
-  --font-serif: 'EB Garamond', Georgia, serif;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.03);
-  --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  /* ── Editorial shadows (lighter, less competing) ── */
+  --shadow-card: 0 0 0 1px rgba(0,0,0,0.03);
+  --shadow-card-hover: 0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04);
   --shadow-editor: 0 0 0 1px var(--border-subtle);
   --card-shadow: var(--shadow-card);
   --card-shadow-hover: var(--shadow-card-hover);
@@ -205,17 +254,25 @@ h3 { font-size: var(--text-lg); }
   background: var(--text-muted);
 }
 
+/* Generic RTL: only inherit font + direction, NOT a forced size.
+   Each Arabic surface declares its own size via class or inline style. */
 [dir="rtl"], .arabic, .arabic-text {
   font-family: var(--font-arabic-text);
   direction: rtl;
   text-align: right;
   line-height: var(--leading-arabic);
-  font-size: 1.3em;
   font-weight: var(--font-weight-normal);
 }
 
+.arabic-prose {
+  font-family: var(--font-arabic-text);
+  direction: rtl;
+  text-align: right;
+  line-height: var(--leading-arabic);
+}
+
 .arabic-quran {
-  font-family: var(--font-arabic);
+  font-family: var(--font-quran);
 }
 
 .arabic-ui {

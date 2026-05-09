@@ -221,14 +221,13 @@
   }
 
   .section-label {
-    font-size: var(--text-xs);
-    letter-spacing: var(--tracking-wide);
-    color: var(--text-muted);
-    padding: var(--space-4) var(--space-3) 6px;
-    font-weight: var(--font-weight-medium);
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-variant: small-caps;
+    font-family: var(--font-sans);
+    font-size: var(--text-eyebrow);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: var(--space-4) var(--space-3) var(--space-2);
     user-select: none;
     white-space: nowrap;
   }

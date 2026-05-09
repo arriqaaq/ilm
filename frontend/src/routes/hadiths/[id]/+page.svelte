@@ -2,11 +2,16 @@
   import { page } from '$app/state';
   import { getHadith, getChainGraph, getHadithSharhPages, getHadithGradings } from '$lib/api';
   import type { HadithDetailResponse, GraphData, SharhPageRef, HadithGrading } from '$lib/types';
-  import { stripHtml } from '$lib/utils';
   import { language } from '$lib/stores/language';
   import { preferences, proseArabicFontSize } from '$lib/stores/preferences';
   import NarratorChip from '$lib/components/narrator/NarratorChip.svelte';
   import Badge from '$lib/components/common/Badge.svelte';
+  import Button from '$lib/components/common/Button.svelte';
+  import Eyebrow from '$lib/components/common/Eyebrow.svelte';
+  import SectionHeading from '$lib/components/common/SectionHeading.svelte';
+  import Divider from '$lib/components/common/Divider.svelte';
+  import MetaRow from '$lib/components/common/MetaRow.svelte';
+  import HadithBody from '$lib/components/hadith/HadithBody.svelte';
   import ChainView from '$lib/components/graph/ChainView.svelte';
   import GradingPanel from '$lib/components/hadith/GradingPanel.svelte';
   import LoadingSpinner from '$lib/components/common/LoadingSpinner.svelte';
@@ -20,7 +25,7 @@
   let loading = $state(true);
   let showNotePanel = $state(false);
   let showSavePopover = $state(false);
-  let saveBtnEl: HTMLButtonElement | undefined = $state();
+  let saveBtnEl: HTMLSpanElement | undefined = $state();
   let sharhPage: SharhPageRef | null = $state(null);
   let sharhTarget: { bookId: number; pageIndex: number; bookName: string; hadithNumber: number } | null = $state(null);
 
@@ -47,60 +52,53 @@
       .catch((e) => console.error('Failed to load hadith:', e))
       .finally(() => { loading = false; });
   });
-
-  /**
-   * Highlight the matn (quoted speech) in Arabic text.
-   */
-  function highlightMatn(text: string): string {
-    return text
-      .replace(/"([^"]+)"/g, '<span class="matn">"$1"</span>')
-      .replace(/«([^»]+)»/g, '<span class="matn">«$1»</span>');
-  }
 </script>
 
-<div class="hadith-view">
+<div class="hadith-view prose">
   {#if loading}
     <LoadingSpinner />
   {:else if data}
-    <div class="view-header">
-      <h1>Hadith #{data.hadith.hadith_number}</h1>
-      <div class="badges">
-        {#if data.hadith.book_name}
-          <Badge text={data.hadith.book_name} variant="accent" />
-        {:else}
-          <Badge text="Book {data.hadith.collection_id}" />
-        {/if}
-        {#if data.hadith.hadith_type}
-          <Badge text={data.hadith.hadith_type} variant="default" />
-        {/if}
-        <button
-          class="note-btn"
-          bind:this={saveBtnEl}
-          onclick={() => { showSavePopover = !showSavePopover; }}
-        >
-          &#9829; Save
-        </button>
-        <button class="note-btn" onclick={() => { showNotePanel = true; }}>
-          &#9998; Note
-        </button>
+    <header class="view-header">
+      <Eyebrow>
+        ḤADĪTH
+        {#if data.hadith.book_name}· {data.hadith.book_name}{/if}
+        · #{data.hadith.hadith_number}
+      </Eyebrow>
+      <h1 class="title">Hadith #{data.hadith.hadith_number}</h1>
+      <MetaRow items={[data.hadith.chapter_name, data.hadith.hadith_type]} />
+      <div class="actions">
+        <span class="btn-anchor" bind:this={saveBtnEl}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onclick={() => { showSavePopover = !showSavePopover; }}
+          >
+            ♡ Save
+          </Button>
+        </span>
+        <Button variant="ghost" size="sm" onclick={() => { showNotePanel = true; }}>
+          ✎ Note
+        </Button>
         {#if sharhPage}
           {@const sp = sharhPage}
-          <button
-            class="note-btn sharh-btn"
+          <Button
+            variant="secondary"
+            size="sm"
             onclick={() => { sharhTarget = { bookId: sp.book_id, pageIndex: sp.page_index, bookName: sp.book_name, hadithNumber: data?.hadith.hadith_number ?? 0 }; }}
           >
-            Sharh
-          </button>
+            Sharḥ →
+          </Button>
         {/if}
       </div>
-    </div>
+    </header>
 
-    {#if data.hadith.chapter_name}
-      <div class="chapter-name">{data.hadith.chapter_name}</div>
-    {/if}
+    <Divider variant="hairline" />
 
     {#if data.hadith.narrator_text}
-      <div class="narrator-text">{data.hadith.narrator_text}</div>
+      <section class="narrator-block">
+        <Eyebrow>Narrated by</Eyebrow>
+        <p class="narrator-text">{data.hadith.narrator_text}</p>
+      </section>
     {/if}
 
     {#if data.hadith.topics && data.hadith.topics.length > 0}
@@ -112,28 +110,19 @@
     {/if}
 
     <div class="text-section">
-      {#if $language === 'en'}
-        {#if data.hadith.text_en}
-          <div class="text-en" style="font-size: {$preferences.englishFontSize}rem">
-            {stripHtml(data.hadith.text_en)}
-          </div>
-        {:else if data.hadith.text_ar}
-          <div class="text-ar arabic" dir="rtl" style="font-size: {$proseArabicFontSize}rem">
-            {@html highlightMatn(data.hadith.text_ar)}
-          </div>
-        {/if}
-      {:else}
-        {#if data.hadith.text_ar}
-          <div class="text-ar arabic" dir="rtl" style="font-size: {$proseArabicFontSize}rem">
-            {@html highlightMatn(data.hadith.text_ar)}
-          </div>
-        {/if}
-      {/if}
+      <HadithBody
+        textAr={data.hadith.text_ar}
+        textEn={data.hadith.text_en}
+        language={$language}
+        arabicSize={$proseArabicFontSize}
+        englishSize={$preferences.englishFontSize}
+      />
     </div>
 
     {#if data.narrators.length > 0}
+      <Divider variant="ornamental" />
       <section class="section">
-        <h2>Narrators</h2>
+        <SectionHeading eyebrow="Narrators" title="Transmitters" level={2} />
         <div class="chips">
           {#each data.narrators as narrator}
             <NarratorChip {narrator} />
@@ -142,27 +131,28 @@
       </section>
     {/if}
 
+    <Divider variant="ornamental" />
     <div class="chain-with-panel">
       <section class="section chain-col">
-        <h2>Narrator Chain</h2>
+        <SectionHeading eyebrow="Isnād" title="Narrator Chain" level={2} />
         <ChainView data={graphData} />
       </section>
-
       <aside class="grading-col">
         <GradingPanel {gradings} />
       </aside>
     </div>
 
     {#if data.linked_ayahs && data.linked_ayahs.length > 0}
+      <Divider variant="ornamental" />
       <section class="section">
-        <h2>Referenced Quran Verses</h2>
+        <SectionHeading eyebrow="References" title="Quranic Verses" level={2} />
         <div class="ayah-list">
           {#each data.linked_ayahs as ayah}
             <a href="/quran/{ayah.surah_number}" class="ayah-item">
               <div class="ayah-meta">
                 <span class="ayah-ref">{ayah.surah_number}:{ayah.ayah_number}</span>
               </div>
-              <div class="ayah-text arabic" dir="rtl" style="font-size: {$preferences.arabicFontSize}rem">{ayah.text_ar}</div>
+              <div class="ayah-text arabic-prose" dir="rtl" style="font-size: {$preferences.arabicFontSize}rem">{ayah.text_ar}</div>
               {#if ayah.text_en}
                 <div class="ayah-text-en" style="font-size: {$preferences.englishFontSize}rem">{ayah.text_en}</div>
               {/if}
@@ -171,9 +161,11 @@
         </div>
       </section>
     {/if}
+
     {#if data.similar_hadiths && data.similar_hadiths.length > 0}
+      <Divider variant="ornamental" />
       <section class="section">
-        <h2>Similar Hadiths</h2>
+        <SectionHeading eyebrow="Similar" title="Related Hadiths" level={2} />
         <div class="similar-list">
           {#each data.similar_hadiths as similar}
             <a href="/hadiths/{similar.id}" class="similar-item">
@@ -183,11 +175,15 @@
                   <Badge text={similar.book_name} variant="accent" />
                 {/if}
               </div>
-              {#if similar.text_en}
-                <div class="similar-text">{similar.text_en.slice(0, 150)}...</div>
-              {:else if similar.text_ar}
-                <div class="similar-text arabic" dir="rtl" style="font-size: {$proseArabicFontSize}rem">{similar.text_ar.slice(0, 150)}...</div>
-              {/if}
+              <HadithBody
+                textAr={similar.text_ar}
+                textEn={similar.text_en}
+                language={$language}
+                arabicSize={$proseArabicFontSize}
+                englishSize={1}
+                preview
+                previewLength={150}
+              />
             </a>
           {/each}
         </div>
@@ -229,163 +225,121 @@
 {/if}
 
 <style>
-  .hadith-view { padding: 24px; max-width: 1200px; }
+  .hadith-view {
+    padding: var(--space-8) var(--space-6);
+    margin: 0 auto;
+  }
+  .hadith-view.prose { max-width: var(--prose-width); }
 
-  /* Two-column layout: narrator chain on the left, scholar rulings as a
-     sticky panel on the right. Falls back to vertical stacking on narrow
-     viewports (<= 900px) so mobile stays readable. */
-  .chain-with-panel {
+  .view-header { margin-bottom: var(--space-6); }
+  .view-header .title {
+    font-family: var(--font-serif);
+    font-size: 2.1rem;
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    margin: var(--space-2) 0 var(--space-3);
+  }
+  .actions {
     display: flex;
-    gap: 24px;
-    align-items: flex-start;
-    margin-bottom: 24px;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    flex-wrap: wrap;
+    align-items: center;
   }
-  .chain-col { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
-  .grading-col {
-    flex: 0 0 340px;
-    position: sticky;
-    top: 16px;
-  }
-  @media (max-width: 900px) {
-    .chain-with-panel { flex-direction: column; }
-    .grading-col { flex: 1 1 auto; position: static; }
-  }
-  .view-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-  .badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .note-btn {
-    font-size: 0.75rem;
-    color: var(--btn-text);
-    background: var(--btn-bg);
-    border: 1px solid var(--btn-border);
-    border-radius: var(--radius-sm);
-    padding: 2px 10px;
-    cursor: pointer;
-    transition: all var(--transition);
-  }
-  .note-btn:hover { background: var(--btn-bg-hover); border-color: var(--btn-border-hover); }
-  .sharh-btn { color: var(--accent); border-color: var(--accent); }
-  .sharh-btn:hover { background: var(--accent-muted); }
+  .btn-anchor { display: inline-flex; }
 
+  .narrator-block { margin: var(--space-6) 0; }
   .narrator-text {
-    color: var(--accent);
-    font-size: 0.95rem;
-    font-weight: 500;
-    margin-bottom: 20px;
-    padding: 12px 16px;
-    background: var(--accent-muted);
-    border-radius: var(--radius);
+    margin: var(--space-2) 0 0;
+    font-family: var(--font-serif);
+    font-size: var(--text-lead);
+    line-height: var(--leading-snug);
+    color: var(--text-primary);
+  }
+
+  .topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-4) 0;
   }
 
   .text-section {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    margin-bottom: 28px;
+    gap: var(--space-6);
+    margin: var(--space-6) 0;
   }
 
-  /* English text — matn only, entirely in green bold italic blockquote */
-  .text-en {
-    font-family: var(--font-serif);
-    line-height: 1.9;
-    color: var(--success);
-    font-weight: 600;
-    font-style: italic;
-    padding: 20px 24px;
-    border-left: 3px solid var(--accent);
-    background: var(--bg-hover);
-    border-radius: 0 var(--radius) var(--radius) 0;
-    letter-spacing: 0.01em;
+  .section { margin-bottom: var(--space-6); }
+  .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+  .chain-with-panel {
+    display: flex;
+    gap: var(--space-6);
+    align-items: flex-start;
+    margin-bottom: var(--space-6);
+  }
+  .chain-col { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+  .grading-col {
+    flex: 0 0 340px;
+    position: sticky;
+    top: var(--space-4);
+  }
+  @media (max-width: 900px) {
+    .chain-with-panel { flex-direction: column; }
+    .grading-col { flex: 1 1 auto; position: static; }
   }
 
-  /* Arabic text — font-size set inline via proseArabicFontSize */
-  .text-ar {
-    padding: 24px 28px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text-secondary);
-    font-family: var(--font-arabic-text);
-    line-height: 2.4;
-  }
-
-  .text-ar :global(.matn) {
-    color: var(--text-primary);
-    font-weight: 600;
-    font-size: 1.05em;
-  }
-
-  .section { margin-bottom: 24px; }
-  .section h2 {
-    font-size: 1.15rem;
-    margin: 0 0 0.75rem 0;
-    color: var(--text-primary);
-    font-weight: 600;
-  }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chapter-name {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-bottom: 12px;
-    font-style: italic;
-  }
-
-  .topics { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-
-  .similar-list { display: flex; flex-direction: column; gap: 8px; }
+  .similar-list { display: flex; flex-direction: column; gap: 0; }
   .similar-item {
     display: block;
-    padding: 12px 16px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--border-subtle);
     text-decoration: none;
     color: inherit;
-    transition: border-color 0.15s;
+    transition: background var(--transition);
   }
-  .similar-item:hover { border-color: var(--accent); }
-  .similar-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .similar-item:hover { background: var(--bg-hover); }
+  .similar-item:last-child { border-bottom: none; }
+  .similar-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
   .similar-ref {
-    font-size: 0.75rem;
-    font-weight: 600;
     font-family: var(--font-mono);
-    color: var(--accent);
-  }
-  .similar-text {
-    font-size: 0.85rem;
-    line-height: 1.5;
-    color: var(--text-secondary);
+    font-size: var(--text-meta);
+    color: var(--text-muted);
   }
 
-  .empty { text-align: center; color: var(--text-muted); padding: 40px; }
-
-  .ayah-list { display: flex; flex-direction: column; gap: 10px; }
+  .ayah-list { display: flex; flex-direction: column; gap: var(--space-3); }
   .ayah-item {
     display: block;
-    padding: 12px 16px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
+    padding: var(--space-4);
+    border: 1px solid var(--border-subtle);
     border-radius: var(--radius);
     text-decoration: none;
     color: inherit;
-    transition: border-color 0.15s;
+    transition: border-color var(--transition);
   }
   .ayah-item:hover { border-color: var(--accent); }
-  .ayah-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .ayah-meta { margin-bottom: var(--space-2); }
   .ayah-ref {
-    font-size: 0.75rem;
-    font-weight: 600;
     font-family: var(--font-mono);
+    font-size: var(--text-meta);
     color: var(--accent);
   }
   .ayah-text {
-    font-size: 1.15rem;
-    line-height: 2.2;
     color: var(--text-primary);
   }
   .ayah-text-en {
-    font-size: 0.85rem;
-    line-height: 1.6;
+    margin-top: var(--space-2);
+    font-family: var(--font-serif);
     color: var(--text-secondary);
-    margin-top: 6px;
+    line-height: var(--leading-relaxed);
   }
+
+  .empty { text-align: center; color: var(--text-muted); padding: var(--space-10); }
 </style>
