@@ -21,8 +21,5 @@ frontend/build
 colab_translate/splits
 .claude
 
-# QCF per-page font files (~85MB, downloaded via scripts/download_quran_fonts.sh)
-frontend/static/fonts/quran/
-
 __pycache__/
 *.pyc
