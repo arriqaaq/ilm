@@ -177,7 +177,7 @@ pub async fn list(
 pub async fn get_detail(state: &AppState, id: &str) -> Result<ApiHadithDetail> {
     let hrid = make_record_id("hadith", id);
 
-    // Single multi-statement query to avoid 4 sequential round trips.
+    // Single multi-statement query to avoid 5 sequential round trips.
     let mut res = state
         .db
         .query(format!(
@@ -186,7 +186,9 @@ pub async fn get_detail(state: &AppState, id: &str) -> Result<ApiHadithDetail> {
              SELECT in.id AS id, in.surah_number AS surah_number, in.ayah_number AS ayah_number, \
                in.text_ar AS text_ar, in.text_en AS text_en, in.tafsir_en AS tafsir_en \
                FROM references_hadith WHERE out = $rid ORDER BY surah_number, ayah_number; \
-             SELECT ->similar_to->hadith.{{{HADITH_FIELDS}}} AS hadiths FROM $rid;"
+             SELECT ->similar_to->hadith.{{{HADITH_FIELDS}}} AS hadiths FROM $rid; \
+             SELECT parallel_hadith_id.{{{HADITH_FIELDS}}} AS hadith FROM hadith_parallel \
+               WHERE hadith_id = $rid ORDER BY score DESC;"
         ))
         .bind(("rid", hrid))
         .await
@@ -225,11 +227,22 @@ pub async fn get_detail(state: &AppState, id: &str) -> Result<ApiHadithDetail> {
         .map(|r| r.hadiths.into_iter().map(ApiHadith::from).collect())
         .unwrap_or_default();
 
+    #[derive(Debug, SurrealValue)]
+    struct ParallelRow {
+        hadith: Hadith,
+    }
+    let parallel_rows: Vec<ParallelRow> = res.take(4).unwrap_or_default();
+    let parallel_hadiths: Vec<ApiHadith> = parallel_rows
+        .into_iter()
+        .map(|r| ApiHadith::from(r.hadith))
+        .collect();
+
     Ok(ApiHadithDetail {
         hadith: ApiHadith::from(hadith),
         narrators: narrators.into_iter().map(ApiNarrator::from).collect(),
         linked_ayahs,
         similar_hadiths,
+        parallel_hadiths,
     })
 }
 

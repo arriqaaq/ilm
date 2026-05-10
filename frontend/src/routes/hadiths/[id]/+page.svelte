@@ -162,6 +162,36 @@
       </section>
     {/if}
 
+    {#if data.parallel_hadiths && data.parallel_hadiths.length > 0}
+      <Divider variant="ornamental" />
+      <section class="extra-section column-narrow">
+        <SectionHeading
+          eyebrow="Also Recorded In"
+          title="Parallel Narrations"
+          level={2}
+        />
+        <p class="parallel-note">
+          The same prophetic teaching appears in another collection. No grade is
+          inherited — open the parallel to see its own ruling.
+        </p>
+        <div class="similar-list">
+          {#each data.parallel_hadiths as parallel}
+            <a href="/hadiths/{parallel.id}" class="similar-item">
+              <div class="similar-meta">
+                <span class="similar-ref">#{parallel.hadith_number}</span>
+                {#if parallel.book_name}<Badge text={parallel.book_name} variant="accent" />{/if}
+              </div>
+              <HadithBody
+                textAr={parallel.text_ar} textEn={parallel.text_en}
+                language={$language} arabicSize={$proseArabicFontSize} englishSize={1}
+                preview previewLength={150}
+              />
+            </a>
+          {/each}
+        </div>
+      </section>
+    {/if}
+
     {#if data.similar_hadiths && data.similar_hadiths.length > 0}
       <Divider variant="ornamental" />
       <section class="extra-section column-narrow">
@@ -269,6 +299,12 @@
 
   .chain-col { min-width: 0; margin-top: var(--space-8); }
 
+  .parallel-note {
+    font-size: var(--text-meta);
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 0 0 var(--space-3) 0;
+  }
   .similar-list { display: flex; flex-direction: column; gap: 0; }
   .similar-item {
     display: block; padding: var(--space-4) 0;

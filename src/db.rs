@@ -581,7 +581,19 @@ DEFINE FIELD IF NOT EXISTS notes             ON hadith_grading TYPE option<strin
 -- chains within one entry, each with its own ruling). Idempotency on re-ingest
 -- is handled by deleting per-source rows before insert.
 DEFINE INDEX IF NOT EXISTS hadith_grading_by_hadith ON hadith_grading FIELDS hadith_id;
-DEFINE INDEX IF NOT EXISTS hadith_grading_by_book ON hadith_grading FIELDS source_book_id
+DEFINE INDEX IF NOT EXISTS hadith_grading_by_book ON hadith_grading FIELDS source_book_id;
+
+-- High-precision parallel-narration links: this hadith is also recorded (with
+-- substantially overlapping matn) in another collection. Sourced from
+-- matn-Jaccard matching, NOT from any scholar's grading judgement — so we do
+-- NOT inherit a grade. The UI surfaces these as "also recorded in" links,
+-- distinct from `hadith_grading` rows.
+DEFINE TABLE IF NOT EXISTS hadith_parallel SCHEMAFULL;
+DEFINE FIELD IF NOT EXISTS hadith_id          ON hadith_parallel TYPE record<hadith>;
+DEFINE FIELD IF NOT EXISTS parallel_hadith_id ON hadith_parallel TYPE record<hadith>;
+DEFINE FIELD IF NOT EXISTS score              ON hadith_parallel TYPE float;
+DEFINE FIELD IF NOT EXISTS source             ON hadith_parallel TYPE option<string>;
+DEFINE INDEX IF NOT EXISTS hadith_parallel_by_hadith ON hadith_parallel FIELDS hadith_id
 "#;
 
 pub async fn init_grading_schema(db: &Surreal<Db>) -> Result<()> {

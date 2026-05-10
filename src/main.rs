@@ -185,6 +185,17 @@ enum Commands {
         #[arg(long, default_value = "db_data")]
         db_path: String,
     },
+    /// Ingest matn-matched parallel-narration rows (Sunan ↔ Bukhari/Muslim).
+    /// Loads into the hadith_parallel table; no grades attached.
+    IngestParallels {
+        /// One or more JSON files produced by match_sunan_to_bukhari_muslim.py.
+        #[arg(long = "file", num_args = 0..)]
+        files: Vec<String>,
+
+        /// Path to SurrealDB data directory
+        #[arg(long, default_value = "db_data")]
+        db_path: String,
+    },
     /// Start the web server
     Serve {
         /// Port to listen on
@@ -603,6 +614,16 @@ async fn async_main() -> Result<()> {
                 ingest::grading::ingest_hadith_grading(&db, f).await?;
             }
             tracing::info!("Grading ingestion complete");
+        }
+        Commands::IngestParallels { files, db_path } => {
+            let db = db::connect(&db_path).await?;
+            db::init_grading_schema(&db).await?;
+
+            for f in &files {
+                tracing::info!("Loading hadith parallels from {f}");
+                ingest::parallels::ingest_hadith_parallels(&db, f).await?;
+            }
+            tracing::info!("Parallels ingestion complete");
         }
         Commands::Serve {
             port,

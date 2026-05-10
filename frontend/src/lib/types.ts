@@ -92,6 +92,9 @@ export interface HadithDetailResponse {
   narrators: ApiNarrator[];
   linked_ayahs: ApiAyah[];
   similar_hadiths: ApiHadith[];
+  /** Pre-computed matn-matched parallel narrations (Sunan ↔ Bukhari/Muslim).
+   * Surfaces "also recorded in" links — no grade implied. */
+  parallel_hadiths: ApiHadith[];
 }
 
 export interface NarratorDetailResponse {

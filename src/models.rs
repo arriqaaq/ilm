@@ -283,6 +283,13 @@ pub struct ApiHadithDetail {
     pub narrators: Vec<ApiNarrator>,
     pub linked_ayahs: Vec<crate::quran::models::ApiAyah>,
     pub similar_hadiths: Vec<ApiHadith>,
+    /// High-precision matn-matched parallel narrations (e.g. Sunan ↔ Bukhari/Muslim).
+    /// These are pre-computed from word-set Jaccard similarity (≥ 0.55, margin
+    /// ≥ 0.10) and are distinct from `similar_hadiths` — they record that the
+    /// same narration is also recorded in another collection. No grade is
+    /// attached: scholar verdicts on Bukhari/Muslim narrations do not transitively
+    /// apply to a separate Sunan chain.
+    pub parallel_hadiths: Vec<ApiHadith>,
 }
 
 /// Composite response for `GET /v1/narrators/{id}` — the narrator plus their
