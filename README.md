@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <strong>Search the Quran & Sunnah. <em>Deeply.</em></strong><br>
-  A semantic search platform for Islamic scholarship — Quran with tafsir, 34K+ hadiths with narrator chains, and interactive isnad graphs.
+  
+<strong>This project is abandoned because knowledge is preserved through scholars, and I do not want the next generation to be dependent on these tools than on scholars.</strong><br>
 </p>
 
 ---
